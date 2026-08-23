@@ -1,0 +1,161 @@
+/* Admin dashboard. Uses the app's theme tokens; adds nothing to the public site. */
+
+.admin { padding: 34px 0 80px; }
+.admin h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: -0.02em; }
+.admin-sub { margin: 0 0 26px; color: var(--muted); font-size: 14px; }
+.admin-muted { color: var(--muted); font-size: 13px; line-height: 1.6; margin: 0; }
+.admin-muted code, .check code {
+  background: var(--chip);
+  padding: 1px 5px;
+  border-radius: 5px;
+  font-size: 0.92em;
+}
+
+.admin-warning {
+  margin: 22px 0 28px;
+  padding: 16px 18px;
+  border: 1px solid var(--warn);
+  border-left: 4px solid var(--warn);
+  border-radius: 12px;
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.admin-warning b { display: block; margin-bottom: 4px; font-size: 14.5px; }
+.admin-warning span { display: block; margin-top: 8px; opacity: 0.85; }
+
+.admin-block {
+  margin-bottom: 30px;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+  scroll-margin-top: 78px;
+}
+.admin-block > h2 { margin: 0 0 16px; font-size: 18px; letter-spacing: -0.01em; }
+.admin-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.admin-head h2 { margin: 0 0 14px; font-size: 18px; }
+
+/* --------------------------------------------------------- what is missing */
+
+.nodata-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.nodata-grid > div {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+}
+.nodata-grid b { display: block; margin-bottom: 6px; font-size: 14px; }
+.nodata-grid p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+
+/* ------------------------------------------------------------- check rows */
+
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 13px 0;
+}
+.check + .check { border-top: 1px solid var(--line-soft); }
+.check .dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex: 0 0 auto;
+}
+.check.ok .dot { background: var(--ok); }
+.check.warn .dot { background: var(--warn); }
+.check.bad .dot { background: var(--danger); }
+.check > div { flex: 1; min-width: 0; }
+.check b { display: block; font-size: 14px; margin-bottom: 3px; }
+.check p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+.check-do {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ----------------------------------------------------------------- stats */
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.admin-stat {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg);
+  text-align: center;
+}
+.admin-stat b { display: block; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+.admin-stat span { display: block; margin-top: 3px; font-size: 11.5px; color: var(--muted); }
+
+/* ----------------------------------------------------------------- inbox */
+
+#inboxFilter { margin: 0 0 16px; flex-wrap: wrap; border: 0; gap: 6px; }
+#inboxFilter button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12.5px;
+  background: var(--bg);
+  flex: 0 0 auto;
+}
+#inboxFilter button + button { border-left: 1px solid var(--line); }
+#inboxFilter button i { font-style: normal; opacity: 0.6; margin-left: 3px; }
+#inboxFilter button.sel { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+
+.issue {
+  padding: 14px 0;
+  border-top: 1px solid var(--line-soft);
+}
+.issue:first-child { border-top: 0; }
+.issue.closed { opacity: 0.55; }
+.issue-top { display: flex; flex-direction: column; gap: 2px; }
+.issue-title { font-size: 14.5px; font-weight: 600; color: var(--text); text-decoration: none; }
+.issue-title:hover { color: var(--brand); }
+.issue-meta { font-size: 12px; color: var(--muted); }
+.issue-labels { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0; }
+.lbl {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--chip);
+  color: var(--dim);
+}
+.lbl.l-review { background: var(--ok); color: var(--ok-ink); font-weight: 600; }
+.lbl.l-bug { background: var(--danger); color: var(--danger-ink); }
+.lbl.l-none { background: var(--warn-bg); color: var(--warn-ink); }
+.issue-body {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* ----------------------------------------------------------------- table */
+
+.admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.admin-table th {
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+}
+.admin-table td { padding: 9px 10px; border-bottom: 1px solid var(--line-soft); }
+.admin-table tr:last-child td { border-bottom: 0; }
+
+@media (max-width: 700px) {
+  .check-do { display: none; }
+  .admin-block { padding: 16px; }
+}

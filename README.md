@@ -198,6 +198,18 @@ attaching a domain. Full details, including how to add your domain and when to
 bump the service worker version:
 [docs/deploying.md](docs/deploying.md).
 
+## Admin
+
+<https://ihatejob.vercel.app/admin> — setup health, a feedback inbox reading your
+GitHub issues, repository stats, content counts and integrity checks over the
+profession and region data.
+
+It has no login, because it holds nothing worth protecting: everything it shows
+comes from your public repository and your own config file. **It cannot show you
+anyone's CV, who visited, or what they wrote** — none of that is collected, and
+the page says so plainly. Making it show private figures would need a backend;
+an API token pasted into a static page is readable by every visitor.
+
 ## Before you launch it
 
 Three things live in [`public/js/config.js`](public/js/config.js):
@@ -276,6 +288,8 @@ public/app.html           the builder
 public/css/site.css       landing page styles
 public/js/site.js         landing page logic
 public/js/config.js       domain, repo, analytics endpoint, reviews
+public/admin.html         admin dashboard (public data only)
+public/js/admin.js        admin logic: health, GitHub inbox, integrity checks
 public/js/pwa.js          install prompt and service worker registration
 public/sw.js              offline cache
 public/manifest.webmanifest  app identity, icons, shortcuts
