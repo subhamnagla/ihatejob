@@ -191,35 +191,95 @@ const REVIEW_ISSUE = SITE.repo + '/issues/new?labels=review&title='
     '', '',
   ].join('\n'));
 
-function renderReviews() {
+const stars = (n) => {
+  let out = '<div class="rv-stars" aria-label="' + n + ' out of 5">';
+  for (let i = 1; i <= 5; i += 1) {
+    out += '<svg viewBox="0 0 24 24" width="16" height="16" class="' + (i <= n ? 'on' : 'off') + '">'
+      + '<path fill="currentColor" d="M12 2.6l2.9 5.9 6.5.95-4.7 4.58 1.11 6.47L12 17.45'
+      + 'l-5.81 3.05 1.11-6.47L2.6 9.45l6.5-.95z"/></svg>';
+  }
+  return out + '</div>';
+};
+
+const initials = (name) => String(name || '?')
+  .replace(/[^\p{L}\s]/gu, '')
+  .trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('')
+  .toUpperCase() || '?';
+
+// A stable colour per person, so the same name always gets the same avatar.
+const avatarHue = (name) => {
+  let h = 0;
+  for (let i = 0; i < String(name).length; i += 1) h = (h * 31 + name.charCodeAt(i)) % 360;
+  return h;
+};
+
+const LONG = 165;   // characters before a quote gets a "Read more"
+
+function reviewCard(r) {
+  const quote = String(r.quote || '');
+  const long = quote.length > LONG;
+  const head = long ? quote.slice(0, quote.lastIndexOf(' ', LONG)) : quote;
+
+  return '<article class="rv">'
+    + stars(Number(r.rating) || 5)
+    + '<blockquote class="rv-quote' + (long ? ' clipped' : '') + '">'
+    + '<span class="rv-head">&ldquo;' + esc(head) + (long ? '' : '&rdquo;') + '</span>'
+    + (long ? '<span class="rv-rest">' + esc(quote.slice(head.length)) + '&rdquo;</span>' : '')
+    + '</blockquote>'
+    + (long ? '<button class="rv-more" type="button">Read more'
+      + '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"'
+      + ' stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">'
+      + '<path d="M6 9l6 6 6-6"/></svg></button>' : '')
+    + '<footer class="rv-by">'
+    + '<span class="rv-avatar" style="--hue:' + avatarHue(r.name || '') + '">'
+    + esc(initials(r.name)) + '</span>'
+    + '<span class="rv-who"><b>' + esc(r.name || 'Anonymous') + '</b>'
+    + '<span>' + esc([r.role, r.place].filter(Boolean).join(' · ') || r.handle || '') + '</span>'
+    + '</span>'
+    + (r.source ? '<a class="rv-src" href="' + esc(r.source) + '" target="_blank" rel="noopener"'
+      + ' aria-label="See the original">&#8599;</a>' : '')
+    + '</footer></article>';
+}
+
+async function renderReviews() {
   const section = $('reviews');
   const navLink = $('navReviews');
 
-  // Below the threshold the section does not exist as far as a visitor is
-  // concerned: no heading, no empty state, no nav link, no explanation.
-  if (REVIEWS.length < MIN_REVIEWS) {
+  let items = [];
+  try {
+    const res = await fetch('/data/reviews.json', { cache: 'no-cache' });
+    if (res.ok) items = await res.json();
+  } catch { /* falls through to the config list */ }
+  if (!Array.isArray(items) || !items.length) items = REVIEWS;
+
+  // Hidden ones never reach the page; pinned ones lead.
+  const live = items
+    .filter((r) => !r.hidden && String(r.quote || '').trim())
+    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+
+  if (live.length < MIN_REVIEWS) {
     section.hidden = true;
     if (navLink) navLink.hidden = true;
-    console.info('[ihatejob] Reviews hidden: ' + REVIEWS.length + ' of '
-      + MIN_REVIEWS + ' needed. Add real ones to REVIEWS in js/config.js.');
+    console.info('[ihatejob] Reviews hidden: ' + live.length + ' of ' + MIN_REVIEWS
+      + ' needed. Add them in the admin, or to REVIEWS in js/config.js.');
     return;
   }
 
   section.hidden = false;
   if (navLink) navLink.hidden = false;
-
-  $('reviewArea').innerHTML = '<div class="review-grid">' + REVIEWS.map((r) => {
-    const initials = String(r.name || '?').split(/\s+/).map((w) => w[0]).slice(0, 2).join('');
-    return '<article class="review">'
-      + '<blockquote>&ldquo;' + esc(r.quote) + '&rdquo;</blockquote>'
-      + '<footer><span class="review-avatar">' + esc(initials.toUpperCase()) + '</span>'
-      + '<span class="who"><b>' + esc(r.name) + '</b>'
-      + '<span>' + esc([r.role, r.place].filter(Boolean).join(' · ')) + '</span></span>'
-      + (r.source ? '<a href="' + esc(r.source) + '" target="_blank" rel="noopener">source</a>' : '')
-      + '</footer></article>';
-  }).join('') + '</div>';
+  $('reviewArea').innerHTML = '<div class="rv-grid">' + live.map(reviewCard).join('') + '</div>';
 }
 renderReviews();
+
+// Expanding a quote is per-card, so one long review does not push the rest around.
+$('reviewArea').addEventListener('click', (e) => {
+  const btn = e.target.closest('.rv-more');
+  if (!btn) return;
+  const card = btn.closest('.rv');
+  const open = card.classList.toggle('open');
+  card.querySelector('.rv-quote').classList.toggle('clipped', !open);
+  btn.firstChild.textContent = open ? 'Show less' : 'Read more';
+});
 
 // Leaving a review must work whether or not the reviews section is showing -
 // otherwise there is no way to ever reach the threshold that reveals it.

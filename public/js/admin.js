@@ -35,6 +35,13 @@ const OWNER = REPO_MATCH ? REPO_MATCH[1] : '';
 const REPO = REPO_MATCH ? REPO_MATCH[2] : '';
 const REPO_READY = Boolean(OWNER && REPO && !/your-username/.test(OWNER));
 
+const store = {
+  reviews: { items: [], sha: null, dirty: false, canSave: true, note: '' },
+  posts: { items: [], sha: null, dirty: false, canSave: true, note: '' },
+};
+
+const uid = () => Math.random().toString(36).slice(2, 9);
+
 const when = (iso) => {
   const days = Math.round((Date.now() - new Date(iso)) / 86400000);
   if (days === 0) return 'today';
@@ -81,11 +88,14 @@ function renderHealth() {
       'The visitor counters stay off the front page. Nothing is invented in their place.',
       'Set <code>STATS.endpoint</code>'));
 
-  out.push(REVIEWS.length >= MIN_REVIEWS
-    ? row('ok', 'Reviews', REVIEWS.length + ' published, so the section is live.')
+  // Count what the site would actually render, not what config.js happens to hold.
+  const liveReviews = (store.reviews.items.length ? store.reviews.items : REVIEWS)
+    .filter((r) => !r.hidden && String(r.quote || '').trim()).length;
+  out.push(liveReviews >= MIN_REVIEWS
+    ? row('ok', 'Reviews', liveReviews + ' visible, so the section is live on the front page.')
     : row('warn', 'Reviews hidden',
-      REVIEWS.length + ' of ' + MIN_REVIEWS + ' needed. The section stays out of the page entirely until then.',
-      'Add to <code>REVIEWS</code>'));
+      liveReviews + ' of ' + MIN_REVIEWS + ' needed. The section stays out of the page entirely until then.',
+      'See Reviews below'));
 
   const url = String(SITE.url || '');
   out.push(/localhost|127\.0\.0\.1/.test(url)
@@ -104,19 +114,13 @@ const LABELS = ['review', 'profession', 'region', 'template', 'checker', 'bug', 
 let ISSUES = [];
 let filter = 'all';
 
-function reviewSnippet(issue) {
-  // Turn an issue into something that can be pasted straight into config.js.
-  const first = String(issue.body || '')
+// The issue template is a list of questions; the answer is the first line
+// that is not one of them.
+function firstProseLine(body) {
+  return String(body || '')
     .split('\n')
     .map((l) => l.trim())
-    .filter((l) => l && !l.endsWith('?') && !l.startsWith('#'))[0] || '';
-  return '{\n'
-    + "  quote: '" + first.replace(/'/g, "\\'").slice(0, 200) + "',\n"
-    + "  name: '" + (issue.user?.login || '') + "',\n"
-    + "  role: '',\n"
-    + "  place: '',\n"
-    + "  source: '" + issue.html_url + "',\n"
-    + '},';
+    .filter((l) => l && !l.endsWith('?') && !l.startsWith('#') && !l.startsWith('-'))[0] || '';
 }
 
 function renderInbox() {
@@ -147,23 +151,35 @@ function renderInbox() {
     + (i.body ? '<p class="issue-body">' + esc(i.body.slice(0, 260))
       + (i.body.length > 260 ? '&hellip;' : '') + '</p>' : '')
     + (i.labelNames.includes('review')
-      ? '<button class="btn btn-sm" data-snippet="' + i.number + '">Copy as config entry</button>'
+      ? '<button class="btn btn-sm" data-addreview="' + i.number + '">Add as review</button>'
       : '')
     + '</article>'
   )).join('');
 }
 
-$('inboxBody').addEventListener('click', async (e) => {
-  const btn = e.target.closest('[data-snippet]');
+$('inboxBody').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-addreview]');
   if (!btn) return;
-  const issue = ISSUES.find((i) => String(i.number) === btn.dataset.snippet);
+  const issue = ISSUES.find((i) => String(i.number) === btn.dataset.addreview);
   if (!issue) return;
-  try {
-    await navigator.clipboard.writeText(reviewSnippet(issue));
-    toast('Copied. Paste it into REVIEWS in js/config.js, then fill in role and place.');
-  } catch {
-    toast('Could not copy to the clipboard.');
+  if (store.reviews.items.some((r) => r.source === issue.html_url)) {
+    toast('That one is already in the review list.');
+    return;
   }
+  store.reviews.items.unshift({
+    id: uid(),
+    quote: firstProseLine(issue.body),
+    name: issue.user && issue.user.login ? issue.user.login : '',
+    role: '',
+    place: '',
+    rating: 5,
+    source: issue.html_url,
+    hidden: true,   // arrives hidden - you decide what goes public
+  });
+  markDirty('reviews');
+  renderReviewsEditor();
+  $('reviews').scrollIntoView({ behavior: 'smooth' });
+  toast('Added, hidden for now. Tidy the quote and the credit, then Show and Save.');
 });
 
 async function loadInbox() {
@@ -353,13 +369,291 @@ function renderIntegrity() {
       : 'Everything checks out.') + '</p>';
 }
 
+
+/* ------------------------------------------------- editable content store */
+
+// Reads through the API when saving is configured, and falls back to the
+// published file so the admin still shows the truth when it is not.
+
+async function loadContent(key, fallbackUrl) {
+  const s = store[key];
+  try {
+    const res = await fetch('/api/content?file=' + key, { cache: 'no-store' });
+    const type = res.headers.get('content-type') || '';
+    if (!type.includes('json')) {
+      // Running without serverless functions - the local dev server answers
+      // every unknown path with the landing page.
+      throw new Error('the saving API is not running here (local dev server, or functions not deployed)');
+    }
+    const json = await res.json();
+    if (res.status === 503) {
+      s.canSave = false;
+      s.note = json.detail || 'saving not configured';
+      const pub = await fetch(fallbackUrl, { cache: 'no-cache' });
+      s.items = pub.ok ? await pub.json() : [];
+      return;
+    }
+    if (!res.ok) throw new Error(json.detail || json.error || ('HTTP ' + res.status));
+    s.items = Array.isArray(json.items) ? json.items : [];
+    s.sha = json.sha;
+    s.canSave = true;
+  } catch (err) {
+    s.canSave = false;
+    s.note = err.message;
+    try {
+      const pub = await fetch(fallbackUrl, { cache: 'no-cache' });
+      s.items = pub.ok ? await pub.json() : [];
+    } catch { s.items = []; }
+  }
+}
+
+async function saveContent(key, label) {
+  const s = store[key];
+  const state = $(key === 'reviews' ? 'rvState' : 'pbState');
+  if (!s.canSave) {
+    toast('Saving is not configured: ' + (s.note || 'set GITHUB_TOKEN and GITHUB_REPO'));
+    return;
+  }
+  state.textContent = 'Saving...';
+  try {
+    const res = await fetch('/api/content?file=' + key, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: s.items, sha: s.sha, message: 'Update ' + label + ' from admin' }),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.detail || json.error);
+    s.sha = json.sha;
+    s.dirty = false;
+    state.textContent = 'Saved';
+    toast('Committed. The site rebuilds in about a minute.');
+  } catch (err) {
+    state.textContent = 'Not saved';
+    toast('Could not save: ' + err.message);
+  }
+}
+
+function markDirty(key) {
+  store[key].dirty = true;
+  $(key === 'reviews' ? 'rvState' : 'pbState').textContent = 'Unsaved changes';
+}
+
+// Typing must not rebuild the list, or focus is lost on every keystroke. Only
+// structural actions redraw.
+function bindFields(root, key, onStructural) {
+  root.addEventListener('input', (e) => {
+    const el = e.target.closest('[data-k]');
+    if (!el) return;
+    const items = store[key].items;
+    const item = items[Number(el.closest('[data-i]').dataset.i)];
+    if (!item) return;
+    if (el.type === 'checkbox') item[el.dataset.k] = el.checked;
+    else if (el.type === 'number') item[el.dataset.k] = Number(el.value);
+    else item[el.dataset.k] = el.value;
+    markDirty(key);
+  });
+
+  root.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-act]');
+    if (!btn) return;
+    const items = store[key].items;
+    const i = Number(btn.closest('[data-i]').dataset.i);
+    const act = btn.dataset.act;
+
+    if (act === 'del') {
+      if (!confirm('Delete this permanently?')) return;
+      items.splice(i, 1);
+    } else if (act === 'up' && i > 0) {
+      [items[i - 1], items[i]] = [items[i], items[i - 1]];
+    } else if (act === 'down' && i < items.length - 1) {
+      [items[i + 1], items[i]] = [items[i], items[i + 1]];
+    } else if (act === 'hide') {
+      items[i].hidden = !items[i].hidden;
+    } else if (act === 'pin') {
+      items[i].pinned = !items[i].pinned;
+    } else {
+      return;
+    }
+    markDirty(key);
+    onStructural();
+  });
+}
+
+/* ---------------------------------------------------------- reviews editor */
+
+function renderReviewsEditor() {
+  const items = store.reviews.items;
+  const live = items.filter((r) => !r.hidden && String(r.quote || '').trim()).length;
+  const list = $('rvList');
+
+  if (!store.reviews.canSave) $('rvState').textContent = 'Read only';
+  else if (!store.reviews.dirty) $('rvState').textContent = '';
+
+  const banner = '<p class="admin-muted" style="margin-bottom:14px"><b>' + live
+    + '</b> visible of ' + items.length + '. '
+    + (live >= 3
+      ? 'The section is live on the front page.'
+      : 'Needs ' + (3 - live) + ' more visible before the section appears at all.')
+    + (store.reviews.canSave ? '' : ' <b>Read only</b> &mdash; ' + esc(store.reviews.note))
+    + '</p>';
+
+  if (!items.length) {
+    list.innerHTML = banner + '<p class="admin-muted">Nothing here yet. Use '
+      + '<b>Add as review</b> on a feedback item above, or <b>Add blank</b>.</p>';
+    return;
+  }
+
+  list.innerHTML = banner + items.map((r, i) => (
+    '<div class="edit' + (r.hidden ? ' off' : '') + '" data-i="' + i + '">'
+    + '<div class="edit-bar">'
+    + '<span class="edit-n">' + (i + 1) + '</span>'
+    + '<b>' + esc(r.name || 'Unnamed') + '</b>'
+    + (r.pinned ? '<span class="tag-pin">pinned</span>' : '')
+    + (r.hidden
+      ? '<span class="tag-off">hidden</span>'
+      : (String(r.quote || '').trim()
+        ? '<span class="tag-on">visible</span>'
+        : '<span class="tag-off">empty</span>'))
+    + '<span class="spacer"></span>'
+    + '<button class="btn btn-sm" data-act="pin" type="button">' + (r.pinned ? 'Unpin' : 'Pin') + '</button>'
+    + '<button class="btn btn-sm" data-act="hide" type="button">' + (r.hidden ? 'Show' : 'Hide') + '</button>'
+    + '<button class="btn btn-sm btn-icon" data-act="up" type="button" aria-label="Move up">&#9650;</button>'
+    + '<button class="btn btn-sm btn-icon" data-act="down" type="button" aria-label="Move down">&#9660;</button>'
+    + '<button class="btn btn-sm btn-icon btn-danger" data-act="del" type="button" aria-label="Delete">&#10005;</button>'
+    + '</div>'
+    + '<div class="grid">'
+    + '<div class="field"><label>Quote</label>'
+    + '<textarea class="input" rows="3" data-k="quote">' + esc(r.quote || '') + '</textarea></div>'
+    + '<div class="field s4"><label>Name</label>'
+    + '<input class="input" data-k="name" value="' + esc(r.name || '') + '"></div>'
+    + '<div class="field s4"><label>Role</label>'
+    + '<input class="input" data-k="role" value="' + esc(r.role || '') + '"></div>'
+    + '<div class="field s4"><label>Place</label>'
+    + '<input class="input" data-k="place" value="' + esc(r.place || '') + '"></div>'
+    + '<div class="field s6"><label>Stars (1-5)</label>'
+    + '<input class="input" type="number" min="1" max="5" data-k="rating" value="'
+    + (r.rating || 5) + '"></div>'
+    + '<div class="field s6"><label>Source link</label>'
+    + '<input class="input" data-k="source" value="' + esc(r.source || '') + '"></div>'
+    + '</div></div>'
+  )).join('');
+}
+
+bindFields($('rvList'), 'reviews', renderReviewsEditor);
+
+$('rvAdd').addEventListener('click', () => {
+  store.reviews.items.unshift({
+    id: uid(), quote: '', name: '', role: '', place: '', rating: 5, hidden: true,
+  });
+  markDirty('reviews');
+  renderReviewsEditor();
+});
+$('rvSave').addEventListener('click', () => saveContent('reviews', 'reviews'));
+
+/* ------------------------------------------------------------- blog editor */
+
+const slugify = (t) => String(t).toLowerCase().trim()
+  .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+
+function renderPostsEditor() {
+  const items = store.posts.items;
+  const list = $('pbList');
+  const live = items.filter((p) => p.published).length;
+
+  if (!store.posts.canSave) $('pbState').textContent = 'Read only';
+  else if (!store.posts.dirty) $('pbState').textContent = '';
+
+  const banner = '<p class="admin-muted" style="margin-bottom:14px"><b>' + live
+    + '</b> published of ' + items.length + '.'
+    + (store.posts.canSave ? '' : ' <b>Read only</b> &mdash; ' + esc(store.posts.note))
+    + '</p>';
+
+  if (!items.length) {
+    list.innerHTML = banner + '<p class="admin-muted">No posts yet.</p>';
+    return;
+  }
+
+  list.innerHTML = banner + items.map((p, i) => (
+    '<div class="edit' + (p.published ? '' : ' off') + '" data-i="' + i + '">'
+    + '<div class="edit-bar">'
+    + '<span class="edit-n">' + (i + 1) + '</span>'
+    + '<b>' + esc(p.title || 'Untitled') + '</b>'
+    + (p.published ? '<span class="tag-on">published</span>' : '<span class="tag-off">draft</span>')
+    + '<span class="spacer"></span>'
+    + '<a class="btn btn-sm" href="/blog/' + esc(p.slug || '') + '" target="_blank" rel="noopener">View</a>'
+    + '<button class="btn btn-sm btn-icon" data-act="up" type="button" aria-label="Move up">&#9650;</button>'
+    + '<button class="btn btn-sm btn-icon" data-act="down" type="button" aria-label="Move down">&#9660;</button>'
+    + '<button class="btn btn-sm btn-icon btn-danger" data-act="del" type="button" aria-label="Delete">&#10005;</button>'
+    + '</div>'
+    + '<div class="grid">'
+    + '<div class="field s6"><label>Title</label>'
+    + '<input class="input" data-k="title" value="' + esc(p.title || '') + '"></div>'
+    + '<div class="field s6"><label>Slug (the URL)</label>'
+    + '<input class="input" data-k="slug" value="' + esc(p.slug || '') + '"></div>'
+    + '<div class="field s6"><label>Date</label>'
+    + '<input class="input" type="date" data-k="date" value="' + esc(p.date || '') + '"></div>'
+    + '<div class="field s6" style="display:flex;align-items:flex-end">'
+    + '<label class="check"><input type="checkbox" data-k="published"'
+    + (p.published ? ' checked' : '') + '><span>Published</span></label></div>'
+    + '<div class="field"><label>Excerpt</label>'
+    + '<textarea class="input" rows="2" data-k="excerpt">' + esc(p.excerpt || '') + '</textarea></div>'
+    + '<div class="field"><label>Body (Markdown)</label>'
+    + '<textarea class="input mono" rows="12" data-k="body">' + esc(p.body || '') + '</textarea></div>'
+    + '</div></div>'
+  )).join('');
+}
+
+bindFields($('pbList'), 'posts', renderPostsEditor);
+
+$('pbAdd').addEventListener('click', () => {
+  store.posts.items.unshift({
+    id: uid(),
+    title: 'Untitled post',
+    slug: 'untitled-' + uid(),
+    date: new Date().toISOString().slice(0, 10),
+    excerpt: '',
+    body: '',
+    published: false,
+  });
+  markDirty('posts');
+  renderPostsEditor();
+});
+$('pbSave').addEventListener('click', () => saveContent('posts', 'blog posts'));
+
+// A slug is derived from the title only while it is still the generated one,
+// so renaming a published post never silently breaks its URL.
+$('pbList').addEventListener('input', (e) => {
+  const el = e.target.closest('[data-k="title"]');
+  if (!el) return;
+  const i = Number(el.closest('[data-i]').dataset.i);
+  const post = store.posts.items[i];
+  if (post && /^untitled-/.test(post.slug || '')) {
+    post.slug = slugify(el.value) || post.slug;
+    const slugField = el.closest('[data-i]').querySelector('[data-k="slug"]');
+    if (slugField) slugField.value = post.slug;
+  }
+});
+
+// Leaving with unsaved edits loses them, since nothing is stored locally.
+window.addEventListener('beforeunload', (e) => {
+  if (store.reviews.dirty || store.posts.dirty) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
 /* -------------------------------------------------------------------- boot */
 
 async function refresh() {
   renderHealth();
   renderContent();
   renderIntegrity();
-  await Promise.all([loadInbox(), loadTraffic()]);
+  await Promise.all([
+    loadInbox(),
+    loadTraffic(),
+    loadContent('reviews', '/data/reviews.json').then(renderReviewsEditor),
+    loadContent('posts', '/data/posts.json').then(renderPostsEditor),
+  ]);
 }
 
 $('btnRefresh').addEventListener('click', () => {

@@ -200,17 +200,27 @@ bump the service worker version:
 
 ## Admin
 
-<https://ihatejob.vercel.app/admin> — setup health, a feedback inbox reading your
-GitHub issues, repository stats, content counts and integrity checks over the
-profession and region data.
+Moderate reviews, write blog posts, read feedback, and check the site's own
+setup. Full guide: **[docs/admin.md](docs/admin.md)**.
 
-It has no login, because it holds nothing worth protecting: everything it shows
-comes from your public repository and your own config file. **It cannot show you
-anyone's CV, who visited, or what they wrote** — none of that is collected, and
-the page says so plainly. Making it show private figures would need a backend;
-an API token pasted into a static page is readable by every visitor.
+Protected by a username and password checked in
+[`middleware.js`](middleware.js) at the edge, before any file is served — a
+password checked in browser JavaScript is not a password, it ships to every
+visitor. Set `ADMIN_USER` and `ADMIN_PASSWORD` in the Vercel project settings,
+and optionally `ADMIN_PATH` to move it to an address only you know. **With no
+password set, the admin refuses to load** rather than standing open.
 
-## Before you launch it
+Saving commits `public/data/*.json` back to GitHub, so every change is a commit
+you can revert, and there is no database to run.
+
+It cannot show you anyone's CV or who visited — none of that is collected.
+
+## Blog
+
+`/blog`, written from the admin, stored in `public/data/posts.json`. Drafts stay
+unpublished until you tick the box.
+
+## Before you launch it## Before you launch it
 
 Three things live in [`public/js/config.js`](public/js/config.js):
 
@@ -290,6 +300,11 @@ public/js/site.js         landing page logic
 public/js/config.js       domain, repo, analytics endpoint, reviews
 public/admin.html         admin dashboard (public data only)
 public/js/admin.js        admin logic: health, GitHub inbox, integrity checks
+middleware.js             edge auth for the admin: password, secret address
+api/content.js            saves reviews and posts back to the repository
+public/blog.html          blog listing and post view
+public/js/blog.js         blog rendering and a small Markdown subset
+public/data/*.json        reviews and posts, edited from the admin
 public/js/pwa.js          install prompt and service worker registration
 public/sw.js              offline cache
 public/manifest.webmanifest  app identity, icons, shortcuts

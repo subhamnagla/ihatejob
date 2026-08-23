@@ -29,6 +29,8 @@
   <nav class="nav-links">
     <a href="#health">Setup</a>
     <a href="#inbox">Feedback</a>
+    <a href="#reviews">Reviews</a>
+    <a href="#blog">Blog</a>
     <a href="#traffic">Traffic</a>
     <a href="#content">Content</a>
     <a href="#integrity">Integrity</a>
@@ -51,12 +53,14 @@
   <div class="wrap">
 
     <div class="admin-warning">
-      <b>This page is public and shows only public data.</b>
-      It is served from a static site, so anything it could read, anyone could read.
-      There is no login because there is nothing here to protect &mdash; it reads your
-      public GitHub repository and your own config file, and nothing else.
-      <span>If you ever want private figures here, that needs a backend. An API token
-      pasted into a page like this one would be readable by every visitor.</span>
+      <b>Protected at the edge, not in the browser.</b>
+      The username, password and this page's address are checked by middleware before
+      any file is served, so none of them reach the browser. A password checked in
+      JavaScript would not be a password &mdash; it would ship to every visitor in a
+      file they could open.
+      <span>Set <code>ADMIN_USER</code>, <code>ADMIN_PASSWORD</code> and optionally
+      <code>ADMIN_PATH</code> in the Vercel project settings. With no password set the
+      admin refuses to load at all, rather than standing open.</span>
     </div>
 
     <h1>Admin</h1>
@@ -98,6 +102,37 @@
         <div class="seg" id="inboxFilter"></div>
       </div>
       <div id="inboxBody"><p class="admin-muted">Loading from GitHub&hellip;</p></div>
+    </section>
+
+    <!-- -------------------------------------------------------------- reviews -->
+    <section class="admin-block" id="reviews">
+      <div class="admin-head">
+        <h2>Reviews on the site</h2>
+        <div class="admin-actions">
+          <span class="save-state" id="rvState"></span>
+          <button class="btn btn-sm" id="rvAdd" type="button">Add blank</button>
+          <button class="btn btn-sm btn-primary" id="rvSave" type="button">Save</button>
+        </div>
+      </div>
+      <p class="admin-muted">Hidden ones never reach the page. Pinned ones lead. The section stays
+        off the front page entirely until three are visible.</p>
+      <div id="rvList"></div>
+    </section>
+
+    <!-- ----------------------------------------------------------------- blog -->
+    <section class="admin-block" id="blog">
+      <div class="admin-head">
+        <h2>Blog</h2>
+        <div class="admin-actions">
+          <span class="save-state" id="pbState"></span>
+          <button class="btn btn-sm" id="pbAdd" type="button">New post</button>
+          <button class="btn btn-sm btn-primary" id="pbSave" type="button">Save</button>
+        </div>
+      </div>
+      <p class="admin-muted">Drafts stay off <code>/blog</code> until published. Body accepts
+        Markdown: <code>## heading</code>, <code>**bold**</code>, <code>[link](url)</code>,
+        <code>- list</code>, <code>`code`</code>.</p>
+      <div id="pbList"></div>
     </section>
 
     <!-- -------------------------------------------------------------- traffic -->

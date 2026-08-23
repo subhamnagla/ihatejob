@@ -1,0 +1,113 @@
+# The admin panel
+
+Moderate reviews, write blog posts, read feedback, and check the site's own
+setup. Protected by a username and password you choose, at an address you
+choose.
+
+## Why the password is not in the code
+
+A static site cannot check a password in the browser. Any check written in
+JavaScript ships to every visitor in a file they can open, and anyone can call
+the function that follows it. There is no way around that.
+
+So the check runs in [`middleware.js`](../middleware.js), on Vercel's edge,
+**before any file is served**. The username, password and secret address live in
+environment variables and never reach the browser.
+
+**With no password set, the admin refuses to load at all** — it returns 503
+rather than standing open. An admin panel that is accidentally public is worse
+than one that is broken.
+
+## Setting it up
+
+Vercel dashboard → your project → **Settings → Environment Variables**. Add
+these to **Production** (and Preview if you want it there too):
+
+| Variable | Required | What it does |
+| --- | --- | --- |
+| `ADMIN_USER` | yes | Username at the login prompt |
+| `ADMIN_PASSWORD` | yes | Password. Use a long random one — this is the only thing standing in front of the panel |
+| `ADMIN_PATH` | no | Secret address, e.g. `/control-room-7f3a`. When set, `/admin` returns 404 as if nothing is there |
+| `GITHUB_TOKEN` | to save | Fine-grained token, **Contents: read and write** on this repo only |
+| `GITHUB_REPO` | to save | `subhamnagla/ihatejob` |
+| `GITHUB_BRANCH` | no | Defaults to `main` |
+
+Redeploy after adding them — environment variables are read at request time,
+but a deployment made before they existed will not have them attached.
+
+### Making the GitHub token
+
+<https://github.com/settings/personal-access-tokens/new>
+
+- **Repository access:** only `subhamnagla/ihatejob`
+- **Permissions → Repository → Contents:** Read and write
+- Nothing else. That is the whole permission set it needs.
+
+Without a token the admin still loads and shows everything; it just cannot save.
+It says so rather than failing silently when you press Save.
+
+## How saving works
+
+There is no database. The repository is the store: pressing **Save** commits
+`public/data/reviews.json` or `public/data/posts.json` back to GitHub, and
+Vercel redeploys. About a minute from Save to live.
+
+Slower than a database, and worth it — every change is a commit, so you can see
+who changed what and revert anything. There is also no extra service to pay for
+or keep alive.
+
+If two browser tabs edit at once, the second Save is rejected rather than
+silently overwriting the first. Reload and reapply.
+
+## Reviews
+
+Nothing appears on the site until you allow it.
+
+- **Add as review** on a feedback item pulls a GitHub issue into the review list
+  — **hidden**, so you decide what goes public. Tidy the quote and the credit
+  first; the raw first line of an issue is rarely the sentence you want.
+- **Hide / Show** controls whether it reaches the page at all.
+- **Pin** puts one at the front.
+- **▲ ▼** reorder the rest.
+- A row that is shown but has no quote is marked **empty**, because it will not
+  render and does not count towards the threshold.
+
+The section stays off the front page entirely until **three** are visible — set
+by `MIN_REVIEWS` in `public/js/config.js`.
+
+**Ask before you publish someone.** The review form asks whether they are happy
+to be quoted and how they want to be credited. Their GitHub username is not
+consent.
+
+## Blog
+
+Posts live at `/blog` and `/blog/<slug>`. Drafts stay off both until
+**Published** is ticked.
+
+Body accepts a small amount of Markdown: `## headings`, `**bold**`, `*italic*`,
+`` `code` ``, ```` ``` ```` fenced blocks, `> quotes`, `- lists`, `1. lists`,
+`---`, and `[links](https://example.com)`.
+
+Links are restricted to `http`, `https` and root-relative paths, and everything
+is escaped before any markup is added, so a post cannot inject script.
+
+The slug is generated from the title only while it is still the generated one,
+so renaming a published post never silently breaks its URL.
+
+## What it cannot show you
+
+No CVs, no visitor identities, no per-user history — none of it is collected.
+CVs live in each visitor's own browser and are never transmitted. The panel says
+this on the page, so you are not left wondering where the data went.
+
+Visitor counts come only from an analytics endpoint, if you configure one, and
+count page views rather than content.
+
+## Running it locally
+
+`npm run dev` serves the admin at <http://localhost:5190/admin> with **no
+password** — middleware is a Vercel feature and does not run locally. That is
+fine on localhost, but do not expose the dev server to a network.
+
+Saving is also unavailable locally, since there are no serverless functions. The
+panel detects this and says so rather than showing a JSON parse error.

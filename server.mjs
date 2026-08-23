@@ -25,6 +25,7 @@ createServer(async (req, res) => {
     // "/" is the landing page; "/app" is the builder.
     if (rel === '/app' || rel === '/app/') rel = '/app.html';
     if (rel === '/admin' || rel === '/admin/') rel = '/admin.html';
+    if (rel === '/blog' || rel.startsWith('/blog/')) rel = '/blog.html';
     if (rel.endsWith('/')) rel += 'index.html';
     // join + the prefix check below is what actually contains traversal
     const file = join(ROOT, normalize(rel));
