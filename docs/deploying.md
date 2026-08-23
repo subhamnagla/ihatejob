@@ -78,9 +78,15 @@ needed a server anyway — the CV lives in `localStorage`, the checker is plain
 JavaScript, and the PDF export is the browser's own print dialog. You can build
 and export a CV on a plane.
 
-Files are served from cache first and refreshed in the background, so the app
-opens instantly and still picks up new versions. Page loads go to the network
-first, so a deploy is visible immediately.
+Pages, code and styles go to the network first and fall back to the cache when
+there is none, so a deploy is visible immediately and the app still opens with
+no connection. Icons are served from cache, since they never change without
+changing name.
+
+An earlier version served everything from cache first. It was faster by a few
+milliseconds and meant a deploy stayed invisible for a whole extra load - the
+live site kept running an old config long after it had been replaced. Not worth
+it.
 
 ### After changing the app
 
