@@ -23,7 +23,13 @@
 
 <div class="app">
   <header class="topbar">
-    <div class="brand">
+    <!-- An anchor, not a div. The builder was a dead end: no link out, and on a
+         phone no other chrome to escape by. -->
+    <a class="brand" href="/" title="Back to the home page">
+      <span class="brand-back" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+             stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </span>
       <span class="brand-mark" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
              stroke-linecap="round" stroke-linejoin="round">
@@ -33,7 +39,7 @@
         </svg>
       </span>
       <span>ihatejob<small>a CV worth leaving with</small></span>
-    </div>
+    </a>
 
     <div class="seg mobile-tabs" id="viewTabs" style="margin:0;width:170px">
       <button type="button" data-view="edit" class="sel">Edit</button>
@@ -55,11 +61,24 @@
       <button class="btn" id="btnInstall" type="button" hidden>Install app</button>
       <button class="btn" id="btnImport" type="button">Rate my CV</button>
       <button class="btn" id="btnExample" type="button"><span class="label-hide">Load </span>Example</button>
-      <button class="btn btn-primary" id="btnPdf" type="button">Download PDF</button>
+      <button class="btn btn-primary" id="btnPdf" type="button">
+        <span class="label-hide">Download </span>PDF</button>
 
       <div class="menu" id="moreMenu">
         <button class="btn" id="btnMore" type="button" aria-haspopup="true" aria-expanded="false">More &#9662;</button>
         <div class="menu-list" role="menu">
+          <a class="menu-item" href="/">
+            Home<small>Back to the front page</small>
+          </a>
+          <!-- These two have their own buttons on a wide screen; below 900px the
+               bar has no room for them, so this is where they live. -->
+          <button class="menu-item narrow-only" data-act="import" type="button">
+            Rate my CV<small>Read a CV you already have and score it</small>
+          </button>
+          <button class="menu-item narrow-only" data-act="example" type="button">
+            Load an example<small>A worked sample for your profession</small>
+          </button>
+          <div class="menu-sep"></div>
           <button class="menu-item" data-act="word" type="button">
             Download as Word<small>.doc file that opens in Word or Google Docs</small>
           </button>
@@ -123,6 +142,37 @@
       <div class="review-pane" id="reviewPane" hidden aria-label="CV check"></div>
     </section>
   </div>
+
+  <!-- Below 900px this replaces both the Edit/Preview toggle and the CV/Letter/
+       Check tabs. One row, at the bottom, where a thumb already is. -->
+  <nav class="mobile-bar" id="mobileBar" aria-label="Views">
+    <button type="button" data-go="edit" class="sel" aria-current="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 20h16M6 16.5l9.9-9.9a1.8 1.8 0 0 0 0-2.5l-.5-.5a1.8 1.8 0 0 0-2.5 0L3 13.5V16.5z"/></svg>
+      <span>Edit</span>
+    </button>
+    <button type="button" data-go="preview">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6 3h8l4 4v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/>
+        <path d="M14 3v4h4M8.5 12h7M8.5 16h5"/></svg>
+      <span>CV</span>
+    </button>
+    <button type="button" data-go="letter">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="5.5" width="18" height="13" rx="1.8"/><path d="M3.6 6.7 12 13l8.4-6.3"/></svg>
+      <span>Letter</span>
+    </button>
+    <button type="button" data-go="review">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3.2 14.6 8.5l5.9.86-4.25 4.14 1 5.86L12 16.6l-5.25 2.76 1-5.86L3.5 9.36l5.9-.86z"/></svg>
+      <span>Check</span>
+      <i class="tab-badge" id="mobileBadge">0</i>
+    </button>
+  </nav>
 </div>
 
 <div class="modal-backdrop" id="printModal">

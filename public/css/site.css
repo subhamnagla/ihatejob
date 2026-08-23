@@ -34,6 +34,28 @@ body {
 .nav-links a:hover { color: var(--text); border-bottom-color: var(--brand); }
 .nav-actions { display: flex; align-items: center; gap: 8px; }
 
+/* The hamburger and its sheet only exist below 900px, where .nav-links goes. */
+.nav-toggle { display: none; }
+.nav-sheet {
+  position: sticky;
+  top: 57px;
+  z-index: 49;
+  display: grid;
+  padding: 6px 16px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 14px 30px var(--shadow-lg);
+}
+.nav-sheet a {
+  padding: 13px 6px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 15px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.nav-sheet a:last-child { border-bottom: 0; }
+.nav-sheet a:active { color: var(--brand); }
+
 .btn-lg { height: 44px; padding: 0 20px; font-size: 15px; border-radius: 10px; }
 
 /* ------------------------------------------------------------------ hero */
@@ -319,9 +341,31 @@ body {
 }
 .rv:hover { border-color: var(--border-hover); transform: translateY(-2px); }
 
-.rv-stars { display: flex; gap: 3px; margin-bottom: 16px; }
+.rv-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.rv-stars { display: flex; gap: 3px; }
 .rv-stars svg.on { color: var(--brand); }
 .rv-stars svg.off { color: var(--line); }
+
+/* The planet the reviewer picked, next to the stars it works out to. */
+.rv-planet {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg);
+  font-size: 11.5px;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+.rv-planet svg { flex: 0 0 auto; }
 
 .rv-quote {
   margin: 0;
@@ -332,7 +376,7 @@ body {
 }
 .rv-quote .rv-rest { display: inline; }
 .rv-quote.clipped .rv-rest { display: none; }
-.rv-quote.clipped .rv-head::after { content: "6"; }
+.rv-quote.clipped .rv-head::after { content: "\2026"; }
 
 .rv-more {
   align-self: flex-start;
@@ -376,6 +420,79 @@ body {
 .rv-who span { display: block; font-size: 12.5px; color: var(--muted); }
 .rv-src { color: var(--muted); text-decoration: none; font-size: 17px; }
 .rv-src:hover { color: var(--brand); }
+
+/* ------------------------------------------------------- the review form */
+
+.rv-form {
+  padding: 26px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--bg);
+  scroll-margin-top: 80px;
+}
+
+/* A row of ten on a desktop; a swipe on a phone, where ten tap targets big
+   enough to hit will never fit across 360px. */
+.planet-pick {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.pp-pick {
+  flex: 1 0 auto;
+  min-width: 68px;
+  scroll-snap-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 10px 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: none;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.14s, border-color 0.14s, transform 0.12s, color 0.14s;
+}
+.pp-pick svg { transition: transform 0.16s; }
+.pp-pick:hover { background: var(--panel-2); color: var(--text); }
+.pp-pick:hover svg { transform: scale(1.08); }
+.pp-pick:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.pp-pick.sel {
+  border-color: var(--brand);
+  background: var(--brand-wash);
+  color: var(--text);
+  font-weight: 650;
+}
+.pp-pick.sel svg { transform: scale(1.12); }
+
+.planet-read {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-height: 24px;
+  margin: 10px 0 20px;
+  font-size: 14px;
+  color: var(--muted);
+}
+.planet-read b { color: var(--text); }
+/* The planet modal animates its stars in from nothing. These are static. */
+.planet-read .star { opacity: 1; transform: none; color: var(--warn); }
+.planet-read .star.empty { color: var(--line); opacity: 1; }
+
+.field > label .opt {
+  font-size: 11px;
+  color: var(--placeholder);
+  letter-spacing: 0.02em;
+}
+.rv-consent { margin-top: 16px; align-items: flex-start; }
+.rv-consent input { margin-top: 2px; flex: 0 0 auto; }
+.rv-fineprint { margin: 14px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
 
 /* -------------------------------------------------------------------- AI */
 
@@ -515,12 +632,52 @@ body {
   .hero { grid-template-columns: 1fr; gap: 28px; padding-top: 44px; }
   .hero-art { height: 340px; order: -1; }
   .nav-links { display: none; }
-  .planet-promo { grid-template-columns: 1fr; }
+  .nav-toggle { display: inline-flex; }
+  .planet-promo { grid-template-columns: 1fr; padding: 22px; }
+  .format-frame { height: 220px; }
 }
-@media (max-width: 560px) {
+
+@media (max-width: 620px) {
+  .site-nav { gap: 10px; padding: 10px 14px; }
+  .site-nav .brand small { display: none; }
+  /* Share and Install live in the sheet at this width, not the bar. */
   .nav-actions .btn:not(.btn-primary):not(.btn-icon) { display: none; }
-  .site-band { padding: 52px 0; }
+  .site-band { padding: 46px 0; }
   .wrap { padding: 0 16px; }
+
+  .hero { padding: 34px 16px 40px; gap: 22px; }
+  .hero-art { height: 260px; border-radius: 14px; }
+  .lede { font-size: 15.5px; }
+  /* Two full-width buttons beat two half-width ones with wrapped labels. */
+  .hero-cta { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .hero-cta .btn { justify-content: center; }
+  .final-cta { padding: 52px 0; }
+  .final-cta .hero-cta { max-width: 340px; margin: 0 auto; }
+
+  .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; padding: 22px 16px 6px; }
+  .stat-cell b { font-size: 25px; }
+
+  /* Eight tall previews stacked is a very long scroll. Swipe them instead. */
+  .format-rail {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 8px;
+    margin-inline: -16px;
+    padding-inline: 16px;
+  }
+  .format-card { flex: 0 0 60%; scroll-snap-align: center; }
+  .format-frame { height: 200px; }
+
+  .rv-form, .suggest { padding: 18px; border-radius: 14px; }
+  .os-grid { gap: 12px; margin-bottom: 26px; }
+  .os-card { padding: 18px; }
+  .char-grid { gap: 12px; }
+  .char-tile { padding: 15px; }
+  .rv { padding: 20px; }
+  .site-foot nav { gap: 14px 18px; }
 }
 
 /* ------------------------------------------------------------------ blog */

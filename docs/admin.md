@@ -59,16 +59,30 @@ or keep alive.
 If two browser tabs edit at once, the second Save is rejected rather than
 silently overwriting the first. Reload and reapply.
 
+## Two inboxes, not one
+
+**Reviews people sent** and **Issues & ideas** are separate blocks, because they
+are separate jobs: one is a moderation queue, the other is a to-do list. A
+review never appears in the issues list, and the label filters there no longer
+offer `review`.
+
+Each waiting review shows the **planet** the person picked and whether they
+agreed to be quoted, read straight out of the issue body. An issue written by
+hand rather than through the form is marked *written by hand* and simply misses
+those.
+
 ## Reviews
 
 Nothing appears on the site until you allow it.
 
-- **Add as review** on a feedback item pulls a GitHub issue into the review list
-  — **hidden**, so you decide what goes public. Tidy the quote and the credit
-  first; the raw first line of an issue is rarely the sentence you want.
+- **Add as review** pulls a waiting review into the list — **hidden**, so you
+  decide what goes public. It carries the planet, the credit and the quote
+  across. Tidy them; the raw text is rarely the sentence you want.
 - **Hide / Show** controls whether it reaches the page at all.
 - **Pin** puts one at the front.
 - **▲ ▼** reorder the rest.
+- **Planet** is the rating. The stars on the card are derived from it — half a
+  star per rung — so there is only ever one number to set.
 - A row that is shown but has no quote is marked **empty**, because it will not
   render and does not count towards the threshold.
 
@@ -76,8 +90,8 @@ The section stays off the front page entirely until **three** are visible — se
 by `MIN_REVIEWS` in `public/js/config.js`.
 
 **Ask before you publish someone.** The review form asks whether they are happy
-to be quoted and how they want to be credited. Their GitHub username is not
-consent.
+to be quoted and how they want to be credited. If they said no, *Add as review*
+warns you before it does anything. Their GitHub username is not consent.
 
 ## Blog
 

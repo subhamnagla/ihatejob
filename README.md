@@ -220,7 +220,7 @@ It cannot show you anyone's CV or who visited — none of that is collected.
 `/blog`, written from the admin, stored in `public/data/posts.json`. Drafts stay
 unpublished until you tick the box.
 
-## Before you launch it## Before you launch it
+## Before you launch it
 
 Three things live in [`public/js/config.js`](public/js/config.js):
 
@@ -237,10 +237,27 @@ Three things live in [`public/js/config.js`](public/js/config.js):
 — which page to watch, the labels to create first (GitHub silently drops labels
 that do not exist), and how to turn on notifications.
 
-**How visitors send you a review.** There is a "Leave a review" link under the
-share buttons and a "Send feedback" link in the footer. Both open the
-suggestion form with the *Review* category pre-selected and the prompts filled
-in (what you applied for, what it scored, whether it helped, how to credit you).
+**How visitors send you a review.** Reviews have their own section and their own
+form, separate from the issue form under *Open source*. A review and a bug
+report are different acts by different people; sharing one dropdown between them
+made both read as paperwork.
+
+The rating is a **planet**, picked from the same Mercury-to-the-Sun scale the
+checker uses on a CV, so nobody has to think in numbers. The form writes a fixed
+header that the admin reads back, which is how the planet, the credit and the
+consent answer survive the trip through GitHub:
+
+```
+Rating: Jupiter (5 of 10, 2.5 stars)
+Credit: Asha R - Staff nurse, Leeds
+May be quoted on the site: yes
+
+...the review itself
+```
+
+Stars are always derived from the planet — half a star per rung — rather than
+stored beside it, so the two cannot drift apart.
+
 Submitting goes to the repository if `SITE.repo` is set, otherwise to
 `SITE.contactEmail`, and if **neither** is configured it copies to the clipboard
 and says plainly that nothing was sent. Set one of them before launch.
@@ -266,10 +283,9 @@ glowing quotes from people who do not exist is the fastest way to lose a
 visitor, and it is the first thing anyone checks.
 
 The whole section - heading, nav link and all - stays out of the page until
-`REVIEWS` holds at least `MIN_REVIEWS` entries, then appears on its own. A
-"Send feedback" link in the footer stays available throughout, so people can
-send you reviews before the section exists. Each entry needs a name, a role,
-and ideally a link to where they said it.
+`MIN_REVIEWS` are visible, then appears on its own. The review form stays on the
+page throughout, so people can send you reviews before the section exists. Each
+entry needs a name, a role, a planet, and ideally a link to where they said it.
 
 ## Privacy
 

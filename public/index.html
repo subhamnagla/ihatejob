@@ -57,8 +57,26 @@
     <button class="btn" id="btnInstall" type="button" hidden>Install app</button>
     <button class="btn" id="btnShareTop" type="button">Share</button>
     <a class="btn btn-primary" href="/app">Open the builder</a>
+    <!-- Below 900px the links above collapse. This opens them as a sheet, so a
+         phone is not left with a nav bar that has no navigation in it. -->
+    <button class="btn btn-icon nav-toggle" id="navToggle" type="button"
+            aria-label="Menu" aria-expanded="false" aria-controls="navSheet">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
   </div>
 </header>
+
+<nav class="nav-sheet" id="navSheet" hidden aria-label="Site sections">
+  <a href="#formats">Formats</a>
+  <a href="#professions">Professions</a>
+  <a href="#rating">Rating</a>
+  <a href="#reviews" id="navSheetReviews" hidden>Reviews</a>
+  <a href="#review">Leave a review</a>
+  <a href="/blog">Blog</a>
+  <a href="#opensource">Open source</a>
+  <a href="#share">Share</a>
+</nav>
 
 <main>
   <!-- ------------------------------------------------------------- hero -->
@@ -147,8 +165,59 @@
     </div>
   </section>
 
+  <!-- ------------------------------------------------------ leave a review -->
+  <!-- Deliberately its own section, and its own form. A review and a bug
+       report are different acts by different people; sharing one dropdown
+       between them made both look like paperwork. -->
+  <section class="site-band alt" id="review">
+    <div class="wrap">
+      <h2 class="section-title">Rate us on the same scale we rate you</h2>
+      <p class="section-lede">Mercury if it was no help at all, the Sun if you walked away with
+        something you would actually send. Pick the planet this site earned.</p>
+
+      <form class="rv-form" id="reviewForm">
+        <div class="planet-pick" id="planetPick" role="radiogroup"
+             aria-label="Your rating, Mercury to the Sun"></div>
+        <!-- Says "ten" because on a phone only six fit on screen and the rest
+             are a swipe away, which is not otherwise obvious. -->
+        <p class="planet-read" id="planetRead">Pick a planet to set your rating &mdash; ten of them,
+          Mercury out to the Sun.</p>
+
+        <div class="grid">
+          <div class="field s6">
+            <label for="rvName">Your name <span class="opt">optional</span></label>
+            <input class="input" id="rvName" type="text" autocomplete="name"
+                   placeholder="However you want to be credited">
+          </div>
+          <div class="field s6">
+            <label for="rvRole">What you do <span class="opt">optional</span></label>
+            <input class="input" id="rvRole" type="text" placeholder="e.g. Staff nurse, Leeds">
+          </div>
+          <div class="field">
+            <label for="rvText">Your review</label>
+            <textarea class="input" id="rvText" rows="4"
+              placeholder="What were you applying for, what did it score, and did that feel right? The unhelpful bits are worth more to us than the kind ones."></textarea>
+          </div>
+        </div>
+
+        <label class="check rv-consent">
+          <input type="checkbox" id="rvConsent" checked>
+          <span>You may quote this on the site, with the credit above.</span>
+        </label>
+
+        <div class="suggest-actions">
+          <button class="btn btn-primary" type="submit">Send my review</button>
+          <button class="btn" type="button" id="rvCopy">Copy instead</button>
+          <span class="hint" id="rvNote" style="margin:0"></span>
+        </div>
+        <p class="rv-fineprint">Reviews are published as-is, good or bad. Nothing is edited into
+          a compliment.</p>
+      </form>
+    </div>
+  </section>
+
   <!-- ------------------------------------------------------- open source -->
-  <section class="site-band alt" id="opensource">
+  <section class="site-band" id="opensource">
     <div class="wrap">
       <h2 class="section-title">Open source &mdash; and the best help is not code</h2>
       <p class="section-lede">A profession pack is one object in one file. If you have hired for a
@@ -173,15 +242,15 @@
       </div>
 
       <div class="suggest" id="suggest">
-        <h3>Suggest something</h3>
+        <h3>Report an issue or suggest a change</h3>
         <p>Opens a pre-filled issue on the repository, so it is public and does not get lost in
-          an inbox.</p>
+          an inbox. Telling us how it went for you is a <a href="#review">review</a>, and has its
+          own form above.</p>
         <form id="suggestForm">
           <div class="grid">
             <div class="field s6">
               <label for="sgKind">Kind</label>
               <select class="select" id="sgKind">
-                <option value="review">A review - how it went for you</option>
                 <option value="profession">A profession that is missing or wrong</option>
                 <option value="region">A region's rules</option>
                 <option value="template">A new format</option>
@@ -213,14 +282,14 @@
   </section>
 
   <!-- ------------------------------------------------------------- share -->
-  <section class="site-band" id="share">
+  <section class="site-band alt" id="share">
     <div class="wrap share-wrap">
       <h2 class="section-title" style="margin-bottom:8px">Know someone job hunting?</h2>
       <p class="section-lede">Free, no account, and their CV never leaves their laptop.</p>
       <div class="share-row" id="shareRow"></div>
       <p class="review-cta">
         Used it yourself?
-        <a href="#suggest" id="btnLeaveReview">Leave a review</a> &mdash; good or bad, it gets published.
+        <a href="#review" id="btnLeaveReview">Leave a review</a> &mdash; good or bad, it gets published.
       </p>
       <div class="copy-row">
         <input class="input" id="shareUrl" type="text" readonly>
@@ -250,10 +319,11 @@
     <nav>
       <a href="/app">Builder</a>
       <a href="#professions">Professions</a>
+      <a href="#review" id="footReview">Leave a review</a>
+      <a href="#suggest">Report an issue</a>
       <a href="#opensource">Contribute</a>
       <a href="/blog">Blog</a>
       <a href="#share">Share</a>
-      <a href="#" id="footReview">Send feedback</a>
     </nav>
     <p class="foot-note">No cookies, no third-party scripts, no upload endpoint.</p>
   </div>

@@ -184,8 +184,13 @@ function setZoom(z) {
 
 function fitZoom() {
   const [w] = PAPER_MM[current().settings.paper] || PAPER_MM.a4;
-  const avail = stageScroll.clientWidth - 46;
-  if (avail < 200) return; // pane not laid out yet; the observer retries
+  // Read the padding rather than assuming it: the stage is padded 22px on a
+  // desktop and 12px on a phone, and a fixed allowance wasted a tenth of the
+  // width on the screen that can least spare it.
+  const cs = getComputedStyle(stageScroll);
+  const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+  const avail = stageScroll.clientWidth - pad - 2;
+  if (avail < 80) return; // pane not laid out yet; the observer retries
   setZoom(Math.min(1, avail / (w * pxPerMm)));
 }
 
@@ -540,6 +545,9 @@ $('moreMenu').addEventListener('click', (e) => {
   $('moreMenu').classList.remove('open');
 
   if (act === 'load-json') { $('fileInput').click(); return; }
+  // Their own buttons are hidden below 900px, so the menu carries them there.
+  if (act === 'import') { openImport(); return; }
+  if (act === 'example') { loadExample(); return; }
 
   if (act === 'reset') {
     if (!confirm('Clear every field and start from an empty CV? Download your data first if you want to keep it.')) return;
@@ -569,7 +577,7 @@ $('fileInput').addEventListener('change', (e) => {
   reader.readAsText(file);
 });
 
-$('btnExample').addEventListener('click', () => {
+function loadExample() {
   const filled = state.basics.fullName || state.experience.length;
   if (filled && !confirm('Replace what you have with the example CV?')) return;
   const keep = state.settings;
@@ -577,7 +585,9 @@ $('btnExample').addEventListener('click', () => {
   state.settings = { ...state.settings, ...keep };
   afterStructural();
   toast('Example loaded. Edit any field to make it yours.');
-});
+}
+
+$('btnExample').addEventListener('click', loadExample);
 
 $('btnTheme').addEventListener('click', () => {
   const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
@@ -589,16 +599,49 @@ $('zoomIn').addEventListener('click', () => { userZoomed = true; setZoom(zoom + 
 $('zoomOut').addEventListener('click', () => { userZoomed = true; setZoom(zoom - 0.1); });
 $('zoomFit').addEventListener('click', () => { userZoomed = false; fitZoom(); });
 
-$('viewTabs').addEventListener('click', (e) => {
-  const btn = e.target.closest('[data-view]');
-  if (!btn) return;
-  document.body.dataset.view = btn.dataset.view;
-  $('viewTabs').querySelectorAll('button').forEach((b) => b.classList.toggle('sel', b === btn));
+/* ------------------------------------------------- editor / preview views */
+
+// One place that sets the view, because three controls now drive it: the
+// desktop toggle, the mobile bar, and "take me there" in the check pane.
+function setView(name) {
+  document.body.dataset.view = name;
+  $('viewTabs').querySelectorAll('button').forEach((b) => {
+    b.classList.toggle('sel', b.dataset.view === name);
+  });
   // The stage was display:none until now, so it had no box to measure.
-  if (btn.dataset.view === 'preview') {
+  if (name === 'preview') {
     if (!userZoomed) fitZoom();
     updatePageInfo();
   }
+  syncMobileBar();
+}
+
+// On a phone the bottom bar replaces both the Edit/Preview toggle and the
+// CV/Letter/Check tabs, so it has to reflect whichever of the two changed.
+function syncMobileBar() {
+  const active = document.body.dataset.view === 'edit' ? 'edit' : stagePane;
+  $('mobileBar').querySelectorAll('[data-go]').forEach((b) => {
+    const on = b.dataset.go === active;
+    b.classList.toggle('sel', on);
+    if (on) b.setAttribute('aria-current', 'true');
+    else b.removeAttribute('aria-current');
+  });
+}
+
+$('mobileBar').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-go]');
+  if (!btn) return;
+  if (btn.dataset.go === 'edit') {
+    setView('edit');
+  } else {
+    setStagePane(btn.dataset.go);
+    setView('preview');
+  }
+});
+
+$('viewTabs').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-view]');
+  if (btn) setView(btn.dataset.view);
 });
 
 window.addEventListener('resize', () => {
@@ -657,10 +700,14 @@ function findingHTML(f) {
 function renderReview() {
   const r = reviewCV(current(), { pages: pageCount });
 
-  const badge = $('reviewBadge');
   const serious = r.findings.filter((f) => f.severity !== 'tip').length;
-  badge.textContent = serious || r.findings.length || '0';
-  badge.className = 'tab-badge' + (serious ? ' bad' : r.findings.length ? '' : ' ok');
+  const count = serious || r.findings.length || '0';
+  const cls = 'tab-badge' + (serious ? ' bad' : r.findings.length ? '' : ' ok');
+  // Two badges now: the stage tab, and the bottom bar on a phone.
+  [$('reviewBadge'), $('mobileBadge')].forEach((badge) => {
+    badge.textContent = count;
+    badge.className = cls;
+  });
 
   if (stagePane !== 'review') return;
 
@@ -726,6 +773,7 @@ function setStagePane(name) {
   if (name === 'review') renderReview();
   else if (name !== wasDoc) renderPreview();
   else updatePageInfo();
+  syncMobileBar();
 }
 
 $('stageTabs').addEventListener('click', (e) => {
@@ -749,8 +797,7 @@ reviewPane.addEventListener('click', (e) => {
   const accKey = sec;
   setOpen(accKey, true);
   if (idx != null && SECTIONS[sec] && !SECTIONS[sec].single) setOpen('item:' + sec + ':' + idx, true);
-  document.body.dataset.view = 'edit';
-  $('viewTabs').querySelectorAll('button').forEach((b) => b.classList.toggle('sel', b.dataset.view === 'edit'));
+  setView('edit');
   renderPanel();
 
   // renderPanel writes innerHTML synchronously, so the new nodes are already
@@ -977,8 +1024,7 @@ function openSample(profId) {
   if (!built) { toast('No sample written for this profession yet.'); return; }
   sampleData_ = built;
   setStagePane('preview');
-  document.body.dataset.view = 'preview';
-  $('viewTabs').querySelectorAll('button').forEach((b) => b.classList.toggle('sel', b.dataset.view === 'preview'));
+  setView('preview');
   $('sampleBar').hidden = false;
   $('sampleWho').textContent = professionOf(built.settings).name;
   renderPreview();
@@ -1182,7 +1228,7 @@ if (document.fonts && document.fonts.ready) {
 /* ----------------------------------------------------------------- boot */
 
 measureMm();
-document.body.dataset.view = 'edit';
+setView('edit');
 renderPanel();
 renderPreview();
 setZoom(1);

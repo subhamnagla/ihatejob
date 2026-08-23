@@ -95,10 +95,20 @@
       <div id="healthList"></div>
     </section>
 
+    <!-- ------------------------------------------------------- reviews waiting -->
+    <!-- Issues and reviews arrive down the same pipe but are not the same job:
+         one is a to-do list, the other is a moderation queue. Two blocks. -->
+    <section class="admin-block" id="reviewbox">
+      <h2>Reviews people sent</h2>
+      <p class="admin-muted">Straight from the review form, with the planet they picked and whether
+        they agreed to be quoted. Nothing here reaches the site until you add it below and show it.</p>
+      <div id="reviewboxBody"><p class="admin-muted">Loading from GitHub&hellip;</p></div>
+    </section>
+
     <!-- ---------------------------------------------------------------- inbox -->
     <section class="admin-block" id="inbox">
       <div class="admin-head">
-        <h2>Feedback</h2>
+        <h2>Issues &amp; ideas</h2>
         <div class="seg" id="inboxFilter"></div>
       </div>
       <div id="inboxBody"><p class="admin-muted">Loading from GitHub&hellip;</p></div>

@@ -138,6 +138,8 @@ body {
 }
 
 button, input, select, textarea { font: inherit; color: inherit; }
+/* manipulation drops the 300ms double-tap wait; the grey flash is Android's. */
+button, a, label, summary { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 a { color: var(--brand); }
 
 /* ------------------------------------------------------------- app shell */
@@ -145,7 +147,10 @@ a { color: var(--brand); }
 .app {
   display: flex;
   flex-direction: column;
+  /* dvh, or a phone's collapsing address bar hides the bottom of the app and
+     nothing can scroll it back into view. vh first for browsers without it. */
   height: 100vh;
+  height: 100dvh;
 }
 
 .topbar {
@@ -166,7 +171,23 @@ a { color: var(--brand); }
   font-weight: 650;
   letter-spacing: -0.01em;
   margin-right: 4px;
+  color: inherit;
+  text-decoration: none;
+  flex: 0 0 auto;
 }
+/* The chevron is what makes the logo read as a way out rather than decoration. */
+.brand-back {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-right: -3px;
+  color: var(--muted);
+  transition: color 0.14s, transform 0.14s;
+}
+.brand-back svg { width: 16px; height: 16px; }
+a.brand:hover .brand-back { color: var(--brand); transform: translateX(-2px); }
+a.brand:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 8px; }
 .brand-mark {
   display: grid;
   place-items: center;
@@ -248,6 +269,8 @@ a { color: var(--brand); }
 }
 .menu-item:hover { background: var(--hover-2); }
 .menu-item small { display: block; color: var(--muted); font-size: 11.5px; }
+/* The Home entry is an anchor, so middle-click and "open in new tab" work. */
+a.menu-item { color: inherit; text-decoration: none; }
 .menu-sep { height: 1px; margin: 5px 4px; background: var(--line); }
 
 /* ------------------------------------------------------------ workspace */
@@ -261,6 +284,10 @@ a { color: var(--brand); }
 
 .panel {
   min-height: 0;
+  /* A grid item's automatic minimum is its min-content width, and the 794px
+     CV page inside the stage made that column 752px wide on a 375px phone.
+     Both tracks need an explicit floor of zero. */
+  min-width: 0;
   overflow-y: auto;
   padding: 14px;
   background: var(--panel);
@@ -514,6 +541,7 @@ textarea.input { resize: vertical; line-height: 1.5; }
 
 .stage {
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   background: var(--stage-bg);
@@ -1089,6 +1117,21 @@ textarea.input { resize: vertical; line-height: 1.5; }
   .planet-show.arrived .flyby { transform: translateY(-86px); }
 }
 
+/* The card is centred and then pushed down to clear the planet above it, so
+   its own max-height has to allow for that push or the buttons at the bottom
+   end up below the fold with no way to scroll to them. */
+@media (max-width: 620px) {
+  .verdict-card {
+    margin-top: 132px;
+    max-height: calc(100dvh - 190px);
+    padding: 18px 18px 20px;
+  }
+  .planet-show.arrived .flyby { transform: translateY(-76px); }
+  .rail { gap: 90px; }
+  .verdict-card .modal-actions { flex-wrap: wrap; }
+  .verdict-card .modal-actions .btn { flex: 1 1 auto; justify-content: center; }
+}
+
 /* ---------------------------------------------------------- clean-up UI */
 
 .score-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
@@ -1293,6 +1336,53 @@ textarea.input { resize: vertical; line-height: 1.5; }
 .modal li b { color: var(--text); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
+/* ------------------------------------------------------------ mobile bar */
+
+/* Below 900px this replaces the Edit/Preview toggle and the CV/Letter/Check
+   tabs at once, because both were competing for a topbar with no room left. */
+.mobile-bar { display: none; }
+.narrow-only { display: none; }
+
+@media (max-width: 900px) {
+  .mobile-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    flex: 0 0 auto;
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mobile-bar button {
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 3px;
+    position: relative;
+    min-height: 54px;
+    padding: 6px 2px;
+    border: 0;
+    border-top: 2px solid transparent;
+    background: none;
+    color: var(--muted);
+    font-size: 11px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-bar button svg { width: 21px; height: 21px; }
+  .mobile-bar button.sel { color: var(--brand); border-top-color: var(--brand); }
+  .mobile-bar button:focus-visible { outline: 2px solid var(--brand); outline-offset: -3px; }
+  .mobile-bar .tab-badge {
+    position: absolute;
+    top: 4px;
+    left: 50%;
+    margin-left: 6px;
+    font-style: normal;
+    font-size: 10px;
+    line-height: 15px;
+    min-width: 15px;
+  }
+}
+
 /* ---------------------------------------------------------- responsive */
 
 .mobile-tabs { display: none; }
@@ -1307,7 +1397,54 @@ textarea.input { resize: vertical; line-height: 1.5; }
   .stage-scroll { padding: 12px; }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 900px) {
+  /* The bottom bar owns view switching now, so these two go. Left in place
+     they crushed to 2px and overlapped the buttons beside them. */
+  .mobile-tabs { display: none; }
+  .stage-tabs { display: none; }
+  .narrow-only { display: block; }
+
+  .topbar { gap: 8px; padding: 0 10px; }
   .brand small { display: none; }
+  /* Everything below is reachable from the More menu instead. */
+  #saveState,
+  #btnImport,
+  #btnExample { display: none; }
+  .menu-list { min-width: min(280px, calc(100vw - 20px)); }
+
+  /* 16px or iOS zooms the whole page on focus and never zooms back out. */
+  .input,
+  .select,
+  textarea.input { font-size: 16px; min-height: 42px; }
+  .btn { height: 40px; }
+  .btn-sm { height: 34px; }
+  .btn-icon { width: 40px; }
+  .btn-sm.btn-icon { width: 34px; }
+  .acc-head { padding: 15px 13px; }
+  .item-head { padding: 11px 10px; }
+  .check input { width: 19px; height: 19px; }
+  .swatch, .swatch-custom { width: 30px; height: 30px; }
+  .order-list li { padding: 9px 9px; }
+
+  /* Nothing here should bounce the page behind it. */
+  .panel, .stage-scroll, .review-pane { overscroll-behavior: contain; }
+  .panel { padding: 12px 12px 20px; }
+  .review-pane { padding: 14px; }
+  .stage-bar { padding: 7px 10px; gap: 7px; }
+  .modal { padding: 18px; }
+  .modal-actions { flex-wrap: wrap; }
+  .modal-actions .btn { flex: 1 1 auto; justify-content: center; }
+}
+
+@media (max-width: 700px) {
   .tpl-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 560px) {
+  /* Half a 375px screen is nine characters of an email address. */
+  .field.s6 { grid-column: span 12; }
+  .field.s4 { grid-column: span 6; }
+  .sample-bar { flex-wrap: wrap; }
+  .score-card { flex-direction: column; text-align: center; gap: 14px; }
+  .stat-row .stat { flex: 1 1 calc(50% - 4px); }
 }

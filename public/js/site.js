@@ -27,6 +27,27 @@ $('btnTheme').addEventListener('click', () => {
   try { localStorage.setItem('ihatejob.theme', next); } catch { /* private mode */ }
 });
 
+/* ------------------------------------------------------------ mobile nav */
+
+// Below 900px the horizontal links are hidden by CSS, which left a phone with
+// a nav bar containing no navigation. This is that navigation.
+const navSheet = $('navSheet');
+const navToggle = $('navToggle');
+
+function setNav(open) {
+  navSheet.hidden = !open;
+  navToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  navToggle.classList.toggle('open', open);
+}
+
+navToggle.addEventListener('click', () => setNav(navSheet.hidden));
+// Tapping a link jumps within the same page, so nothing else would close it.
+navSheet.addEventListener('click', (e) => { if (e.target.closest('a')) setNav(false); });
+document.addEventListener('click', (e) => {
+  if (!navSheet.hidden && !e.target.closest('#navSheet, #navToggle')) setNav(false);
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') setNav(false); });
+
 let toastTimer = 0;
 function toast(msg) {
   const el = $('toast');
@@ -181,15 +202,26 @@ $('planetScaleStrip').innerHTML = PLANETS.map((p) => (
 
 /* --------------------------------------------------------------- reviews */
 
-const REVIEW_ISSUE = SITE.repo + '/issues/new?labels=review&title='
-  + encodeURIComponent('Review: ')
-  + '&body=' + encodeURIComponent([
-    'What were you applying for?', '', '',
-    'What did it score, and did that feel right?', '', '',
-    'What helped, and what got in the way?', '', '',
-    'May we quote you on the site? If so, how should we credit you (name, job title, city)?',
-    '', '',
-  ].join('\n'));
+// A review carries a planet rank (1-10). Stars are derived from it rather than
+// stored beside it, so the two can never drift apart - half a star per rung,
+// the same arithmetic the checker uses on a CV.
+const short = (name) => String(name).replace('The ', '');
+
+function rankOf(r) {
+  const rank = Number(r.planet);
+  if (rank >= 1 && rank <= 10) return Math.round(rank);
+  const legacy = Number(r.rating);          // entries written before the scale
+  if (legacy >= 1 && legacy <= 5) return Math.round(legacy * 2);
+  return 10;
+}
+const starsOf = (r) => Math.max(1, Math.round(rankOf(r) / 2));
+
+const planetChip = (rank) => {
+  const p = PLANETS[rank - 1];
+  if (!p) return '';
+  return '<span class="rv-planet" title="' + esc(p.name + ' - ' + p.tag) + '">'
+    + planetSVG(p, 17) + esc(short(p.name)) + '</span>';
+};
 
 const stars = (n) => {
   let out = '<div class="rv-stars" aria-label="' + n + ' out of 5">';
@@ -221,7 +253,7 @@ function reviewCard(r) {
   const head = long ? quote.slice(0, quote.lastIndexOf(' ', LONG)) : quote;
 
   return '<article class="rv">'
-    + stars(Number(r.rating) || 5)
+    + '<div class="rv-top">' + stars(starsOf(r)) + planetChip(rankOf(r)) + '</div>'
     + '<blockquote class="rv-quote' + (long ? ' clipped' : '') + '">'
     + '<span class="rv-head">&ldquo;' + esc(head) + (long ? '' : '&rdquo;') + '</span>'
     + (long ? '<span class="rv-rest">' + esc(quote.slice(head.length)) + '&rdquo;</span>' : '')
@@ -243,7 +275,7 @@ function reviewCard(r) {
 
 async function renderReviews() {
   const section = $('reviews');
-  const navLink = $('navReviews');
+  const navLinks = [$('navReviews'), $('navSheetReviews')].filter(Boolean);
 
   let items = [];
   try {
@@ -259,14 +291,14 @@ async function renderReviews() {
 
   if (live.length < MIN_REVIEWS) {
     section.hidden = true;
-    if (navLink) navLink.hidden = true;
+    navLinks.forEach((a) => { a.hidden = true; });
     console.info('[ihatejob] Reviews hidden: ' + live.length + ' of ' + MIN_REVIEWS
       + ' needed. Add them in the admin, or to REVIEWS in js/config.js.');
     return;
   }
 
   section.hidden = false;
-  if (navLink) navLink.hidden = false;
+  navLinks.forEach((a) => { a.hidden = false; });
   $('reviewArea').innerHTML = '<div class="rv-grid">' + live.map(reviewCard).join('') + '</div>';
 }
 renderReviews();
@@ -281,43 +313,110 @@ $('reviewArea').addEventListener('click', (e) => {
   btn.firstChild.textContent = open ? 'Show less' : 'Read more';
 });
 
+/* ------------------------------------------------- the review form itself */
+
+// The rating is the planet, picked here rather than typed as a number. It is
+// the one bit of this site people repeat to each other, so asking for it in
+// its own words - "Mars", not "6/10" - is the whole point.
+
+let picked = 0;
+
+$('planetPick').innerHTML = PLANETS.map((p) => (
+  '<button class="pp-pick" type="button" role="radio" aria-checked="false"'
+  + ' tabindex="' + (p.rank === 1 ? '0' : '-1') + '" data-rank="' + p.rank + '"'
+  + ' aria-label="' + esc(p.name + ' - ' + p.tag) + '">'
+  + planetSVG(p, 40)
+  + '<span>' + esc(short(p.name)) + '</span></button>'
+)).join('');
+
+function setPicked(rank) {
+  picked = rank;
+  const p = PLANETS[rank - 1];
+  $('planetPick').querySelectorAll('[data-rank]').forEach((b) => {
+    const on = Number(b.dataset.rank) === rank;
+    b.classList.toggle('sel', on);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+    b.tabIndex = on ? 0 : -1;
+  });
+  $('planetRead').innerHTML = '<b>' + esc(p.name) + '</b> &mdash; ' + esc(p.tag)
+    + starRow(starsFor(p.rank), 15);
+  $('rvNote').textContent = '';
+}
+
+$('planetPick').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-rank]');
+  if (btn) setPicked(Number(btn.dataset.rank));
+});
+
+// A radiogroup that only responds to a mouse is not a radiogroup.
+$('planetPick').addEventListener('keydown', (e) => {
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  if (!step) return;
+  e.preventDefault();
+  setPicked(Math.min(10, Math.max(1, (picked || 1) + step)));
+  const el = $('planetPick').querySelector('[data-rank="' + picked + '"]');
+  if (el) el.focus();
+});
+
+function reviewText() {
+  const p = PLANETS[picked - 1];
+  const credit = [$('rvName').value.trim(), $('rvRole').value.trim()].filter(Boolean).join(' - ');
+  return [
+    'Rating: ' + p.name + ' (' + p.rank + ' of 10, ' + starsFor(p.rank) + ' stars)',
+    'Credit: ' + (credit || 'anonymous'),
+    'May be quoted on the site: ' + ($('rvConsent').checked ? 'yes' : 'no'),
+    '',
+    $('rvText').value.trim(),
+  ].join('\n');
+}
+
+// Both buttons need the same two checks, and the same message when they fail.
+function reviewReady() {
+  if (!picked) {
+    $('rvNote').textContent = 'Pick a planet first - that is the rating.';
+    $('planetPick').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return false;
+  }
+  if (!$('rvText').value.trim()) {
+    $('rvNote').textContent = 'Add a line or two, otherwise there is nothing to publish.';
+    $('rvText').focus();
+    return false;
+  }
+  $('rvNote').textContent = '';
+  return true;
+}
+
+$('reviewForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (!reviewReady()) return;
+  const p = PLANETS[picked - 1];
+  const who = $('rvName').value.trim();
+  sendIssue('review', 'Review: ' + p.name + (who ? ' - ' + who : ''), reviewText());
+});
+
+$('rvCopy').addEventListener('click', async () => {
+  if (!reviewReady()) return;
+  try {
+    await navigator.clipboard.writeText(reviewText());
+    toast('Copied. Paste it wherever suits you.');
+  } catch {
+    $('rvNote').textContent = 'Could not copy - select the text and copy it manually.';
+  }
+});
+
 // Leaving a review must work whether or not the reviews section is showing -
 // otherwise there is no way to ever reach the threshold that reveals it.
 function openReviewForm(e) {
   if (e) e.preventDefault();
-  if (REPO_READY) {
-    window.open(REVIEW_ISSUE, '_blank', 'noopener');
-    return;
-  }
-  const kind = $('sgKind');
-  if (kind) kind.value = 'review';
-  $('sgTitle').placeholder = 'e.g. Got a 62 as a nurse, the licence check caught something real';
-  $('sgBody').placeholder = REVIEW_PROMPT;
-  $('suggest').scrollIntoView({ behavior: 'smooth' });
-  setTimeout(() => $('sgTitle').focus({ preventScroll: true }), 320);
+  $('review').scrollIntoView({ behavior: 'smooth' });
   if (!CAN_RECEIVE) {
     toast('Write it here - note there is no inbox configured yet, so it will only be copied.');
   }
 }
 
-const REVIEW_PROMPT = [
-  'What were you applying for?',
-  'What did it score, and did that feel right?',
-  'What helped, and what got in the way?',
-  'May we quote you? If so, how should we credit you (name, job title, city)?',
-].join('\n\n');
-
 ['footReview', 'btnLeaveReview'].forEach((id) => {
   const el = $(id);
-  if (!el) return;
-  if (REPO_READY) {
-    // A real href, so middle-click and "open in new tab" behave normally.
-    el.href = REVIEW_ISSUE;
-    el.target = '_blank';
-    el.rel = 'noopener';
-  } else {
-    el.addEventListener('click', openReviewForm);
-  }
+  if (el) el.addEventListener('click', openReviewForm);
 });
 
 /* -------------------------------------------------------------- AI costs */

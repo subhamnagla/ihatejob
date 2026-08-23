@@ -132,6 +132,9 @@
 .lbl.l-review { background: var(--ok); color: var(--ok-ink); font-weight: 600; }
 .lbl.l-bug { background: var(--danger); color: var(--danger-ink); }
 .lbl.l-none { background: var(--warn-bg); color: var(--warn-ink); }
+.lbl.l-planet { background: var(--brand); color: var(--brand-ink); font-weight: 600; }
+/* Missing consent is not a warning, it is a stop. */
+.lbl.l-bad { background: var(--danger); color: var(--danger-ink); font-weight: 600; }
 .issue-body {
   margin: 0 0 8px;
   font-size: 12.5px;
@@ -201,7 +204,7 @@
   line-height: 1.6;
 }
 
-.tag-on, .tag-off, .tag-pin {
+.tag-on, .tag-off, .tag-pin, .tag-planet {
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -212,3 +215,20 @@
 .tag-on { background: var(--ok); color: var(--ok-ink); }
 .tag-off { background: var(--chip); color: var(--muted); }
 .tag-pin { background: var(--brand); color: var(--brand-ink); }
+.tag-planet { background: var(--chip); color: var(--dim); font-weight: 600; }
+
+/* ------------------------------------------------------------ responsive */
+
+@media (max-width: 900px) {
+  .admin { padding: 22px 0 60px; }
+  .admin-block { padding: 16px; }
+  .admin-head { align-items: flex-start; }
+  .admin-actions { flex-wrap: wrap; }
+  /* Same reason as the builder: under 16px, iOS zooms in on focus. */
+  .admin .input,
+  .admin .select,
+  .admin textarea.input { font-size: 16px; }
+  .edit-bar { gap: 6px; }
+  .edit-bar b { flex: 1 1 100%; }
+  .admin-table { display: block; overflow-x: auto; }
+}

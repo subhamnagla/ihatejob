@@ -86,9 +86,13 @@ Two things to know:
 
 Reviews do not appear on the site automatically. That is deliberate: you decide
 what goes up, and you should have the person's permission — the form asks them
-for it and for how they want to be credited.
+for it, and the admin warns you if they said no.
 
-Add them to `REVIEWS` in `public/js/config.js`:
+The normal route is the admin: **Reviews people sent → Add as review**, tidy the
+quote, **Show**, **Save**. See [admin.md](admin.md).
+
+Without the admin, edit `public/data/reviews.json` by hand, or seed `REVIEWS` in
+`public/js/config.js`:
 
 ```js
 export const REVIEWS = [
@@ -97,6 +101,7 @@ export const REVIEWS = [
     name: 'Priya R.',
     role: 'Staff Nurse',
     place: 'Kochi',
+    planet: 8,                 // 1 Mercury .. 10 the Sun; stars follow from it
     source: 'https://github.com/YOUR-NAME/ihatejob/issues/42',
   },
 ];
@@ -105,11 +110,29 @@ export const REVIEWS = [
 The section stays hidden until there are `MIN_REVIEWS` of them (3 by default),
 then appears on its own, nav link and all.
 
+## What a review looks like when it arrives
+
+The review form is its own section, separate from the issue form, and the rating
+is a planet rather than a number. It writes a fixed header so the admin can read
+the answers back out:
+
+```
+Rating: Jupiter (5 of 10, 2.5 stars)
+Credit: Asha R - Staff nurse, Leeds
+May be quoted on the site: yes
+
+The licence check caught a gap I had not noticed in four years.
+```
+
+An issue written by hand misses those lines and is marked *written by hand* in
+the admin rather than being guessed at.
+
 ## Checking it works before launch
 
 1. Set `SITE.repo` to your real repository.
 2. Reload the front page and open the browser console — the messages about
    hidden visitor numbers and reviews tell you what is still unconfigured.
-3. Click **Leave a review** under the share buttons. It should open a GitHub
-   issue form with the `review` label already applied and the prompts filled in.
+3. Go to **Rate us on the same scale we rate you**, pick a planet, write a line
+   and submit. It should open a GitHub issue form with the `review` label
+   already applied and the rating header filled in.
 4. If the label chip is missing on that form, you skipped the label step above.
