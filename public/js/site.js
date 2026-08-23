@@ -249,7 +249,15 @@ const REVIEW_PROMPT = [
 
 ['footReview', 'btnLeaveReview'].forEach((id) => {
   const el = $(id);
-  if (el) el.addEventListener('click', openReviewForm);
+  if (!el) return;
+  if (REPO_READY) {
+    // A real href, so middle-click and "open in new tab" behave normally.
+    el.href = REVIEW_ISSUE;
+    el.target = '_blank';
+    el.rel = 'noopener';
+  } else {
+    el.addEventListener('click', openReviewForm);
+  }
 });
 
 /* -------------------------------------------------------------- AI costs */
