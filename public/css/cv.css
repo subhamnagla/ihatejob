@@ -1,0 +1,470 @@
+/* The printable document. Everything here is scoped to .page so the app
+   chrome in app.css can never leak into an exported CV. */
+
+.page {
+  --accent: #2563eb;
+  --ink: #151a21;
+  --muted: #5c6573;
+  --rule: #d9dee6;
+  --fs: 10.4pt;
+  --lh: 1.45;
+  --gap: 15px;
+  --pad: 15mm;
+  --page-w: 210mm;
+  --page-h: 297mm;
+  --scale: 1;
+  --family: ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+
+  width: var(--page-w);
+  min-height: var(--page-h);
+  padding: var(--pad);
+  background: #fff;
+  color: var(--ink);
+  font-family: var(--family);
+  font-size: calc(var(--fs) * var(--scale));
+  line-height: var(--lh);
+  box-sizing: border-box;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.page.paper-letter { --page-w: 216mm; --page-h: 279mm; }
+
+.page.font-sans { --family: ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif; }
+.page.font-serif { --family: Georgia, "Times New Roman", Times, serif; }
+.page.font-helvetica { --family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
+.page.font-book { --family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif; }
+
+.page.density-compact { --gap: 11px; --lh: 1.34; }
+.page.density-roomy { --gap: 20px; --lh: 1.58; }
+
+.page * { box-sizing: border-box; }
+.page h1, .page h2, .page h3, .page h4, .page p, .page ul { margin: 0; }
+.page ul { list-style: none; }
+.page a { color: inherit; text-decoration: none; }
+
+/* ------------------------------------------------------------- header */
+
+.cv-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8mm;
+}
+.cv-head-main { flex: 1; min-width: 0; }
+
+.cv-name {
+  font-size: 2.05em;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+}
+.cv-headline {
+  margin-top: 3px;
+  font-size: 1.02em;
+  font-weight: 600;
+  color: var(--accent);
+}
+.cv-contact {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 6px;
+  font-size: 0.86em;
+  color: var(--muted);
+}
+.cv-contact .cv-sep { color: var(--rule); font-style: normal; }
+
+.cv-photo img,
+.cv-side-photo img {
+  width: 27mm;
+  height: 27mm;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
+/* ------------------------------------------------------------ sections */
+
+.cv-body { margin-top: var(--gap); }
+.cv-section + .cv-section { margin-top: var(--gap); }
+
+.cv-h {
+  font-size: 0.82em;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  color: var(--ink);
+}
+.caps-on .cv-h { text-transform: uppercase; }
+.cv-sec-body { margin-top: 6px; }
+
+.cv-entry { break-inside: avoid; page-break-inside: avoid; }
+.cv-entry + .cv-entry { margin-top: calc(var(--gap) * 0.6); }
+
+.cv-entry-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6mm;
+}
+.cv-entry-id { min-width: 0; }
+.cv-entry-title { font-size: 1em; font-weight: 700; }
+.cv-entry-sub { font-size: 0.93em; color: var(--muted); }
+.cv-entry-meta { text-align: right; white-space: nowrap; font-size: 0.85em; color: var(--muted); }
+.cv-entry-note { font-size: 0.95em; }
+
+.cv-points { margin-top: 5px; padding-left: 1.05em; }
+.cv-points li { position: relative; margin-top: 2px; }
+.cv-points li::before {
+  content: "";
+  position: absolute;
+  left: -0.85em;
+  top: 0.58em;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.cv-summary + .cv-summary { margin-top: 5px; }
+.cv-link { color: var(--accent); font-weight: 500; font-size: 0.86em; }
+.cv-muted { color: var(--muted); }
+.cv-inline .cv-sep { margin: 0 6px; color: var(--rule); }
+
+.cv-skills { display: block; }
+.cv-skill { display: grid; grid-template-columns: 30mm 1fr; gap: 4mm; }
+.cv-skill + .cv-skill { margin-top: 3px; }
+.cv-skill-name { font-weight: 700; font-size: 0.93em; }
+
+.cv-line { display: flex; justify-content: space-between; gap: 6mm; }
+.cv-line + .cv-line { margin-top: 3px; }
+.cv-line-meta { color: var(--muted); font-size: 0.85em; white-space: nowrap; }
+
+/* ------------------------------------------------------- sidebar shells */
+
+.cv-split { display: grid; grid-template-columns: 62mm 1fr; align-items: stretch; }
+.cv-side { break-inside: avoid; }
+.cv-side-block + .cv-section,
+.cv-side .cv-section + .cv-section { margin-top: var(--gap); }
+.cv-side-photo { margin-bottom: 7mm; }
+.cv-side-name .cv-name { font-size: 1.6em; }
+.cv-side-name { margin-bottom: 7mm; }
+.cv-side-name .cv-headline { font-size: 0.95em; }
+
+.cv-side-contact { margin-top: 6px; font-size: 0.86em; }
+.cv-side-contact li { margin-top: 3px; word-break: break-word; }
+
+.cv-side-label { margin-top: 6px; font-size: 0.8em; font-weight: 700; opacity: 0.85; }
+.cv-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.cv-chip {
+  font-size: 0.78em;
+  padding: 1.5px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14);
+}
+.cv-side-list { margin-top: 6px; font-size: 0.85em; }
+.cv-side-list li { margin-top: 5px; }
+.cv-side-list li span { display: block; opacity: 0.8; }
+
+.cv-langs { margin-top: 6px; font-size: 0.86em; }
+.cv-lang { display: flex; align-items: center; justify-content: space-between; gap: 4mm; margin-top: 4px; }
+.cv-dots { display: inline-flex; gap: 3px; }
+.cv-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.28;
+}
+.cv-dot.on { opacity: 1; }
+
+/* ============================== template: classic ====================== */
+
+.tpl-classic .cv-head { flex-direction: row-reverse; text-align: center; justify-content: center; }
+.tpl-classic .cv-head-main { text-align: center; }
+.tpl-classic .cv-contact { justify-content: center; }
+.tpl-classic .cv-name { letter-spacing: 0.02em; }
+.tpl-classic .cv-headline { color: var(--muted); font-weight: 500; }
+.tpl-classic .cv-body { margin-top: calc(var(--gap) * 1.1); }
+.tpl-classic .cv-h {
+  border-bottom: 1.4px solid var(--accent);
+  padding-bottom: 3px;
+  color: var(--accent);
+}
+.tpl-classic .cv-photo { margin-left: 6mm; }
+
+/* ============================== template: minimal ====================== */
+
+.tpl-minimal { --pad: 18mm; }
+.tpl-minimal .cv-name { font-weight: 600; font-size: 1.85em; }
+.tpl-minimal .cv-headline { color: var(--muted); font-weight: 400; }
+.tpl-minimal .cv-h { color: var(--muted); font-size: 0.74em; letter-spacing: 0.16em; }
+.tpl-minimal .cv-points li::before { background: var(--muted); }
+.tpl-minimal .cv-entry-title { font-weight: 600; }
+
+/* ============================== template: ats ========================== */
+
+.tpl-ats { --accent: #000; }
+.tpl-ats .cv-headline { color: var(--ink); font-weight: 400; }
+.tpl-ats .cv-h {
+  border-bottom: 1px solid #000;
+  padding-bottom: 2px;
+  letter-spacing: 0.04em;
+  font-size: 0.9em;
+}
+.tpl-ats .cv-points { list-style: disc; padding-left: 1.1em; }
+.tpl-ats .cv-points li::before { display: none; }
+.tpl-ats .cv-photo { display: none; }
+.tpl-ats .cv-chip { background: none; padding: 0; }
+.tpl-ats .cv-link { color: var(--ink); font-weight: 400; }
+
+/* ============================== template: executive ==================== */
+
+.tpl-executive .cv-head { padding-bottom: 6mm; border-bottom: 2px solid var(--ink); }
+.tpl-executive .cv-name { font-size: 2.2em; text-transform: uppercase; letter-spacing: 0.04em; }
+.tpl-executive .cv-headline { color: var(--muted); }
+.tpl-executive .cv-section {
+  display: grid;
+  grid-template-columns: 33mm 1fr;
+  gap: 6mm;
+}
+.tpl-executive .cv-h {
+  color: var(--accent);
+  padding-top: 2px;
+  line-height: 1.3;
+}
+.tpl-executive .cv-sec-body { margin-top: 0; }
+.tpl-executive .cv-section + .cv-section {
+  margin-top: var(--gap);
+  padding-top: var(--gap);
+  border-top: 1px solid var(--rule);
+}
+
+/* ============================== template: modern ======================= */
+
+.tpl-modern { padding: 0; }
+.tpl-modern .cv-split { grid-template-columns: 66mm 1fr; }
+.tpl-modern .cv-side {
+  background: var(--accent);
+  color: #fff;
+  padding: 13mm 9mm;
+}
+.tpl-modern .cv-side .cv-h { color: rgba(255, 255, 255, 0.72); }
+.tpl-modern .cv-side .cv-name { color: #fff; }
+.tpl-modern .cv-side .cv-headline { color: rgba(255, 255, 255, 0.85); font-weight: 500; }
+.tpl-modern .cv-side-photo img { border: 2.5px solid rgba(255, 255, 255, 0.55); }
+.tpl-modern .cv-main { padding: 13mm 12mm 13mm 10mm; }
+.tpl-modern .cv-main .cv-h {
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 4mm;
+}
+.tpl-modern .cv-main .cv-h::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+.tpl-modern .cv-body { margin-top: 0; }
+
+/* ============================== template: creative ===================== */
+
+.tpl-creative { padding: 0; }
+.tpl-creative .cv-banner {
+  background: var(--accent);
+  color: #fff;
+  padding: 12mm 12mm 10mm;
+}
+.tpl-creative .cv-banner .cv-name { color: #fff; font-size: 2.3em; }
+.tpl-creative .cv-banner .cv-headline { color: rgba(255, 255, 255, 0.88); }
+.tpl-creative .cv-split { grid-template-columns: 1fr 58mm; }
+.tpl-creative .cv-side {
+  order: 2;
+  background: color-mix(in srgb, var(--accent) 8%, #fff);
+  padding: 11mm 8mm;
+  color: var(--ink);
+}
+.tpl-creative .cv-side .cv-h { color: var(--accent); }
+.tpl-creative .cv-side .cv-chip {
+  background: color-mix(in srgb, var(--accent) 16%, #fff);
+  color: var(--ink);
+}
+.tpl-creative .cv-main { padding: 11mm 9mm 11mm 12mm; }
+.tpl-creative .cv-body { margin-top: 0; }
+.tpl-creative .cv-main .cv-section { position: relative; padding-left: 7mm; }
+.tpl-creative .cv-main .cv-h { color: var(--accent); }
+.tpl-creative .cv-main .cv-section::before {
+  content: "";
+  position: absolute;
+  left: 1.5mm;
+  top: 4px;
+  bottom: 2px;
+  width: 1.5px;
+  background: color-mix(in srgb, var(--accent) 25%, #fff);
+}
+.tpl-creative .cv-main .cv-section::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 3px;
+  width: 4.5px;
+  height: 4.5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.tpl-creative .cv-side-photo img { border: 3px solid #fff; }
+
+/* ------------------------------------------------------- publications ---- */
+
+.cv-pubs { list-style: decimal; padding-left: 1.5em; margin-top: 6px; }
+.cv-pubs li { margin-top: 5px; padding-left: 2px; break-inside: avoid; }
+.cv-pubs em { font-style: italic; }
+
+/* ============================== template: academic ===================== */
+
+.tpl-academic { --pad: 17mm; --gap: 13px; }
+.tpl-academic .cv-head { border-bottom: 1px solid var(--ink); padding-bottom: 5mm; }
+.tpl-academic .cv-name { font-size: 1.9em; font-weight: 600; letter-spacing: 0.01em; }
+.tpl-academic .cv-headline { color: var(--muted); font-weight: 400; font-style: italic; }
+.tpl-academic .cv-h {
+  font-size: 0.78em;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+  border-bottom: 0.6px solid var(--rule);
+  padding-bottom: 3px;
+}
+.tpl-academic .cv-entry + .cv-entry { margin-top: calc(var(--gap) * 0.45); }
+.tpl-academic .cv-entry-title { font-weight: 600; }
+.tpl-academic .cv-points li::before { background: var(--muted); }
+/* A long publication list is the point of this format - keep it tight. */
+.tpl-academic .cv-pubs li { margin-top: 3px; }
+.tpl-academic .cv-summary { font-style: italic; }
+
+/* ============================== template: federal ====================== */
+
+.tpl-federal { --pad: 13mm; --gap: 9px; --lh: 1.34; }
+.tpl-federal .cv-head {
+  border: 1.2px solid var(--ink);
+  padding: 5mm 6mm;
+  align-items: center;
+}
+.tpl-federal .cv-name { font-size: 1.5em; text-transform: uppercase; letter-spacing: 0.05em; }
+.tpl-federal .cv-headline { color: var(--ink); font-weight: 500; }
+.tpl-federal .cv-contact { font-size: 0.82em; }
+.tpl-federal .cv-body { margin-top: calc(var(--gap) * 0.8); }
+.tpl-federal .cv-h {
+  background: color-mix(in srgb, var(--accent) 12%, #fff);
+  border-left: 2.5px solid var(--accent);
+  padding: 3px 5px;
+  font-size: 0.8em;
+  letter-spacing: 0.06em;
+}
+.tpl-federal .cv-sec-body {
+  margin-top: 4px;
+  padding: 0 5px;
+}
+.tpl-federal .cv-entry { padding-bottom: 3px; }
+.tpl-federal .cv-entry + .cv-entry {
+  margin-top: calc(var(--gap) * 0.5);
+  border-top: 0.6px dotted var(--rule);
+  padding-top: calc(var(--gap) * 0.5);
+}
+.tpl-federal .cv-entry-title { font-size: 0.97em; }
+.tpl-federal .cv-skill { grid-template-columns: 38mm 1fr; }
+.tpl-federal .cv-points li::before { background: var(--ink); }
+.tpl-federal .cv-photo img { border-radius: 3px; width: 25mm; height: 30mm; }
+
+/* =============================== cover letter ========================== */
+
+/* The letter borrows the CV's page, typeface and accent, but drops every
+   template's structural styling - a letter has no sections or columns. */
+.page-letter {
+  padding: 20mm 18mm;
+  display: block;
+}
+.page-letter.tpl-modern,
+.page-letter.tpl-creative,
+.page-letter.tpl-federal,
+.page-letter.tpl-academic { padding: 20mm 18mm; }
+
+.letter { line-height: 1.6; }
+
+.lt-sender { padding-bottom: 4mm; border-bottom: 1px solid var(--rule); }
+.lt-name { font-size: 1.7em; font-weight: 700; line-height: 1.1; }
+.lt-role { color: var(--accent); font-weight: 600; margin-top: 2px; }
+.lt-contact {
+  margin-top: 5px;
+  font-size: 0.84em;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+  align-items: center;
+}
+
+.lt-date { margin-top: 9mm; font-size: 0.9em; color: var(--muted); }
+.lt-to { margin-top: 6mm; font-size: 0.92em; line-height: 1.5; }
+.lt-greeting { margin-top: 8mm; }
+.lt-subject { margin-top: 4mm; font-weight: 700; }
+
+.lt-body { margin-top: 5mm; }
+.lt-body p + p { margin-top: 3.5mm; }
+.lt-body p { text-align: left; }
+.lt-empty { color: var(--muted); font-style: italic; }
+
+.lt-sign { margin-top: 8mm; }
+.lt-signature { margin-top: 9mm; font-weight: 600; }
+
+/* Bracketed prompts from the scaffold, so unreplaced ones are impossible to
+   miss on screen. They print as ordinary text, not highlighted. */
+.lt-body p { white-space: pre-wrap; }
+
+/* ================================= print =============================== */
+
+@media print {
+  html, body {
+    background: #fff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .topbar,
+  .panel,
+  .page-guides,
+  .toast,
+  .modal-backdrop { display: none !important; }
+
+  /* Everything sitting in the stage is chrome - the toolbar, the sample banner,
+     the rating pane - so hide the lot and put back only the page. Stated this
+     way round, a bar added to the stage later cannot leak into the PDF. */
+  .stage > * { display: none !important; }
+  .stage > .stage-scroll { display: block !important; }
+
+  .app, .workspace, .stage, .stage-scroll, .page-scaler, .page-wrap {
+    display: block !important;
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    overflow: visible !important;
+    background: none !important;
+    box-shadow: none !important;
+    zoom: 1 !important;
+    grid-template-columns: none !important;
+  }
+
+  .page {
+    width: var(--page-w) !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .cv-section { break-inside: auto; }
+  .cv-h { break-after: avoid; page-break-after: avoid; }
+}

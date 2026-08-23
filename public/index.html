@@ -1,0 +1,261 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ihatejob - the CV builder that tells you what is wrong with your CV</title>
+<meta name="description" content="Pick your profession, get a CV standardised for your field and region, and have it rated out of 100. Free, offline, open source, no account.">
+<meta property="og:title" content="ihatejob - a CV worth leaving with">
+<meta property="og:description" content="41 professions, 20 regions, 8 formats, and a rating that names the exact phrase letting you down.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%235b9dff'/%3E%3Cg fill='none' stroke='%230b1220' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='9' width='16' height='10' rx='2'/%3E%3Cpath d='M9.5 9V7.8A1.3 1.3 0 0 1 10.8 6.5h2.4A1.3 1.3 0 0 1 14.5 7.8V9'/%3E%3Cpath d='M12 16.5v-5m0 0-2 2m2-2 2 2'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#eef1f6" media="(prefers-color-scheme: light)">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ihatejob">
+<link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/css/cv.css">
+<link rel="stylesheet" href="/css/site.css">
+<script>
+  try {
+    var t = localStorage.getItem('ihatejob.theme');
+    if (!t) t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    document.documentElement.dataset.theme = t;
+  } catch (e) { document.documentElement.dataset.theme = 'dark'; }
+</script>
+
+<header class="site-nav">
+  <a class="brand" href="/">
+    <span class="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+           stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="8.5" width="18" height="11" rx="2.2"/>
+        <path d="M9 8.5V7A1.5 1.5 0 0 1 10.5 5.5h3A1.5 1.5 0 0 1 15 7v1.5"/>
+        <path d="M12 16.5v-5.2m0 0-2.2 2.2M12 11.3l2.2 2.2"/>
+      </svg>
+    </span>
+    <span>ihatejob<small>a CV worth leaving with</small></span>
+  </a>
+
+  <nav class="nav-links">
+    <a href="#formats">Formats</a>
+    <a href="#professions">Professions</a>
+    <a href="#rating">Rating</a>
+    <a href="#reviews" id="navReviews" hidden>Reviews</a>
+    <a href="#opensource">Open source</a>
+  </nav>
+
+  <div class="nav-actions">
+    <button class="btn btn-icon" id="btnTheme" type="button" aria-label="Switch theme" title="Switch theme">
+      <svg class="ico-sun" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></svg>
+      <svg class="ico-moon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
+    </button>
+    <button class="btn" id="btnInstall" type="button" hidden>Install app</button>
+    <button class="btn" id="btnShareTop" type="button">Share</button>
+    <a class="btn btn-primary" href="/app">Open the builder</a>
+  </div>
+</header>
+
+<main>
+  <!-- ------------------------------------------------------------- hero -->
+  <section class="hero">
+    <div class="hero-copy">
+      <span class="eyebrow">Free &middot; No account &middot; Nothing uploaded</span>
+      <h1>Most CV builders give you a template.<br><em>This one tells you what is wrong.</em></h1>
+      <p class="lede">
+        Pick your profession and where you are applying. Get a CV laid out the way that field
+        expects, then a rating that names the exact line letting it down.
+      </p>
+      <div class="hero-cta">
+        <a class="btn btn-primary btn-lg" href="/app">Build my CV</a>
+        <a class="btn btn-lg" href="/app?import=1">Rate the CV I have</a>
+      </div>
+      <p class="hero-note">Runs entirely in your browser. There is no upload endpoint to send
+        your CV to.</p>
+    </div>
+    <div class="hero-art" id="heroArt" aria-hidden="true"></div>
+  </section>
+
+  <!-- ------------------------------------------------------------ stats -->
+  <section class="stats-strip" id="stats">
+    <div class="stat-grid" id="statGrid"></div>
+  </section>
+
+  <!-- ------------------------------------------------------------ what -->
+  <section class="site-band" id="how">
+    <div class="wrap">
+      <ul class="what-list">
+        <li><b>Eight formats, one click apart</b> so you can actually compare them.</li>
+        <li><b>41 professions, 20 regions</b> setting order, length and whether a photo helps
+          or disqualifies you.</li>
+        <li><b>A rating out of 100</b> that quotes the offending bullet and suggests the fix.</li>
+        <li><b>Catches chatbot phrasing</b> &mdash; <em>leveraged</em>, <em>results-driven</em> &mdash;
+          and offers the plain word instead.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- formats -->
+  <section class="site-band alt" id="formats">
+    <div class="wrap">
+      <h2 class="section-title">Eight formats, one set of facts</h2>
+      <p class="section-lede">Rendered live by the same code the builder uses.</p>
+      <div class="format-rail" id="formatRail"></div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------ professions -->
+  <section class="site-band" id="professions">
+    <div class="wrap">
+      <h2 class="section-title">Built for your job, not for jobs in general</h2>
+      <p class="section-lede">Each one ships a worked sample CV and its own rules. Pick yours to
+        start there.</p>
+      <input class="input prof-search" id="profSearch" type="search"
+             placeholder="Find your profession - nurse, pilot, actuary, welder...">
+      <div class="prof-groups" id="profGroups"></div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------ rating -->
+  <section class="site-band alt" id="rating">
+    <div class="wrap">
+      <h2 class="section-title">Six grades, not one number</h2>
+      <p class="section-lede">A CV can be immaculately formatted and say nothing. Split the score
+        and you can see which it is.</p>
+      <div class="char-grid" id="charGrid"></div>
+
+      <div class="planet-promo">
+        <div class="pp-copy">
+          <h3>You also get a planet</h3>
+          <p>Mercury at the bottom, the Sun at the top. It arrives as a flyby that slows onto the
+            one you earned &mdash; a strong CV takes the longer trip.</p>
+        </div>
+        <div class="pp-scale" id="planetScaleStrip"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ----------------------------------------------------------- reviews -->
+  <section class="site-band" id="reviews" hidden>
+    <div class="wrap">
+      <h2 class="section-title">What people say</h2>
+      <div id="reviewArea"></div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------- open source -->
+  <section class="site-band alt" id="opensource">
+    <div class="wrap">
+      <h2 class="section-title">Open source &mdash; and the best help is not code</h2>
+      <p class="section-lede">A profession pack is one object in one file. If you have hired for a
+        role, you know something the current packs do not.</p>
+
+      <div class="os-grid">
+        <a class="os-card" id="osRepo" href="#suggest">
+          <h3>Add a profession</h3>
+          <p>Section order, what a CV in that field must include, what it should quantify.</p>
+          <span class="os-go">Open an issue &rarr;</span>
+        </a>
+        <a class="os-card" id="osRegion" href="#suggest">
+          <h3>Add a region</h3>
+          <p>Photo conventions, personal details, length, date format.</p>
+          <span class="os-go">Open an issue &rarr;</span>
+        </a>
+        <a class="os-card" id="osTemplate" href="#suggest">
+          <h3>Add a format or a check</h3>
+          <p>A template is a CSS block. A check must be able to quote the offending string.</p>
+          <span class="os-go">Open an issue &rarr;</span>
+        </a>
+      </div>
+
+      <div class="suggest" id="suggest">
+        <h3>Suggest something</h3>
+        <p>Opens a pre-filled issue on the repository, so it is public and does not get lost in
+          an inbox.</p>
+        <form id="suggestForm">
+          <div class="grid">
+            <div class="field s6">
+              <label for="sgKind">Kind</label>
+              <select class="select" id="sgKind">
+                <option value="review">A review - how it went for you</option>
+                <option value="profession">A profession that is missing or wrong</option>
+                <option value="region">A region's rules</option>
+                <option value="template">A new format</option>
+                <option value="checker">Something the checker should catch</option>
+                <option value="bug">Something is broken</option>
+                <option value="idea">Anything else</option>
+              </select>
+            </div>
+            <div class="field s6">
+              <label for="sgTitle">One-line summary</label>
+              <input class="input" id="sgTitle" type="text" placeholder="e.g. Merchant navy CVs need a sea-service record">
+            </div>
+            <div class="field">
+              <label for="sgBody">Details</label>
+              <textarea class="input" id="sgBody" rows="4"
+                placeholder="What is missing, and how do you know? Having worked in the field is exactly the context a reviewer cannot get elsewhere."></textarea>
+            </div>
+          </div>
+          <div class="suggest-actions">
+            <button class="btn btn-primary" type="submit">Open the issue</button>
+            <button class="btn" type="button" id="sgCopy">Copy instead</button>
+            <span class="hint" id="sgNote" style="margin:0"></span>
+          </div>
+        </form>
+      </div>
+
+      <p class="ai-cost" id="aiCost"></p>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------- share -->
+  <section class="site-band" id="share">
+    <div class="wrap share-wrap">
+      <h2 class="section-title" style="margin-bottom:8px">Know someone job hunting?</h2>
+      <p class="section-lede">Free, no account, and their CV never leaves their laptop.</p>
+      <div class="share-row" id="shareRow"></div>
+      <p class="review-cta">
+        Used it yourself?
+        <a href="#suggest" id="btnLeaveReview">Leave a review</a> &mdash; good or bad, it gets published.
+      </p>
+      <div class="copy-row">
+        <input class="input" id="shareUrl" type="text" readonly>
+        <button class="btn" id="btnCopyUrl" type="button">Copy link</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="final-cta">
+    <div class="wrap">
+      <h2>Find out what your CV actually scores</h2>
+      <p>Two minutes, no sign-up.</p>
+      <div class="hero-cta" style="justify-content:center">
+        <a class="btn btn-primary btn-lg" href="/app">Build my CV</a>
+        <a class="btn btn-lg" href="/app?import=1">Rate my current CV</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap foot-inner">
+    <div>
+      <b>ihatejob</b>
+      <p>A CV builder that runs entirely in your browser. MIT licensed.</p>
+    </div>
+    <nav>
+      <a href="/app">Builder</a>
+      <a href="#professions">Professions</a>
+      <a href="#opensource">Contribute</a>
+      <a href="#share">Share</a>
+      <a href="#" id="footReview">Send feedback</a>
+    </nav>
+    <p class="foot-note">No cookies, no third-party scripts, no upload endpoint.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+<script type="module" src="/js/site.js"></script>

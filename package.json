@@ -1,0 +1,11 @@
+{
+  "name": "ihatejob",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Build a CV standardised for your profession and region, and get it rated - offline, no account, no AI",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs"
+  }
+}

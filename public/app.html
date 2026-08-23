@@ -1,0 +1,223 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ihatejob - build a CV good enough to leave with</title>
+<meta name="description" content="Pick your profession, fill in a form, and get a CV rated against that field's standards. Download as PDF, Word, HTML or plain text.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%235b9dff'/%3E%3Cg fill='none' stroke='%230b1220' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='9' width='16' height='10' rx='2'/%3E%3Cpath d='M9.5 9V7.8A1.3 1.3 0 0 1 10.8 6.5h2.4A1.3 1.3 0 0 1 14.5 7.8V9'/%3E%3Cpath d='M12 16.5v-5m0 0-2 2m2-2 2 2'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#eef1f6" media="(prefers-color-scheme: light)">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ihatejob">
+<link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/css/cv.css">
+<style id="pageSizeStyle">@page { size: A4; margin: 0; }</style>
+<script>
+  // Set the theme before first paint so there is no flash of the wrong one.
+  try {
+    var t = localStorage.getItem('ihatejob.theme');
+    if (!t) t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    document.documentElement.dataset.theme = t;
+  } catch (e) { document.documentElement.dataset.theme = 'dark'; }
+</script>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+             stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="8.5" width="18" height="11" rx="2.2"/>
+          <path d="M9 8.5V7A1.5 1.5 0 0 1 10.5 5.5h3A1.5 1.5 0 0 1 15 7v1.5"/>
+          <path d="M12 16.5v-5.2m0 0-2.2 2.2M12 11.3l2.2 2.2"/>
+        </svg>
+      </span>
+      <span>ihatejob<small>a CV worth leaving with</small></span>
+    </div>
+
+    <div class="seg mobile-tabs" id="viewTabs" style="margin:0;width:170px">
+      <button type="button" data-view="edit" class="sel">Edit</button>
+      <button type="button" data-view="preview">Preview</button>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="top-actions">
+      <span class="pill" id="saveState">Saved</span>
+      <button class="btn btn-icon" id="btnTheme" type="button" aria-label="Switch theme" title="Switch theme">
+        <svg class="ico-sun" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></svg>
+        <svg class="ico-moon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
+      </button>
+      <button class="btn" id="btnInstall" type="button" hidden>Install app</button>
+      <button class="btn" id="btnImport" type="button">Rate my CV</button>
+      <button class="btn" id="btnExample" type="button"><span class="label-hide">Load </span>Example</button>
+      <button class="btn btn-primary" id="btnPdf" type="button">Download PDF</button>
+
+      <div class="menu" id="moreMenu">
+        <button class="btn" id="btnMore" type="button" aria-haspopup="true" aria-expanded="false">More &#9662;</button>
+        <div class="menu-list" role="menu">
+          <button class="menu-item" data-act="word" type="button">
+            Download as Word<small>.doc file that opens in Word or Google Docs</small>
+          </button>
+          <button class="menu-item" data-act="html" type="button">
+            Download as web page<small>Self-contained .html, keeps the styling</small>
+          </button>
+          <button class="menu-item" data-act="text" type="button">
+            Download as plain text<small>.txt for job portals and ATS forms</small>
+          </button>
+          <div class="menu-sep"></div>
+          <button class="menu-item" data-act="save-json" type="button">
+            Save my data<small>.json backup you can re-open later</small>
+          </button>
+          <button class="menu-item" data-act="load-json" type="button">
+            Open a saved file<small>Restore from a .json backup</small>
+          </button>
+          <div class="menu-sep"></div>
+          <button class="menu-item" data-act="reset" type="button">
+            Clear everything<small>Start from an empty CV</small>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="workspace">
+    <section class="panel" id="panel" aria-label="CV editor"></section>
+
+    <section class="stage">
+      <div class="stage-bar">
+        <div class="seg stage-tabs wide" id="stageTabs">
+          <button type="button" data-pane="preview" class="sel">CV</button>
+          <button type="button" data-pane="letter">Letter</button>
+          <button type="button" data-pane="review">Check <span class="tab-badge" id="reviewBadge">0</span></button>
+        </div>
+        <span id="pageInfo">1 page</span>
+        <span class="pill warn" id="pageWarn" hidden>Side column stops after page 1</span>
+        <span class="spacer"></span>
+        <button class="btn btn-sm" id="zoomOut" type="button" aria-label="Zoom out">&minus;</button>
+        <span id="zoomLabel" style="width:44px;text-align:center">100%</span>
+        <button class="btn btn-sm" id="zoomIn" type="button" aria-label="Zoom in">+</button>
+        <button class="btn btn-sm" id="zoomFit" type="button">Fit</button>
+      </div>
+      <div class="sample-bar" id="sampleBar" hidden>
+        <span class="sample-tag">Sample</span>
+        <span>A worked <b id="sampleWho"></b> CV. Your own is untouched.</span>
+        <span class="spacer"></span>
+        <button class="btn btn-sm" id="sampleUse" type="button">Use as my starting point</button>
+        <button class="btn btn-sm" id="sampleClose" type="button">Back to mine</button>
+      </div>
+
+      <div class="stage-scroll" id="stageScroll">
+        <div class="page-scaler" id="pageScaler">
+          <div class="page-wrap">
+            <div class="page" id="cvPage"></div>
+            <div class="page-guides" id="pageGuides" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="review-pane" id="reviewPane" hidden aria-label="CV check"></div>
+    </section>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="printModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="printTitle">
+    <h2 id="printTitle">Saving as PDF</h2>
+    <div class="report-note" id="printSampleWarn" hidden>
+      You are viewing a <b>sample CV</b>, not your own &mdash; printing now saves the sample.
+      Choose &ldquo;Back to mine&rdquo; first if that is not what you meant.
+    </div>
+    <p>Your browser's print dialog does the export. Two settings matter:</p>
+    <ol>
+      <li>Set <b>Destination</b> to <b>Save as PDF</b>.</li>
+      <li>Set <b>Margins</b> to <b>None</b> and turn <b>Background graphics</b> on, so colours and spacing match the preview.</li>
+    </ol>
+    <div class="modal-actions">
+      <button class="btn" data-close type="button">Cancel</button>
+      <button class="btn btn-primary" id="btnPrintGo" type="button">Open print dialog</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="importModal">
+  <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+    <h2 id="importTitle">Import your current CV</h2>
+    <p>Everything is read in your browser. The file is never uploaded anywhere.</p>
+
+    <div id="importStep1">
+      <div class="dropzone" id="dropzone" tabindex="0" role="button">
+        <b>Drop a file here</b>
+        <span>or click to choose &mdash; PDF, Word (.docx), .txt, or a saved .json</span>
+        <span>You can also drop a file anywhere on the page.</span>
+      </div>
+      <div class="import-error" id="importError" hidden></div>
+      <div class="or-line"><span>or paste the text</span></div>
+      <textarea class="input" id="pasteBox" rows="7"
+        placeholder="Open your CV, select all, copy, and paste here. This is the most reliable route for PDFs."></textarea>
+      <div class="modal-actions">
+        <button class="btn" data-close type="button">Cancel</button>
+        <button class="btn btn-primary" id="btnParse" type="button">Read it</button>
+      </div>
+    </div>
+
+    <div id="importStep2" hidden>
+      <div id="importReport"></div>
+      <div class="modal-actions">
+        <button class="btn" id="btnImportBack" type="button">Back</button>
+        <button class="btn btn-primary" id="btnImportApply" type="button">Use this</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="fixModal">
+  <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="fixTitle">
+    <h2 id="fixTitle">Clean up automatically</h2>
+    <p>Only mechanical changes. Nothing here invents content or changes what you claim.</p>
+    <div id="fixList"></div>
+    <p class="fix-caveat">Weak openers like &ldquo;responsible for&rdquo; and bullets with no numbers
+      are deliberately left alone &mdash; fixing those properly needs you, not a rule.</p>
+    <div class="modal-actions">
+      <button class="btn" data-close type="button">Cancel</button>
+      <button class="btn btn-primary" id="fixApply" type="button">Apply selected</button>
+    </div>
+  </div>
+</div>
+
+<div class="planet-show" id="planetModal" hidden>
+  <div class="sky" id="planetSky" aria-hidden="true"></div>
+
+  <div class="flyby" id="planetFlyby" aria-hidden="true">
+    <div class="rail" id="planetRail"></div>
+  </div>
+
+  <div class="verdict-card" id="planetCard" role="dialog" aria-modal="true" aria-labelledby="planetTitle">
+    <div class="planet-stage" id="planetStage"></div>
+    <h2 id="planetTitle"></h2>
+    <div class="planet-stars" id="planetStars"></div>
+    <p class="planet-line" id="planetLine"></p>
+    <button class="btn btn-sm btn-ghost planet-scale-toggle" id="planetScaleToggle" type="button">
+      Show the whole scale
+    </button>
+    <div class="planet-scale" id="planetScale" hidden></div>
+    <div class="modal-actions">
+      <button class="btn" data-close type="button">Close</button>
+      <button class="btn btn-primary" id="planetSeeWhy" type="button">See what to fix</button>
+    </div>
+  </div>
+
+  <div class="skip-hint" id="planetSkip">Click to skip</div>
+</div>
+
+<div class="toast" id="toast"></div>
+<input type="file" id="fileInput" accept="application/json,.json" hidden>
+<input type="file" id="photoInput" accept="image/*" hidden>
+<input type="file" id="cvInput" accept=".pdf,.docx,.doc,.rtf,.txt,.md,.json,application/pdf" hidden>
+<div class="drop-veil" id="dropVeil" hidden><div>Drop your CV to read it</div></div>
+
+<script type="module" src="/js/main.js"></script>
