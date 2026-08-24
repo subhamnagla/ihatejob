@@ -65,9 +65,14 @@ the mobile menu, the share section and the builder's *More* menu when the
 browser offers it. They stay hidden otherwise, because a control that does
 nothing is worse than no control.
 
-Clicking one opens a dialog explaining what installing gives you, with
+A banner appears at the top of the page on arrival, with **Install** and an
+**×**. Dismissing it is remembered for 30 days, and turning down the browser's
+own prompt counts the same way.
+
+The quieter controls open a dialog explaining what installing gives you, with
 **Cancel** and **Install**. The browser's own prompt fires only on Install,
-because it can be shown once and reading about it should not spend it.
+because it can be shown once and reading about it should not spend it. The
+banner skips that dialog, since it carries its own explanation.
 
 **iPhone / iPad** — Safari has no install prompt. The same dialog detects iOS
 and lists the three Share-sheet taps instead, with no Install button, since
@@ -110,9 +115,9 @@ app could keep the old copy indefinitely.
 1. Open the site in Chrome, DevTools → **Application → Manifest**. No warnings.
 2. **Application → Service Workers** shows one activated worker.
 3. Tick **Offline** in that panel and reload — the app should still load.
-4. The install controls should be visible, and clicking one should open the
-   dialog rather than the browser's prompt. Cancel should leave the offer
-   intact, so a second click opens the dialog again.
+4. The install banner should appear at the top. Its **×** should be remembered
+   across a reload. The quieter controls should open the dialog rather than the
+   browser's prompt, and Cancel should leave the offer intact.
 
 ## Regenerating the icons
 

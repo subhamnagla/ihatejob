@@ -185,15 +185,26 @@ print.
 
 ## Install it as an app
 
-The site is a PWA. Install controls appear in four places — the toolbar, the
-mobile menu, a card in the share section, and the builder's *More* menu — all
-sharing one `data-install` contract in `public/js/pwa.js`, and all appearing
-only when the browser genuinely offers an install.
+The site is a PWA. A **banner appears at the top of the page on arrival**
+offering the install, and there are quieter controls for anyone who dismisses it
+— the toolbar, the mobile menu, a card in the share section, and the builder's
+*More* menu — all sharing one `data-install` contract in `public/js/pwa.js`, and
+all appearing only when the browser genuinely offers an install.
 
-Clicking one opens a dialog with **Cancel** and **Install** rather than firing
-the browser's prompt immediately. The prompt can only be shown once, so someone
-who taps to find out what installing means should be able to read that and back
-out without spending it. Cancel takes focus, not Install.
+The banner has an **×**, and dismissing it is remembered: it will not reappear
+for 30 days, and turning down the browser's own prompt counts as the same
+answer. It sits in the page flow rather than over it, so it pushes the nav down
+instead of covering it, and inside the builder it is a flex child of the app
+shell so the workspace shrinks around it.
+
+The quieter controls open a dialog with **Cancel** and **Install** rather than
+firing the browser's prompt immediately. The prompt can only be shown once, so
+someone who taps a bare "Install the app" menu item to find out what it means
+should be able to read that and back out without spending it. Cancel takes
+focus, not Install.
+
+The banner skips the dialog, because it already says what installing does —
+its Install goes straight to the browser's prompt.
 
 On iOS Safari, which has no install API at all, the same dialog shows the three
 Share-sheet taps instead, with the Install button removed — there is nothing for
