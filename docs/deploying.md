@@ -60,12 +60,18 @@ Everything is in [`vercel.json`](../vercel.json). There is no build step — the
 
 The site is a PWA, so it installs from the browser with no app store.
 
-**Android / Chrome / Edge / desktop** — an **Install app** button appears in the
-toolbar when the browser offers it. It stays hidden otherwise, because a button
-that does nothing is worse than no button.
+**Android / Chrome / Edge / desktop** — install controls appear in the toolbar,
+the mobile menu, the share section and the builder's *More* menu when the
+browser offers it. They stay hidden otherwise, because a control that does
+nothing is worse than no control.
 
-**iPhone / iPad** — Safari has no install prompt. Tap **Share → Add to Home
-Screen**. The button detects iOS Safari and says exactly that.
+Clicking one opens a dialog explaining what installing gives you, with
+**Cancel** and **Install**. The browser's own prompt fires only on Install,
+because it can be shown once and reading about it should not spend it.
+
+**iPhone / iPad** — Safari has no install prompt. The same dialog detects iOS
+and lists the three Share-sheet taps instead, with no Install button, since
+there is nothing for it to call.
 
 Once installed it opens in its own window with no browser chrome, starting at
 `/app`. Long-pressing the icon offers two shortcuts: **Rate my CV** and
@@ -104,7 +110,9 @@ app could keep the old copy indefinitely.
 1. Open the site in Chrome, DevTools → **Application → Manifest**. No warnings.
 2. **Application → Service Workers** shows one activated worker.
 3. Tick **Offline** in that panel and reload — the app should still load.
-4. The **Install app** button should be visible in the toolbar.
+4. The install controls should be visible, and clicking one should open the
+   dialog rather than the browser's prompt. Cancel should leave the offer
+   intact, so a second click opens the dialog again.
 
 ## Regenerating the icons
 

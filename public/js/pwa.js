@@ -1,10 +1,17 @@
-// Install and offline support, shared by the landing page and the builder.
+// Install and offline support, shared by every page.
 //
-// Every install control on the page carries data-install. They all stay hidden
-// until the browser actually offers to install, because a button that does
-// nothing when clicked is worse than no button at all. On iOS, where there is
-// no install event, they appear and explain the Share-sheet route instead of
-// pretending.
+// Every install control carries data-install. They all stay hidden until the
+// browser actually offers to install, because a button that does nothing when
+// clicked is worse than no button at all. On iOS, where there is no install
+// event, they appear and explain the Share-sheet route instead of pretending.
+//
+// Clicking one opens a dialog rather than firing the browser's prompt straight
+// away: the prompt can only be shown once, so someone who taps to find out what
+// installing means should be able to read that and back out with Cancel without
+// spending it.
+//
+// The dialog is built here rather than sitting in three HTML files, so the
+// landing page, the builder and the journeys page cannot drift apart.
 
 const IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches
   || window.navigator.standalone === true;
@@ -15,7 +22,17 @@ const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
 const IS_SAFARI = /safari/i.test(navigator.userAgent)
   && !/chrome|crios|fxios|edgios|opr/i.test(navigator.userAgent);
 
-const IOS_STEPS = 'In Safari, tap the Share button, then "Add to Home Screen".';
+const POINTS = [
+  ['Its own icon', 'on your home screen or app list, like any other app'],
+  ['No browser bar', 'it opens full screen'],
+  ['Works with no signal', 'the builder and your CV are already on the device'],
+  ['Nothing to sign up for', 'no app store, no account, no extra download'],
+];
+
+const ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"'
+  + ' stroke-linecap="round" stroke-linejoin="round">'
+  + '<rect x="6" y="2.5" width="12" height="19" rx="2.6"/>'
+  + '<path d="M12 7v7m0 0-2.6-2.6M12 14l2.6-2.6"/></svg>';
 
 export function initPWA({ onToast } = {}) {
   const say = onToast || (() => {});
@@ -31,7 +48,7 @@ export function initPWA({ onToast } = {}) {
   }
 
   // There can be several: a button in the bar, a row in the mobile menu, a
-  // panel further down the page. They appear and disappear together.
+  // card further down the page. They appear and disappear together.
   const showAll = (on) => {
     document.querySelectorAll('[data-install]').forEach((el) => {
       // A control can nominate a different element to reveal - the one in the
@@ -50,23 +67,91 @@ export function initPWA({ onToast } = {}) {
 
   let deferred = null;
 
-  const install = async () => {
-    if (deferred) {
-      deferred.prompt();
-      const { outcome } = await deferred.userChoice;
-      deferred = null;
-      showAll(false);
-      if (outcome === 'dismissed') say('No problem - it works the same in the browser.');
+  /* --- the dialog -------------------------------------------------------- */
+
+  let dialog = null;
+  let lastFocus = null;
+
+  function build() {
+    if (dialog) return dialog;
+    dialog = document.createElement('div');
+    dialog.className = 'modal-backdrop';
+    dialog.id = 'installModal';
+    dialog.innerHTML = '<div class="modal install-modal" role="dialog" aria-modal="true"'
+      + ' aria-labelledby="installTitle">'
+      + '<div class="install-head">'
+      + '<span class="install-mark" aria-hidden="true">' + ICON + '</span>'
+      + '<div><h2 id="installTitle">Install ihatejob</h2>'
+      + '<p class="install-sub"></p></div>'
+      + '</div>'
+      + '<ul class="install-points">' + POINTS.map(([b, rest]) => (
+        '<li><b>' + b + '</b> &mdash; ' + rest + '</li>'
+      )).join('') + '</ul>'
+      + '<ol class="install-steps" hidden>'
+      + '<li>Tap the <b>Share</b> button in Safari&rsquo;s toolbar.</li>'
+      + '<li>Scroll down and choose <b>Add to Home Screen</b>.</li>'
+      + '<li>Tap <b>Add</b>.</li>'
+      + '</ol>'
+      + '<div class="modal-actions">'
+      + '<button class="btn" type="button" data-install-cancel>Cancel</button>'
+      + '<button class="btn btn-primary" type="button" data-install-go>Install</button>'
+      + '</div></div>';
+    document.body.appendChild(dialog);
+
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog || e.target.closest('[data-install-cancel]')) close();
+      else if (e.target.closest('[data-install-go]')) accept();
+    });
+    return dialog;
+  }
+
+  function close() {
+    if (!dialog) return;
+    dialog.classList.remove('open');
+    if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
+    lastFocus = null;
+  }
+
+  function open() {
+    const el = build();
+    // Chrome can install; iOS Safari cannot be asked, only told how.
+    const iosRoute = !deferred && IS_IOS;
+    el.querySelector('.install-sub').textContent = iosRoute
+      ? 'Safari does not have an install button, but it can still do this in three taps.'
+      : 'Keeps a copy on your device. It stays the same site, with the same data.';
+    el.querySelector('.install-points').hidden = iosRoute;
+    el.querySelector('.install-steps').hidden = !iosRoute;
+    el.querySelector('[data-install-go]').hidden = iosRoute;
+    el.querySelector('[data-install-cancel]').textContent = iosRoute ? 'Got it' : 'Cancel';
+
+    lastFocus = document.activeElement;
+    el.classList.add('open');
+    // Cancel takes focus, not Install: nothing here should be one stray Enter
+    // away from happening.
+    el.querySelector('[data-install-cancel]').focus();
+  }
+
+  async function accept() {
+    if (!deferred) {
+      close();
+      say('Your browser did not offer to install this one. It works the same in a tab.');
       return;
     }
-    if (IS_IOS) { say(IOS_STEPS); return; }
-    // Only reachable if a control was shown without an offer behind it.
-    say('Your browser does not offer to install this one. It works the same in a tab.');
-  };
+    const offer = deferred;
+    deferred = null;
+    close();
+    offer.prompt();
+    const { outcome } = await offer.userChoice;
+    showAll(false);
+    if (outcome === 'dismissed') say('No problem - it works the same in the browser.');
+  }
 
   // Delegated, so a control rendered later still works.
   document.addEventListener('click', (e) => {
-    if (e.target.closest('[data-install]')) { e.preventDefault(); install(); }
+    if (e.target.closest('[data-install]')) { e.preventDefault(); open(); }
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && dialog && dialog.classList.contains('open')) close();
   });
 
   /* --- Chrome, Edge, Android --------------------------------------------- */
@@ -78,6 +163,7 @@ export function initPWA({ onToast } = {}) {
 
   window.addEventListener('appinstalled', () => {
     deferred = null;
+    close();
     showAll(false);
     say('Installed. It opens from your home screen or app list, and works offline.');
   });

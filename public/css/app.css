@@ -1339,6 +1339,52 @@ textarea.input { resize: vertical; line-height: 1.5; }
 .modal li b { color: var(--text); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
+/* ------------------------------------------------------- install dialog */
+
+/* Built by pwa.js rather than sitting in three HTML files. */
+.install-modal { width: min(430px, 100%); }
+.install-head { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
+.install-head h2 { margin: 0 0 4px; }
+.install-sub { margin: 0 !important; line-height: 1.55; }
+/* Scoped: site.css defines .install-mark for the card in the share section and
+   loads after this file, so an unscoped rule here would lose to it. */
+.install-modal .install-mark {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  background: var(--brand-wash);
+  color: var(--brand);
+}
+.install-modal .install-mark svg { width: 23px; height: 23px; }
+
+.install-points { list-style: none; margin: 0 0 20px; padding: 0; }
+.install-points li {
+  position: relative;
+  padding-left: 22px;
+  margin-bottom: 9px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.install-points li::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--brand);
+}
+.install-points b { color: var(--text); font-weight: 600; }
+
+.install-steps { margin: 0 0 20px; padding-left: 20px; }
+.install-steps li { color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+.install-steps b { color: var(--text); }
+
 /* ------------------------------------------------------------ mobile bar */
 
 /* Below 900px this replaces the Edit/Preview toggle and the CV/Letter/Check

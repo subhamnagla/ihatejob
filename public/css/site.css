@@ -32,7 +32,11 @@ body {
   border-bottom: 1.5px solid transparent;
 }
 .nav-links a:hover { color: var(--text); border-bottom-color: var(--brand); }
-.nav-actions { display: flex; align-items: center; gap: 8px; }
+
+/* margin-left:auto, not a reliance on .nav-links growing - those links are
+   display:none below 900px, which left nothing pushing the controls right and
+   stranded 60px of blank space past the last button. */
+.nav-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 
 .nav-cta .cta-short { display: none; }
 

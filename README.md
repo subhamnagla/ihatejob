@@ -185,10 +185,22 @@ print.
 
 ## Install it as an app
 
-The site is a PWA. An **Install app** button appears in the toolbar where the
-browser supports it; on iOS Safari it is **Share → Add to Home Screen**. Once
-installed it runs in its own window, starts at the builder, offers *Rate my CV*
-and *Build a CV* as icon shortcuts, and works with no network at all.
+The site is a PWA. Install controls appear in four places — the toolbar, the
+mobile menu, a card in the share section, and the builder's *More* menu — all
+sharing one `data-install` contract in `public/js/pwa.js`, and all appearing
+only when the browser genuinely offers an install.
+
+Clicking one opens a dialog with **Cancel** and **Install** rather than firing
+the browser's prompt immediately. The prompt can only be shown once, so someone
+who taps to find out what installing means should be able to read that and back
+out without spending it. Cancel takes focus, not Install.
+
+On iOS Safari, which has no install API at all, the same dialog shows the three
+Share-sheet taps instead, with the Install button removed — there is nothing for
+it to call.
+
+Once installed it runs in its own window, starts at the builder, offers *Rate my
+CV* and *Build a CV* as icon shortcuts, and works with no network at all.
 
 ## Deploying
 
