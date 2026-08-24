@@ -1,6 +1,6 @@
 # The admin panel
 
-Moderate reviews, write blog posts, read feedback, and check the site's own
+Moderate reviews and job journeys, read feedback, and check the site's own
 setup. Protected by a username and password you choose, at an address you
 choose.
 
@@ -49,7 +49,7 @@ It says so rather than failing silently when you press Save.
 ## How saving works
 
 There is no database. The repository is the store: pressing **Save** commits
-`public/data/reviews.json` or `public/data/posts.json` back to GitHub, and
+`public/data/reviews.json` or `public/data/stories.json` back to GitHub, and
 Vercel redeploys. About a minute from Save to live.
 
 Slower than a database, and worth it — every change is a commit, so you can see
@@ -93,20 +93,40 @@ by `MIN_REVIEWS` in `public/js/config.js`.
 to be quoted and how they want to be credited. If they said no, *Add as review*
 warns you before it does anything. Their GitHub username is not consent.
 
-## Blog
+## Job journeys
 
-Posts live at `/blog` and `/blog/<slug>`. Drafts stay off both until
+Journeys live at `/stories` and `/stories/<slug>`. Drafts stay off both until
 **Published** is ticked.
+
+**Journeys people sent** is the queue. *Add as journey* pulls one in as a draft,
+carrying the headline, the outcome badge, the credit and the text. As with
+reviews, it warns you first if the person did not agree to publishing.
+
+**Issue number** is the field that matters most. It wires the published page to
+its GitHub thread, and that thread is the entire backend for the social side:
+
+- the like count is the real reactions on that issue
+- the replies under the journey are its real comments, read-only
+- **Add a reply** sends people to the thread, where their own account is who
+  they are
+
+*Add as journey* fills it in for you. Leave it blank on a journey you wrote
+yourself and the page simply has no likes and no replies, which is honest — there
+is nowhere for them to come from.
+
+Counts vanish rather than showing zero when GitHub rate-limits the request. An
+absent number is true; a zero would not be.
 
 Body accepts a small amount of Markdown: `## headings`, `**bold**`, `*italic*`,
 `` `code` ``, ```` ``` ```` fenced blocks, `> quotes`, `- lists`, `1. lists`,
 `---`, and `[links](https://example.com)`.
 
 Links are restricted to `http`, `https` and root-relative paths, and everything
-is escaped before any markup is added, so a post cannot inject script.
+is escaped before any markup is added. That matters twice over here: the replies
+under a journey are written by strangers and go through the same renderer.
 
 The slug is generated from the title only while it is still the generated one,
-so renaming a published post never silently breaks its URL.
+so renaming a published journey never silently breaks its URL.
 
 ## What it cannot show you
 

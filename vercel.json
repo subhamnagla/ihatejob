@@ -13,13 +13,17 @@
       "destination": "/admin.html"
     },
     {
-      "source": "/blog",
-      "destination": "/blog.html"
+      "source": "/stories",
+      "destination": "/stories.html"
     },
     {
-      "source": "/blog/:slug",
-      "destination": "/blog.html"
+      "source": "/stories/:slug",
+      "destination": "/stories.html"
     }
+  ],
+  "redirects": [
+    { "source": "/blog", "destination": "/stories", "permanent": true },
+    { "source": "/blog/:slug", "destination": "/stories", "permanent": true }
   ],
   "headers": [
     {

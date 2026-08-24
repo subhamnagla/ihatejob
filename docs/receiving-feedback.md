@@ -29,6 +29,7 @@ Filter by what you care about:
 | Link | Shows |
 | --- | --- |
 | `/issues?q=is:open+label:review` | Reviews from users |
+| `/issues?q=is:open+label:story` | Job journeys people wrote up |
 | `/issues?q=is:open+label:profession` | Missing or wrong professions |
 | `/issues?q=is:open+label:region` | Regional rules to fix |
 | `/issues?q=is:open+label:template` | New format requests |
@@ -44,6 +45,7 @@ once, after creating the repository:
 
 ```bash
 gh label create review      --color 0E8A16 --description "Feedback from someone who used it"
+gh label create story       --color 8250DF --description "A job journey written up by a visitor"
 gh label create profession  --color 1D76DB --description "A profession pack to add or fix"
 gh label create region      --color 5319E7 --description "Regional CV conventions"
 gh label create template    --color FBCA04 --description "A new CV format"
@@ -126,6 +128,27 @@ The licence check caught a gap I had not noticed in four years.
 
 An issue written by hand misses those lines and is marked *written by hand* in
 the admin rather than being guessed at.
+
+## Journeys are different: the issue stays alive
+
+A review is lifted out of its issue and the issue is done. A **journey** keeps
+its issue for good, because that thread is what the published page uses for its
+likes and replies — the reaction count and the comments under `/stories/<slug>`
+are read live from it.
+
+So do not delete or lock a journey's issue after publishing it. If you do, the
+page loses its replies. Closing it is fine; comments still work on a closed
+issue.
+
+Journeys carry the same shape of header:
+
+```
+Outcome: Offer at an NHS trust
+Credit: Asha R - Staff nurse, Leeds
+May be published on the site: yes
+
+...the journey itself
+```
 
 ## Checking it works before launch
 

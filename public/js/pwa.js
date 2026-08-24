@@ -1,16 +1,24 @@
 // Install and offline support, shared by the landing page and the builder.
 //
-// The install button only appears when the browser actually offers to install:
-// a button that does nothing when clicked is worse than no button. On iOS,
-// where there is no install event at all, it explains the Share-sheet route
-// instead of pretending.
+// Every install control on the page carries data-install. They all stay hidden
+// until the browser actually offers to install, because a button that does
+// nothing when clicked is worse than no button at all. On iOS, where there is
+// no install event, they appear and explain the Share-sheet route instead of
+// pretending.
 
 const IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches
   || window.navigator.standalone === true;
 
+const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
+  // iPadOS 13+ reports itself as a Mac; a touch point gives it away.
+  || (/macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+const IS_SAFARI = /safari/i.test(navigator.userAgent)
+  && !/chrome|crios|fxios|edgios|opr/i.test(navigator.userAgent);
+
+const IOS_STEPS = 'In Safari, tap the Share button, then "Add to Home Screen".';
+
 export function initPWA({ onToast } = {}) {
   const say = onToast || (() => {});
-  const btn = document.getElementById('btnInstall');
 
   /* --- service worker ---------------------------------------------------- */
   // file:// has no service worker support, and neither do some private modes.
@@ -22,39 +30,58 @@ export function initPWA({ onToast } = {}) {
     });
   }
 
-  if (!btn || IS_STANDALONE) return;   // already installed: nothing to offer
+  // There can be several: a button in the bar, a row in the mobile menu, a
+  // panel further down the page. They appear and disappear together.
+  const showAll = (on) => {
+    document.querySelectorAll('[data-install]').forEach((el) => {
+      // A control can nominate a different element to reveal - the one in the
+      // mobile menu needs its whole row shown, not just the button.
+      const target = el.dataset.installShow
+        ? document.getElementById(el.dataset.installShow) || el
+        : el;
+      target.hidden = !on;
+    });
+  };
 
-  /* --- Chrome, Edge, Android --------------------------------------------- */
+  if (IS_STANDALONE) {         // already installed: nothing left to offer
+    showAll(false);
+    return;
+  }
+
   let deferred = null;
 
+  const install = async () => {
+    if (deferred) {
+      deferred.prompt();
+      const { outcome } = await deferred.userChoice;
+      deferred = null;
+      showAll(false);
+      if (outcome === 'dismissed') say('No problem - it works the same in the browser.');
+      return;
+    }
+    if (IS_IOS) { say(IOS_STEPS); return; }
+    // Only reachable if a control was shown without an offer behind it.
+    say('Your browser does not offer to install this one. It works the same in a tab.');
+  };
+
+  // Delegated, so a control rendered later still works.
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-install]')) { e.preventDefault(); install(); }
+  });
+
+  /* --- Chrome, Edge, Android --------------------------------------------- */
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();          // keep the browser's own mini-bar out of the way
     deferred = e;
-    btn.hidden = false;
+    showAll(true);
   });
 
   window.addEventListener('appinstalled', () => {
     deferred = null;
-    btn.hidden = true;
+    showAll(false);
     say('Installed. It opens from your home screen or app list, and works offline.');
   });
 
-  btn.addEventListener('click', async () => {
-    if (!deferred) return;
-    deferred.prompt();
-    const { outcome } = await deferred.userChoice;
-    deferred = null;
-    btn.hidden = true;
-    if (outcome === 'dismissed') say('No problem - it works the same in the browser.');
-  });
-
   /* --- iOS Safari, which has no install event ---------------------------- */
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const isSafari = /safari/i.test(navigator.userAgent) && !/chrome|crios|fxios/i.test(navigator.userAgent);
-  if (isIOS && isSafari) {
-    btn.hidden = false;
-    btn.addEventListener('click', () => {
-      say('In Safari, tap the Share button, then "Add to Home Screen".');
-    });
-  }
+  if (IS_IOS && IS_SAFARI) showAll(true);
 }

@@ -25,7 +25,13 @@ createServer(async (req, res) => {
     // "/" is the landing page; "/app" is the builder.
     if (rel === '/app' || rel === '/app/') rel = '/app.html';
     if (rel === '/admin' || rel === '/admin/') rel = '/admin.html';
-    if (rel === '/blog' || rel.startsWith('/blog/')) rel = '/blog.html';
+    // /blog was the old name for this section. Keep existing links working.
+    if (rel === '/blog' || rel.startsWith('/blog/')) {
+      res.writeHead(301, { Location: '/stories' });
+      res.end();
+      return;
+    }
+    if (rel === '/stories' || rel.startsWith('/stories/')) rel = '/stories.html';
     if (rel.endsWith('/')) rel += 'index.html';
     // join + the prefix check below is what actually contains traversal
     const file = join(ROOT, normalize(rel));

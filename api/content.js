@@ -15,7 +15,7 @@
 
 const FILES = {
   reviews: 'public/data/reviews.json',
-  posts: 'public/data/posts.json',
+  stories: 'public/data/stories.json',
 };
 
 const API = 'https://api.github.com';

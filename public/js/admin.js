@@ -38,7 +38,7 @@ const REPO_READY = Boolean(OWNER && REPO && !/your-username/.test(OWNER));
 
 const store = {
   reviews: { items: [], sha: null, dirty: false, canSave: true, note: '' },
-  posts: { items: [], sha: null, dirty: false, canSave: true, note: '' },
+  stories: { items: [], sha: null, dirty: false, canSave: true, note: '' },
 };
 
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -111,13 +111,14 @@ renderHealth();
 
 /* ------------------------------------------------------------------- inbox */
 
-// `review` is not in this list: reviews have their own block above, and having
-// them in both turned the to-do list into a place to lose things.
+// `review` and `story` are not in this list: both have their own block, and
+// having them in two places turned the to-do list into somewhere to lose them.
 const LABELS = ['profession', 'region', 'template', 'checker', 'bug', 'enhancement'];
 let ISSUES = [];
 let filter = 'all';
 
 const isReview = (i) => i.labelNames.includes('review');
+const isStory = (i) => i.labelNames.includes('story');
 
 // The issue template is a list of questions; the answer is the first line
 // that is not one of them.
@@ -164,13 +165,38 @@ function issueHead(i) {
     + '</div>';
 }
 
+// The journey form writes the same shape of header as the review form, minus
+// the planet and plus how it ended.
+function parseStory(body) {
+  const text = String(body || '');
+  const outcome = ((text.match(/^Outcome:\s*(.+)$/im) || [])[1] || '').trim();
+  const credit = ((text.match(/^Credit:\s*(.+)$/im) || [])[1] || '').trim();
+  const consented = /^May be published on the site:\s*yes\b/im.test(text);
+  const known = /^Outcome:/im.test(text);
+
+  const blocks = text.replace(/\r/g, '').split(/\n\s*\n/);
+  const story = known && blocks.length > 1 ? blocks.slice(1).join('\n\n').trim() : text.trim();
+
+  const [rawName, ...rest] = credit.split(' - ');
+  const name = (rawName || '').trim();
+  return {
+    outcome: /^not said$/i.test(outcome) ? '' : outcome,
+    name: name.toLowerCase() === 'anonymous' ? '' : name,
+    role: rest.join(' - ').trim(),
+    consented,
+    known,
+    body: story,
+  };
+}
+
 function renderInbox() {
-  const all = ISSUES.filter((i) => !isReview(i));
+  const all = ISSUES.filter((i) => !isReview(i) && !isStory(i));
   const filtered = filter === 'all' ? all : all.filter((i) => i.labelNames.includes(filter));
 
   if (!all.length) {
     $('inboxBody').innerHTML = '<p class="admin-muted">Nothing yet. Suggestions and bug reports '
-      + 'from the site arrive here as GitHub issues. Reviews go to the block above.</p>';
+      + 'from the site arrive here as GitHub issues. Reviews and journeys have their own '
+      + 'blocks.</p>';
     return;
   }
   if (!filtered.length) {
@@ -269,12 +295,98 @@ $('reviewboxBody').addEventListener('click', (e) => {
   toast('Added, hidden for now. Tidy the quote and the credit, then Show and Save.');
 });
 
+/* -------------------------------------------------------- journeys waiting */
+
+const slugify = (t) => String(t).toLowerCase().trim()
+  .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+
+function renderStoryBox() {
+  const body = $('storyboxBody');
+  if (!REPO_READY) {
+    body.innerHTML = '<p class="admin-muted">No repository configured, so there is nowhere for '
+      + 'journeys to arrive.</p>';
+    return;
+  }
+
+  const items = ISSUES.filter(isStory);
+  if (!items.length) {
+    body.innerHTML = '<p class="admin-muted">Nothing yet. Journeys sent from <code>/stories</code> '
+      + 'arrive here as issues labelled <code>story</code>.</p>';
+    return;
+  }
+
+  body.innerHTML = items.map((i) => {
+    const s = parseStory(i.body);
+    const added = store.stories.items.some((x) => x.issue === i.number);
+    const likes = (i.reactions && (i.reactions['+1'] || 0) + (i.reactions.heart || 0)) || 0;
+
+    return '<article class="issue' + (i.state === 'closed' ? ' closed' : '') + '">'
+      + issueHead(i)
+      + '<div class="issue-labels">'
+      + (s.outcome ? '<span class="lbl l-review">' + esc(s.outcome) + '</span>' : '')
+      + (s.known
+        ? (s.consented
+          ? '<span class="lbl l-planet">may be published</span>'
+          : '<span class="lbl l-bad">did not agree to publishing</span>')
+        : '<span class="lbl l-none">written by hand</span>')
+      + '<span class="lbl">' + likes + ' likes &middot; ' + (i.comments || 0) + ' replies</span>'
+      + '</div>'
+      + (s.body ? '<p class="issue-body">' + esc(s.body.slice(0, 320))
+        + (s.body.length > 320 ? '&hellip;' : '') + '</p>' : '')
+      + '<button class="btn btn-sm" data-addstory="' + i.number + '"'
+      + (added ? ' disabled' : '') + '>'
+      + (added ? 'Already in the list' : 'Add as journey') + '</button>'
+      + '</article>';
+  }).join('');
+}
+
+$('storyboxBody').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-addstory]');
+  if (!btn) return;
+  const issue = ISSUES.find((i) => String(i.number) === btn.dataset.addstory);
+  if (!issue) return;
+  if (store.stories.items.some((s) => s.issue === issue.number)) {
+    toast('That one is already in the journey list.');
+    return;
+  }
+  const parsed = parseStory(issue.body);
+  if (parsed.known && !parsed.consented
+    && !confirm('This person did not agree to have this published.\n\n'
+      + 'Add it anyway? It arrives as a draft either way.')) {
+    return;
+  }
+  // "Story: " is the prefix the form adds; the headline is what follows it.
+  const title = issue.title.replace(/^\s*story:\s*/i, '').trim() || 'Untitled journey';
+  store.stories.items.unshift({
+    id: uid(),
+    title,
+    slug: slugify(title) || 'journey-' + issue.number,
+    date: String(issue.created_at || '').slice(0, 10),
+    outcome: parsed.outcome,
+    name: parsed.name || (issue.user && issue.user.login ? issue.user.login : ''),
+    role: parsed.role,
+    place: '',
+    excerpt: '',
+    body: parsed.body,
+    // Keeping the issue number is what wires the published page to the real
+    // likes and replies. Without it the page has neither.
+    issue: issue.number,
+    published: false,
+  });
+  markDirty('stories');
+  renderStoriesEditor();
+  renderStoryBox();
+  $('stories').scrollIntoView({ behavior: 'smooth' });
+  toast('Added as a draft. Write an excerpt, check the text, then tick Published and Save.');
+});
+
 async function loadInbox() {
   if (!REPO_READY) {
     $('inboxBody').innerHTML = '<p class="admin-muted">No repository configured, so there is '
       + 'nowhere for feedback to arrive.</p>';
     $('inboxFilter').innerHTML = '';
     renderReviewBox();
+    renderStoryBox();
     return;
   }
   try {
@@ -287,7 +399,7 @@ async function loadInbox() {
     ISSUES = raw.filter((i) => !i.pull_request)
       .map((i) => ({ ...i, labelNames: (i.labels || []).map((l) => l.name) }));
 
-    const others = ISSUES.filter((i) => !isReview(i));
+    const others = ISSUES.filter((i) => !isReview(i) && !isStory(i));
     const counts = { all: others.length };
     LABELS.forEach((l) => { counts[l] = others.filter((i) => i.labelNames.includes(l)).length; });
 
@@ -297,11 +409,13 @@ async function loadInbox() {
     )).join('');
     renderInbox();
     renderReviewBox();
+    renderStoryBox();
   } catch (err) {
     const msg = '<p class="admin-muted">Could not read GitHub: ' + esc(err.message)
       + '. The public API allows 60 requests an hour per address.</p>';
     $('inboxBody').innerHTML = msg;
     $('reviewboxBody').innerHTML = msg;
+    $('storyboxBody').innerHTML = msg;
   }
 }
 
@@ -501,7 +615,7 @@ async function loadContent(key, fallbackUrl) {
 
 async function saveContent(key, label) {
   const s = store[key];
-  const state = $(key === 'reviews' ? 'rvState' : 'pbState');
+  const state = $(key === 'reviews' ? 'rvState' : 'stState');
   if (!s.canSave) {
     toast('Saving is not configured: ' + (s.note || 'set GITHUB_TOKEN and GITHUB_REPO'));
     return;
@@ -527,7 +641,7 @@ async function saveContent(key, label) {
 
 function markDirty(key) {
   store[key].dirty = true;
-  $(key === 'reviews' ? 'rvState' : 'pbState').textContent = 'Unsaved changes';
+  $(key === 'reviews' ? 'rvState' : 'stState').textContent = 'Unsaved changes';
 }
 
 // Typing must not rebuild the list, or focus is lost on every keystroke. Only
@@ -659,26 +773,24 @@ $('rvAdd').addEventListener('click', () => {
 });
 $('rvSave').addEventListener('click', () => saveContent('reviews', 'reviews'));
 
-/* ------------------------------------------------------------- blog editor */
+/* ---------------------------------------------------------- journey editor */
 
-const slugify = (t) => String(t).toLowerCase().trim()
-  .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
-
-function renderPostsEditor() {
-  const items = store.posts.items;
-  const list = $('pbList');
+function renderStoriesEditor() {
+  const items = store.stories.items;
+  const list = $('stList');
   const live = items.filter((p) => p.published).length;
 
-  if (!store.posts.canSave) $('pbState').textContent = 'Read only';
-  else if (!store.posts.dirty) $('pbState').textContent = '';
+  if (!store.stories.canSave) $('stState').textContent = 'Read only';
+  else if (!store.stories.dirty) $('stState').textContent = '';
 
   const banner = '<p class="admin-muted" style="margin-bottom:14px"><b>' + live
     + '</b> published of ' + items.length + '.'
-    + (store.posts.canSave ? '' : ' <b>Read only</b> &mdash; ' + esc(store.posts.note))
+    + (store.stories.canSave ? '' : ' <b>Read only</b> &mdash; ' + esc(store.stories.note))
     + '</p>';
 
   if (!items.length) {
-    list.innerHTML = banner + '<p class="admin-muted">No posts yet.</p>';
+    list.innerHTML = banner + '<p class="admin-muted">Nothing here yet. Use <b>Add as journey</b> '
+      + 'on one above, or <b>Write one</b>.</p>';
     return;
   }
 
@@ -689,7 +801,7 @@ function renderPostsEditor() {
     + '<b>' + esc(p.title || 'Untitled') + '</b>'
     + (p.published ? '<span class="tag-on">published</span>' : '<span class="tag-off">draft</span>')
     + '<span class="spacer"></span>'
-    + '<a class="btn btn-sm" href="/blog/' + esc(p.slug || '') + '" target="_blank" rel="noopener">View</a>'
+    + '<a class="btn btn-sm" href="/stories/' + esc(p.slug || '') + '" target="_blank" rel="noopener">View</a>'
     + '<button class="btn btn-sm btn-icon" data-act="up" type="button" aria-label="Move up">&#9650;</button>'
     + '<button class="btn btn-sm btn-icon" data-act="down" type="button" aria-label="Move down">&#9660;</button>'
     + '<button class="btn btn-sm btn-icon btn-danger" data-act="del" type="button" aria-label="Delete">&#10005;</button>'
@@ -704,6 +816,18 @@ function renderPostsEditor() {
     + '<div class="field s6" style="display:flex;align-items:flex-end">'
     + '<label class="check"><input type="checkbox" data-k="published"'
     + (p.published ? ' checked' : '') + '><span>Published</span></label></div>'
+    + '<div class="field s4"><label>Name</label>'
+    + '<input class="input" data-k="name" value="' + esc(p.name || '') + '"></div>'
+    + '<div class="field s4"><label>Role</label>'
+    + '<input class="input" data-k="role" value="' + esc(p.role || '') + '"></div>'
+    + '<div class="field s4"><label>Place</label>'
+    + '<input class="input" data-k="place" value="' + esc(p.place || '') + '"></div>'
+    + '<div class="field s6"><label>How it ended (the badge)</label>'
+    + '<input class="input" data-k="outcome" value="' + esc(p.outcome || '') + '"'
+    + ' placeholder="e.g. Offer at an NHS trust"></div>'
+    + '<div class="field s6"><label>Issue number (likes and replies)</label>'
+    + '<input class="input" type="number" min="1" data-k="issue" value="'
+    + (p.issue || '') + '" placeholder="e.g. 42"></div>'
     + '<div class="field"><label>Excerpt</label>'
     + '<textarea class="input" rows="2" data-k="excerpt">' + esc(p.excerpt || '') + '</textarea></div>'
     + '<div class="field"><label>Body (Markdown)</label>'
@@ -712,30 +836,34 @@ function renderPostsEditor() {
   )).join('');
 }
 
-bindFields($('pbList'), 'posts', renderPostsEditor);
+bindFields($('stList'), 'stories', renderStoriesEditor);
 
-$('pbAdd').addEventListener('click', () => {
-  store.posts.items.unshift({
+$('stAdd').addEventListener('click', () => {
+  store.stories.items.unshift({
     id: uid(),
-    title: 'Untitled post',
+    title: 'Untitled journey',
     slug: 'untitled-' + uid(),
     date: new Date().toISOString().slice(0, 10),
+    outcome: '',
+    name: '',
+    role: '',
+    place: '',
     excerpt: '',
     body: '',
     published: false,
   });
-  markDirty('posts');
-  renderPostsEditor();
+  markDirty('stories');
+  renderStoriesEditor();
 });
-$('pbSave').addEventListener('click', () => saveContent('posts', 'blog posts'));
+$('stSave').addEventListener('click', () => saveContent('stories', 'journeys'));
 
 // A slug is derived from the title only while it is still the generated one,
-// so renaming a published post never silently breaks its URL.
-$('pbList').addEventListener('input', (e) => {
+// so renaming a published journey never silently breaks its URL.
+$('stList').addEventListener('input', (e) => {
   const el = e.target.closest('[data-k="title"]');
   if (!el) return;
   const i = Number(el.closest('[data-i]').dataset.i);
-  const post = store.posts.items[i];
+  const post = store.stories.items[i];
   if (post && /^untitled-/.test(post.slug || '')) {
     post.slug = slugify(el.value) || post.slug;
     const slugField = el.closest('[data-i]').querySelector('[data-k="slug"]');
@@ -745,7 +873,7 @@ $('pbList').addEventListener('input', (e) => {
 
 // Leaving with unsaved edits loses them, since nothing is stored locally.
 window.addEventListener('beforeunload', (e) => {
-  if (store.reviews.dirty || store.posts.dirty) {
+  if (store.reviews.dirty || store.stories.dirty) {
     e.preventDefault();
     e.returnValue = '';
   }
@@ -761,7 +889,7 @@ async function refresh() {
     loadInbox(),
     loadTraffic(),
     loadContent('reviews', '/data/reviews.json').then(renderReviewsEditor),
-    loadContent('posts', '/data/posts.json').then(renderPostsEditor),
+    loadContent('stories', '/data/stories.json').then(renderStoriesEditor),
   ]);
 }
 

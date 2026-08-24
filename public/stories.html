@@ -1,11 +1,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Blog - ihatejob</title>
-<meta name="description" content="Notes on CVs, hiring conventions and what actually gets you read.">
+<title>Job journeys - ihatejob</title>
+<meta name="description" content="Real job hunts, start to finish, written by the people who lived them. What worked, what took months, and what they would do differently.">
+<meta property="og:title" content="Job journeys - ihatejob">
+<meta property="og:description" content="Real job hunts written by the people who lived them.">
+<meta property="og:type" content="website">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#eef1f6" media="(prefers-color-scheme: light)">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ihatejob">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%235b9dff'/%3E%3Cg fill='none' stroke='%230b1220' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='9' width='16' height='10' rx='2'/%3E%3Cpath d='M9.5 9V7.8A1.3 1.3 0 0 1 10.8 6.5h2.4A1.3 1.3 0 0 1 14.5 7.8V9'/%3E%3Cpath d='M12 16.5v-5m0 0-2 2m2-2 2 2'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="stylesheet" href="/css/app.css">
 <link rel="stylesheet" href="/css/site.css">
@@ -33,7 +38,7 @@
     <a href="/#formats">Formats</a>
     <a href="/#professions">Professions</a>
     <a href="/#rating">Rating</a>
-    <a href="/blog">Blog</a>
+    <a href="/stories">Journeys</a>
   </nav>
   <div class="nav-actions">
     <button class="btn btn-icon" id="btnTheme" type="button" aria-label="Switch theme">
@@ -44,12 +49,29 @@
            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
     </button>
-    <a class="btn btn-primary" href="/app">Open the builder</a>
+    <a class="btn btn-primary nav-cta" href="/app">
+      <span class="cta-long">Open the builder</span><span class="cta-short">Build CV</span></a>
+    <button class="btn btn-icon nav-toggle" id="navToggle" type="button"
+            aria-label="Menu" aria-expanded="false" aria-controls="navSheet">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
   </div>
 </header>
 
+<nav class="nav-sheet" id="navSheet" hidden aria-label="Site sections">
+  <a href="/#formats">Formats</a>
+  <a href="/#professions">Professions</a>
+  <a href="/#rating">Rating</a>
+  <a href="/stories">Journeys</a>
+  <a href="#share-yours">Share yours</a>
+  <a href="/#opensource">Open source</a>
+  <button class="sheet-install" id="navSheetInstall" type="button"
+          data-install data-install-show="navSheetInstall" hidden>Install the app</button>
+</nav>
+
 <main class="blog-main">
-  <div class="wrap" id="blogRoot"></div>
+  <div class="wrap" id="storyRoot"></div>
 </main>
 
 <footer class="site-foot">
@@ -57,7 +79,8 @@
     <div><b>ihatejob</b><p>A CV builder that runs entirely in your browser. MIT licensed.</p></div>
     <nav>
       <a href="/app">Builder</a>
-      <a href="/blog">Blog</a>
+      <a href="/stories">Journeys</a>
+      <a href="/#review">Leave a review</a>
       <a href="/#opensource">Contribute</a>
       <a href="/#share">Share</a>
     </nav>
@@ -65,4 +88,4 @@
 </footer>
 
 <div class="toast" id="toast"></div>
-<script type="module" src="/js/blog.js"></script>
+<script type="module" src="/js/stories.js"></script>

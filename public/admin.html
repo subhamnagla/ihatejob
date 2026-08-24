@@ -28,9 +28,10 @@
   </a>
   <nav class="nav-links">
     <a href="#health">Setup</a>
-    <a href="#inbox">Feedback</a>
+    <a href="#reviewbox">Reviews in</a>
+    <a href="#inbox">Issues</a>
     <a href="#reviews">Reviews</a>
-    <a href="#blog">Blog</a>
+    <a href="#stories">Journeys</a>
     <a href="#traffic">Traffic</a>
     <a href="#content">Content</a>
     <a href="#integrity">Integrity</a>
@@ -129,20 +130,30 @@
       <div id="rvList"></div>
     </section>
 
-    <!-- ----------------------------------------------------------------- blog -->
-    <section class="admin-block" id="blog">
+    <!-- ------------------------------------------------------ journeys waiting -->
+    <section class="admin-block" id="storybox">
+      <h2>Journeys people sent</h2>
+      <p class="admin-muted">Job hunts written up by visitors, sent from <code>/stories</code> as
+        issues labelled <code>story</code>. Adding one keeps the issue as its discussion thread,
+        so replies and likes on the published page are the real ones.</p>
+      <div id="storyboxBody"><p class="admin-muted">Loading from GitHub&hellip;</p></div>
+    </section>
+
+    <!-- ------------------------------------------------------------- journeys -->
+    <section class="admin-block" id="stories">
       <div class="admin-head">
-        <h2>Blog</h2>
+        <h2>Journeys on the site</h2>
         <div class="admin-actions">
-          <span class="save-state" id="pbState"></span>
-          <button class="btn btn-sm" id="pbAdd" type="button">New post</button>
-          <button class="btn btn-sm btn-primary" id="pbSave" type="button">Save</button>
+          <span class="save-state" id="stState"></span>
+          <button class="btn btn-sm" id="stAdd" type="button">Write one</button>
+          <button class="btn btn-sm btn-primary" id="stSave" type="button">Save</button>
         </div>
       </div>
-      <p class="admin-muted">Drafts stay off <code>/blog</code> until published. Body accepts
+      <p class="admin-muted">Drafts stay off <code>/stories</code> until published. Body accepts
         Markdown: <code>## heading</code>, <code>**bold**</code>, <code>[link](url)</code>,
-        <code>- list</code>, <code>`code`</code>.</p>
-      <div id="pbList"></div>
+        <code>- list</code>, <code>`code`</code>. <b>Issue number</b> is what wires up the likes
+        and replies &mdash; leave it blank and the page simply has neither.</p>
+      <div id="stList"></div>
     </section>
 
     <!-- -------------------------------------------------------------- traffic -->

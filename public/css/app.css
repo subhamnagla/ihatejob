@@ -223,6 +223,9 @@ a.brand:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; bo
   color: var(--text);
   cursor: pointer;
   white-space: nowrap;
+  /* Several .btn are anchors, and the UA underline was showing through on
+     them - a button with underlined text reads as broken. */
+  text-decoration: none;
   transition: background 0.14s, border-color 0.14s, transform 0.08s;
 }
 .btn:hover { background: var(--hover); border-color: var(--border-hover); }

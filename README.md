@@ -200,8 +200,8 @@ bump the service worker version:
 
 ## Admin
 
-Moderate reviews, write blog posts, read feedback, and check the site's own
-setup. Full guide: **[docs/admin.md](docs/admin.md)**.
+Moderate reviews and journeys, read feedback, and check the site's own setup.
+Full guide: **[docs/admin.md](docs/admin.md)**.
 
 Protected by a username and password checked in
 [`middleware.js`](middleware.js) at the edge, before any file is served — a
@@ -215,10 +215,29 @@ you can revert, and there is no database to run.
 
 It cannot show you anyone's CV or who visited — none of that is collected.
 
-## Blog
+## Job journeys
 
-`/blog`, written from the admin, stored in `public/data/posts.json`. Drafts stay
-unpublished until you tick the box.
+`/stories` is where visitors write up the whole hunt - how many applications,
+how long the silence lasted, what finally got a reply - and other people read
+and reply. It replaced a blog, on the reasoning that nobody comes to a CV tool
+to read us; they come to find out whether any of this worked for anyone.
+
+Someone submits from the form on `/stories`, which opens a public issue labelled
+`story`. You publish it from the admin. **The issue then stays the story's
+discussion thread**, and that is the whole backend for likes and replies:
+
+- The like count is the real `+1` and heart reactions on that issue.
+- The replies shown under a journey are the real comments on it, fetched from
+  the public GitHub API and rendered read-only.
+- Replying goes to the thread, where the person's own account is the identity.
+
+Nothing here is a number we can inflate, no account system exists to build, and
+if GitHub rate-limits the request the counts are simply absent rather than shown
+as zero. Comment bodies come from strangers, so they are escaped before any
+markup is applied and links are restricted to `http(s)` and root-relative paths.
+
+Drafts stay off `/stories` until you tick Published. `/blog` permanently
+redirects here.
 
 ## Before you launch it
 
@@ -317,10 +336,10 @@ public/js/config.js       domain, repo, analytics endpoint, reviews
 public/admin.html         admin dashboard (public data only)
 public/js/admin.js        admin logic: health, GitHub inbox, integrity checks
 middleware.js             edge auth for the admin: password, secret address
-api/content.js            saves reviews and posts back to the repository
-public/blog.html          blog listing and post view
-public/js/blog.js         blog rendering and a small Markdown subset
-public/data/*.json        reviews and posts, edited from the admin
+api/content.js            saves reviews and journeys back to the repository
+public/stories.html       job-journey listing and single-journey view
+public/js/stories.js      journeys, GitHub likes and replies, a small Markdown subset
+public/data/*.json        reviews and journeys, edited from the admin
 public/js/pwa.js          install prompt and service worker registration
 public/sw.js              offline cache
 public/manifest.webmanifest  app identity, icons, shortcuts

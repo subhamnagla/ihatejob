@@ -313,6 +313,45 @@ $('reviewArea').addEventListener('click', (e) => {
   btn.firstChild.textContent = open ? 'Show less' : 'Read more';
 });
 
+/* -------------------------------------------------------------- journeys */
+
+// A teaser for /stories. Shows the three most recent, or the invitation on its
+// own - which is not the same call as the reviews section, where an empty
+// shelf would be advertising an absence rather than asking for something.
+async function renderJourneys() {
+  let items = [];
+  try {
+    const res = await fetch('/data/stories.json', { cache: 'no-cache' });
+    if (res.ok) items = await res.json();
+  } catch { /* the invitation shows on its own */ }
+
+  const live = (Array.isArray(items) ? items : [])
+    .filter((s) => s.published && s.slug && s.title)
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+    .slice(0, 3);
+
+  const cta = '<div class="jn-cta">'
+    + '<a class="btn btn-primary" href="/stories#share-yours">Share your journey</a>'
+    + '<a class="btn" href="/stories">Read all of them</a></div>';
+
+  if (!live.length) {
+    $('journeyArea').innerHTML = '<div class="st-empty"><b>Nobody has written one yet.</b>'
+      + '<p>Yours would be the first. However it went &mdash; the eleven-month ones are worth '
+      + 'more to the next person than the quick ones.</p></div>' + cta;
+    return;
+  }
+
+  $('journeyArea').innerHTML = '<div class="jn-grid">' + live.map((s) => (
+    '<a class="post-card st-card" href="/stories/' + encodeURIComponent(s.slug) + '">'
+    + (s.outcome ? '<span class="st-outcome">' + esc(s.outcome) + '</span>' : '')
+    + '<h3>' + esc(s.title) + '</h3>'
+    + (s.excerpt ? '<p>' + esc(s.excerpt) + '</p>' : '')
+    + '<span class="post-go">' + esc(s.name || 'Anonymous') + ' &rarr;</span>'
+    + '</a>'
+  )).join('') + '</div>' + cta;
+}
+renderJourneys();
+
 /* ------------------------------------------------- the review form itself */
 
 // The rating is the planet, picked here rather than typed as a number. It is

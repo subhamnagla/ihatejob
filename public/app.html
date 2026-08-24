@@ -58,7 +58,7 @@
              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
       </button>
-      <button class="btn" id="btnInstall" type="button" hidden>Install app</button>
+      <button class="btn" id="btnInstall" type="button" data-install hidden>Install app</button>
       <button class="btn" id="btnImport" type="button">Rate my CV</button>
       <button class="btn" id="btnExample" type="button"><span class="label-hide">Load </span>Example</button>
       <button class="btn btn-primary" id="btnPdf" type="button">
@@ -70,6 +70,10 @@
           <a class="menu-item" href="/">
             Home<small>Back to the front page</small>
           </a>
+          <button class="menu-item" id="menuInstall" data-install data-install-show="menuInstall"
+                  type="button" hidden>
+            Install as an app<small>Home-screen icon, opens without the browser bar</small>
+          </button>
           <!-- These two have their own buttons on a wide screen; below 900px the
                bar has no room for them, so this is where they live. -->
           <button class="menu-item narrow-only" data-act="import" type="button">

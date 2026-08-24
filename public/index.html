@@ -41,7 +41,7 @@
     <a href="#professions">Professions</a>
     <a href="#rating">Rating</a>
     <a href="#reviews" id="navReviews" hidden>Reviews</a>
-    <a href="/blog">Blog</a>
+    <a href="/stories">Journeys</a>
     <a href="#opensource">Open source</a>
   </nav>
 
@@ -54,9 +54,12 @@
            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>
     </button>
-    <button class="btn" id="btnInstall" type="button" hidden>Install app</button>
+    <button class="btn" id="btnInstall" type="button" data-install hidden>Install app</button>
     <button class="btn" id="btnShareTop" type="button">Share</button>
-    <a class="btn btn-primary" href="/app">Open the builder</a>
+    <!-- "Open the builder" is 134px, which leaves a 360px bar with 14px to
+         spare. The short label takes over before it gets that tight. -->
+    <a class="btn btn-primary nav-cta" href="/app">
+      <span class="cta-long">Open the builder</span><span class="cta-short">Build CV</span></a>
     <!-- Below 900px the links above collapse. This opens them as a sheet, so a
          phone is not left with a nav bar that has no navigation in it. -->
     <button class="btn btn-icon nav-toggle" id="navToggle" type="button"
@@ -73,9 +76,13 @@
   <a href="#rating">Rating</a>
   <a href="#reviews" id="navSheetReviews" hidden>Reviews</a>
   <a href="#review">Leave a review</a>
-  <a href="/blog">Blog</a>
+  <a href="/stories">Journeys</a>
+  <a href="/stories#share-yours">Share your journey</a>
   <a href="#opensource">Open source</a>
   <a href="#share">Share</a>
+  <!-- Unhidden by pwa.js only when the browser can actually install it. -->
+  <button class="sheet-install" id="navSheetInstall" type="button"
+          data-install data-install-show="navSheetInstall" hidden>Install the app</button>
 </nav>
 
 <main>
@@ -162,6 +169,19 @@
     <div class="wrap">
       <h2 class="section-title">What people say</h2>
       <div id="reviewArea"></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------- journeys -->
+  <!-- Unlike reviews, this band shows even with nothing in it: the invitation
+       is the point, and an empty shelf that says so is honest. -->
+  <section class="site-band" id="journeys">
+    <div class="wrap">
+      <h2 class="section-title">What happened after the CV</h2>
+      <p class="section-lede">A CV is one step. People write up the whole hunt here &mdash; how
+        many applications, how long the silence lasted, what finally got a reply &mdash; and
+        others read it and reply back.</p>
+      <div id="journeyArea"></div>
     </div>
   </section>
 
@@ -287,6 +307,24 @@
       <h2 class="section-title" style="margin-bottom:8px">Know someone job hunting?</h2>
       <p class="section-lede">Free, no account, and their CV never leaves their laptop.</p>
       <div class="share-row" id="shareRow"></div>
+
+      <!-- Hidden until the browser offers an install. On iOS, where there is no
+           install event, it appears and explains the Share-sheet route. -->
+      <div class="install-card" id="installCard" data-install-host hidden>
+        <div class="install-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+               stroke-linecap="round" stroke-linejoin="round">
+            <rect x="6" y="2.5" width="12" height="19" rx="2.6"/>
+            <path d="M12 7v7m0 0-2.6-2.6M12 14l2.6-2.6"/></svg>
+        </div>
+        <div class="install-copy">
+          <b>Keep it on your home screen</b>
+          <p>Installs as an app, opens without the browser bar, and the builder keeps working
+            with no signal.</p>
+        </div>
+        <button class="btn btn-primary" type="button"
+                data-install data-install-show="installCard">Install</button>
+      </div>
       <p class="review-cta">
         Used it yourself?
         <a href="#review" id="btnLeaveReview">Leave a review</a> &mdash; good or bad, it gets published.
@@ -322,7 +360,7 @@
       <a href="#review" id="footReview">Leave a review</a>
       <a href="#suggest">Report an issue</a>
       <a href="#opensource">Contribute</a>
-      <a href="/blog">Blog</a>
+      <a href="/stories">Journeys</a>
       <a href="#share">Share</a>
     </nav>
     <p class="foot-note">No cookies, no third-party scripts, no upload endpoint.</p>
