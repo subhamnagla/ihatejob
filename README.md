@@ -174,6 +174,17 @@ block, summary, roles with dates and locations, and education. If it finds no
 roles it falls through to the generic parser rather than producing a worse
 result.
 
+Real profiles are messier than the shape suggests, and the parser handles what
+one actually contains: headlines that wrap over three lines, a profile URL split
+mid-word, durations printed on their own line, a company named once above
+several roles beneath it, a description whose last word wraps onto a line that
+then looks exactly like the next company, degrees spread over three lines with
+the dates on a fourth, entries the PDF repeats across a page break, and
+"Page 1 of 2" arriving as four separate lines.
+
+`npm test` runs that suite — 31 checks over both LinkedIn routes, including the
+guardrails that stop an ordinary CV being pushed through the LinkedIn parser.
+
 **Their data archive** (Settings → Data privacy → Get a copy of your data) is
 cleaner — real CSV fields, no guessing — but LinkedIn takes 10 minutes to 72
 hours to send it, so it is the second route. Drop the `.zip` in and it reads

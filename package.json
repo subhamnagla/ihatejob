@@ -6,6 +6,7 @@
   "description": "Build a CV standardised for your profession and region, and get it rated - offline, no account, no AI",
   "scripts": {
     "dev": "node server.mjs",
+    "test": "node test/linkedin.mjs",
     "start": "node server.mjs"
   }
 }

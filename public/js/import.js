@@ -64,15 +64,54 @@ export class ImportError extends Error {}
 
 /* ---- .docx: a zip containing word/document.xml -------------------------- */
 
+/**
+ * Inflate, tolerantly.
+ *
+ * A PDF stream is delimited by the `endstream` keyword, but the bytes before it
+ * usually include the writer's end-of-line - and unlike most zlib
+ * implementations, DecompressionStream treats anything after the compressed
+ * data as an error and throws away the whole result. Reading the stream by hand
+ * keeps every chunk that arrived before the complaint, which is all of the real
+ * content. Without this a perfectly readable LinkedIn PDF decoded to nothing.
+ */
 async function inflate(bytes, raw) {
   if (typeof DecompressionStream === 'undefined') return null;
-  try {
-    const stream = new Blob([bytes]).stream()
-      .pipeThrough(new DecompressionStream(raw ? 'deflate-raw' : 'deflate'));
-    return new Uint8Array(await new Response(stream).arrayBuffer());
-  } catch {
-    return null;
+
+  const attempt = async (mode) => {
+    let reader;
+    try {
+      reader = new Blob([bytes]).stream()
+        .pipeThrough(new DecompressionStream(mode))
+        .getReader();
+    } catch {
+      return null;
+    }
+    const parts = [];
+    let size = 0;
+    try {
+      for (;;) {
+        // eslint-disable-next-line no-await-in-loop
+        const { done, value } = await reader.read();
+        if (done) break;
+        parts.push(value);
+        size += value.length;
+      }
+    } catch {
+      // Trailing junk, or a truncated stream. Keep what decoded cleanly.
+    }
+    if (!size) return null;
+    const out = new Uint8Array(size);
+    let at = 0;
+    for (const p of parts) { out.set(p, at); at += p.length; }
+    return out;
+  };
+
+  for (const mode of raw ? ['deflate-raw', 'deflate'] : ['deflate', 'deflate-raw']) {
+    // eslint-disable-next-line no-await-in-loop
+    const out = await attempt(mode);
+    if (out) return out;
   }
+  return null;
 }
 
 /**
@@ -137,9 +176,106 @@ function xmlToText(xml) {
 
 /* ---- PDF: best effort over uncompressed content streams ----------------- */
 
+/* ---- Identity-H fonts: the text is glyph ids, not characters -------------
+ *
+ * A PDF written with subset TrueType fonts (LinkedIn's export, and most things
+ * produced by a browser) stores text as two-byte glyph indices rather than
+ * letters. Reading the strings alone yields control characters, which is why
+ * this used to give up. Every such font carries a /ToUnicode CMap that maps
+ * those indices back, so the fix is to find it and use it.
+ * ---------------------------------------------------------------------- */
+
+const hexToChars = (hex) => {
+  let s = '';
+  for (let i = 0; i + 4 <= hex.length; i += 4) {
+    const code = parseInt(hex.slice(i, i + 4), 16);
+    // 0000 and FFFF are .notdef placeholders, not text.
+    if (code && code !== 0xFFFF) s += String.fromCharCode(code);
+  }
+  // A surrogate pair or a single non-BMP value arrives as 5+ hex digits.
+  if (!s && hex.length && hex.length < 4) {
+    const code = parseInt(hex, 16);
+    if (code) s = String.fromCharCode(code);
+  }
+  return s;
+};
+
+function parseCMap(text) {
+  const map = new Map();
+
+  for (const block of text.match(/beginbfchar([\s\S]*?)endbfchar/g) || []) {
+    const re = /<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/g;
+    let m;
+    while ((m = re.exec(block)) !== null) map.set(parseInt(m[1], 16), hexToChars(m[2]));
+  }
+
+  for (const block of text.match(/beginbfrange([\s\S]*?)endbfrange/g) || []) {
+    const re = /<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*(\[[\s\S]*?\]|<[0-9A-Fa-f]+>)/g;
+    let m;
+    while ((m = re.exec(block)) !== null) {
+      const lo = parseInt(m[1], 16);
+      const hi = parseInt(m[2], 16);
+      if (m[3][0] === '[') {
+        (m[3].match(/<([0-9A-Fa-f]+)>/g) || []).forEach((item, k) => {
+          map.set(lo + k, hexToChars(item.slice(1, -1)));
+        });
+      } else {
+        const base = parseInt(m[3].slice(1, -1), 16);
+        // Guard the loop: a corrupt range could otherwise ask for millions.
+        for (let c = lo; c <= hi && c - lo < 4096; c += 1) {
+          const code = base + (c - lo);
+          if (code && code !== 0xFFFF) map.set(c, String.fromCharCode(code));
+        }
+      }
+    }
+  }
+  return map;
+}
+
+/** The decompressed stream belonging to object `num`, or ''. */
+async function objectStream(bytes, ascii, num) {
+  const at = new RegExp('(?:^|[^0-9])' + num + '\\s+0\\s+obj\\b').exec(ascii);
+  if (!at) return '';
+  const from = at.index;
+  const objEnd = ascii.indexOf('endobj', from);
+  const head = ascii.slice(from, objEnd < 0 ? from + 100000 : objEnd);
+  const sm = /stream\r?\n?/.exec(head);
+  if (!sm) return '';
+  const start = from + sm.index + sm[0].length;
+  const end = ascii.indexOf('endstream', start);
+  if (end < 0) return '';
+  const slice = bytes.subarray(start, end);
+  const out = slice[0] === 0x78 ? await inflate(slice, false) : slice;
+  return out ? latin1(out) : '';
+}
+
+/** { F15: Map(glyphId -> text) } keyed by the resource name used in `Tf`. */
+async function buildCMaps(bytes, ascii) {
+  const refs = {};
+  for (const dict of ascii.match(/\/Font\s*<<([\s\S]{0,2000}?)>>/g) || []) {
+    const re = /\/([A-Za-z0-9]+)\s+(\d+)\s+0\s+R/g;
+    let m;
+    while ((m = re.exec(dict)) !== null) refs[m[1]] = Number(m[2]);
+  }
+
+  const maps = {};
+  for (const [name, num] of Object.entries(refs)) {
+    const at = new RegExp('(?:^|[^0-9])' + num + '\\s+0\\s+obj\\b').exec(ascii);
+    if (!at) continue;
+    const objEnd = ascii.indexOf('endobj', at.index);
+    const dict = ascii.slice(at.index, objEnd < 0 ? at.index + 4000 : objEnd);
+    const tu = dict.match(/\/ToUnicode\s+(\d+)\s+0\s+R/);
+    if (!tu) continue;
+    const parsed = parseCMap(await objectStream(bytes, ascii, Number(tu[1])));
+    if (parsed.size) maps[name] = parsed;
+  }
+  return maps;
+}
+
 async function pdfToText(buffer) {
   const bytes = new Uint8Array(buffer);
   const ascii = latin1(bytes);
+  const cmaps = await buildCMaps(bytes, ascii);
   const chunks = [];
 
   // The leading boundary matters: without it this also matches the "stream"
@@ -157,7 +293,7 @@ async function pdfToText(buffer) {
     re.lastIndex = end;
   }
 
-  const text = chunks.map(extractPdfText).join('\n');
+  const text = chunks.map((c) => extractPdfText(c, cmaps)).join('\n');
   return looksLikeProse(text) ? tidy(text) : '';
 }
 
@@ -171,10 +307,12 @@ function latin1(bytes) {
 }
 
 // Pull the string operands of Tj / TJ / ' / " out of a content stream.
-function extractPdfText(content) {
+function extractPdfText(content, cmaps) {
   if (!/(Tj|TJ)\b/.test(content)) return '';
   let out = '';
   let i = 0;
+  let font = '';        // the resource name from the last `/Fxx ... Tf`
+  let lastName = '';
 
   const readString = () => {
     let depth = 1;
@@ -205,7 +343,45 @@ function extractPdfText(content) {
 
   while (i < content.length) {
     const c = content[i];
+
     if (c === '(') { out += readString(); continue; }
+
+    // A PDF name: remembered so that "/F15 12 Tf" can set the current font.
+    if (c === '/') {
+      let j = i + 1;
+      let name = '';
+      while (j < content.length && /[A-Za-z0-9#+._-]/.test(content[j])) { name += content[j]; j += 1; }
+      lastName = name;
+      i = j;
+      continue;
+    }
+    if (content.startsWith('Tf', i)) { font = lastName; i += 2; continue; }
+
+    // <hex> string: two-byte glyph ids under Identity-H. "<<" is a dictionary.
+    if (c === '<' && content[i + 1] !== '<') {
+      const close = content.indexOf('>', i + 1);
+      if (close < 0) { i += 1; continue; }
+      const hex = content.slice(i + 1, close).replace(/[^0-9A-Fa-f]/g, '');
+      const map = cmaps && cmaps[font];
+      if (map) {
+        for (let k = 0; k + 4 <= hex.length; k += 4) {
+          const glyph = parseInt(hex.slice(k, k + 4), 16);
+          const ch = map.get(glyph);
+          if (ch !== undefined) out += ch;
+        }
+      }
+      i = close + 1;
+      continue;
+    }
+
+    // Inside a TJ array a sufficiently negative kern is a word gap.
+    if (c === '-' && /^-\d/.test(content.slice(i, i + 3))) {
+      const num = /^-\d+(\.\d+)?/.exec(content.slice(i, i + 12));
+      if (num && parseFloat(num[0]) <= -100 && !/\s$/.test(out)) out += ' ';
+      i += num ? num[0].length : 1;
+      continue;
+    }
+
     if (c === 'T' && (content[i + 1] === 'd' || content[i + 1] === 'D' || content[i + 1] === '*')) {
       out += '\n'; i += 2; continue;
     }
@@ -876,7 +1052,18 @@ const LI_MAIN = ['Summary', 'Experience', 'Education', 'Volunteer Experience',
   'Licenses & Certifications', 'Projects'];
 
 const LI_DATE = /^([A-Z][a-z]+ \d{4}|\d{4})\s*[-–—]\s*(Present|[A-Z][a-z]+ \d{4}|\d{4})/;
-const LI_DURATION = /^\(?\d+\s+(year|month)s?(\s+\d+\s+months?)?\)?$/i;
+// "3 years 5 months", "(11 months)" - printed on its own line, sometimes under
+// the company and sometimes under the date.
+const LI_DURATION = /^\(?\s*\d+\s+(year|month)s?(\s+\d+\s+months?)?\s*\)?$/i;
+// "· (July 2017 - July 2021)" - LinkedIn prints education dates on their own
+// line, after a degree that may have wrapped over two or three lines.
+const LI_EDU_DATE = /^[·•*\s]*\(\s*([A-Za-z]*\s*\d{4})\s*[-–—]\s*([A-Za-z]*\s*\d{4}|Present)\s*\)\s*$/;
+
+const looksLocation = (l) => Boolean(l) && l.length < 60 && l.split(',').length >= 2
+  && !/[.;:]$/.test(l) && !LI_DATE.test(l);
+// A company name is short and is not a sentence, a duration or a date.
+const looksCompany = (l) => Boolean(l) && l.length < 60 && !/[.;:|]$/.test(l)
+  && !LI_DURATION.test(l) && !LI_DATE.test(l) && l.split(' ').length < 9;
 
 export function parseLinkedInPdf(text, base) {
   const data = base ? JSON.parse(JSON.stringify(base)) : blankData();
@@ -886,22 +1073,48 @@ export function parseLinkedInPdf(text, base) {
   const lines = String(text)
     .split('\n')
     .map((l) => clean(l))
-    // Page furniture, and the duration LinkedIn prints after every date range.
-    .filter((l) => l && !/^Page \d+ of \d+$/.test(l));
+    // Page furniture. "Page 1 of 2" is laid out as four separate text runs, so
+    // it arrives as four lines - and the stray "1" and "of" then land in
+    // whichever section the page happened to break in.
+    .filter((l) => l && !/^(Page|of|\d{1,3}|Page \d+ of \d+|\d+ of \d+)$/i.test(l));
 
   const heads = new Set([...LI_RAIL, ...LI_MAIN]);
 
   // Name, headline and location print with no heading of their own, directly
   // before the first main-column section. Lift them out first, or they get
   // swallowed by whichever rail section happens to precede them.
+  // The profile URL carries the person's name, which is the only reliable way
+  // to tell where the identity block starts: a headline wraps over any number
+  // of lines, and the left rail's last items sit directly above it. Counting
+  // lines backwards either clipped the headline or swallowed their skills.
+  const urlAt = lines.findIndex((l) => /linkedin\.com\/in\//i.test(l));
+  let slugWords = [];
+  if (urlAt >= 0) {
+    let url = lines[urlAt];
+    if (/-$/.test(url) && lines[urlAt + 1]) url += lines[urlAt + 1];
+    const slug = (url.match(/\/in\/([^/?\s(]+)/) || [])[1] || '';
+    // Drop LinkedIn's disambiguating id, which is sometimes digits
+    // ("-074334145") and sometimes alphanumeric ("-1a2b3c"). Only whole
+    // alphabetic tokens can be part of a name.
+    slugWords = slug.split('-').filter((w) => /^[a-z]{2,}$/i.test(w));
+  }
+  const isNameLine = (l) => slugWords.length > 0
+    && slugWords.every((w) => l.toLowerCase().includes(w));
+
   const mainAt = lines.findIndex((l) => LI_MAIN.includes(l));
   const identity = [];
   let idFrom = mainAt;
   if (mainAt > 0) {
-    for (let i = mainAt - 1; i >= 0 && identity.length < 3; i -= 1) {
+    for (let i = mainAt - 1; i >= 0 && identity.length < 8; i -= 1) {
       if (heads.has(lines[i])) break;
       identity.unshift(lines[i]);
       idFrom = i;
+      if (isNameLine(lines[i])) break;   // the name is the top of the block
+    }
+    // No usable slug: fall back to a name, a one-line headline and a location.
+    if (!slugWords.length && identity.length > 3) {
+      identity.splice(0, identity.length - 3);
+      idFrom = mainAt - 3;
     }
   }
 
@@ -921,10 +1134,19 @@ export function parseLinkedInPdf(text, base) {
 
   const grab = (id) => (blocks.find((b) => b.id === id) || { lines: [] }).lines;
 
-  /* contact rail */
+  /* contact rail. The profile URL is long enough that LinkedIn wraps it, so a
+     line ending in a hyphen continues on the next one. */
+  const contact = [];
   for (const l of grab('Contact')) {
-    if (/@/.test(l) && !data.basics.email) data.basics.email = l.replace(/\s*\(.*\)$/, '');
-    else if (/linkedin\.com\/in\//i.test(l) && !data.basics.linkedin) {
+    if (contact.length && /-$/.test(contact[contact.length - 1])
+      && /linkedin\.com/i.test(contact[contact.length - 1])) {
+      contact[contact.length - 1] += l;
+    } else contact.push(l);
+  }
+  for (const l of contact) {
+    if (/@/.test(l) && !/linkedin\.com/i.test(l) && !data.basics.email) {
+      data.basics.email = l.replace(/\s*\(.*\)$/, '');
+    } else if (/linkedin\.com\/in\//i.test(l) && !data.basics.linkedin) {
       data.basics.linkedin = l.replace(/\s*\(LinkedIn\)\s*$/i, '');
     } else if (/^[+(\d][\d\s()+-]{7,}$/.test(l) && !data.basics.phone) {
       data.basics.phone = l.replace(/\s*\(.*\)$/, '');
@@ -953,39 +1175,76 @@ export function parseLinkedInPdf(text, base) {
 
   if (identity.length) {
     data.basics.fullName = identity[0];
-    if (identity[1] && identity[1].length < 140) data.basics.headline = identity[1];
-    if (identity[2] && identity[2].split(',').length >= 2 && identity[2].length < 80) {
-      data.basics.location = identity[2];
+    const middle = identity.slice(1);
+    // The last line is the location when it reads like one; the rest is the
+    // headline, rejoined because LinkedIn wraps it mid-sentence.
+    if (middle.length && looksLocation(middle[middle.length - 1])) {
+      data.basics.location = middle.pop();
     }
+    if (middle.length) data.basics.headline = middle.join(' ');
     found.push('profile');
   }
 
   const summary = grab('Summary');
   if (summary.length) { data.basics.summary = summary.join('\n'); found.push('summary'); }
 
-  /* experience: company, title, dates, location, then the description */
+  /* experience
+   *
+   * LinkedIn prints one of two shapes, and a real profile mixes them:
+   *
+   *   Deloitte                     <- one role at this company
+   *   Consultant
+   *   November 2024 - Present
+   *   (1 year 10 months)           <- the duration wraps to its own line
+   *   Hyderabad, Telangana, India
+   *
+   *   Cognizant                    <- several roles at this company
+   *   3 years 5 months
+   *   Software Engineer
+   *   January 2024 - November 2024
+   *   ...
+   *   Junior Software Engineer     <- company named only once, above
+   *   July 2021 - January 2024
+   */
   const exp = grab('Experience');
-  for (let i = 0; i < exp.length; i += 1) {
-    if (!LI_DATE.test(exp[i])) continue;
-    const [, start, end] = exp[i].match(LI_DATE);
-    const role = exp[i - 1] || '';
-    let company = exp[i - 2] || '';
-    // Multi-role companies print "Acme Media" then "5 years 2 months".
-    if (LI_DURATION.test(company)) company = exp[i - 3] || '';
+  const dateAt = exp.map((l, i) => (LI_DATE.test(l) ? i : -1)).filter((i) => i >= 0);
 
-    const body = [];
-    let j = i + 1;
-    // A location line is short, comma-separated and never a sentence.
-    if (exp[j] && exp[j].length < 70 && exp[j].split(',').length >= 2
-      && !/[.;:]$/.test(exp[j]) && !LI_DATE.test(exp[j])) j += 1;
-    const location = j > i + 1 ? exp[i + 1] : '';
-    for (; j < exp.length; j += 1) {
-      if (LI_DATE.test(exp[j])) break;
-      body.push(exp[j]);
-    }
-    // Trailing lines belonging to the next role's company/title.
-    const tail = j < exp.length ? 2 : 0;
-    const bullets = body.slice(0, body.length - tail)
+  // "Java 8 | Rest Web Service | MySQL |" wraps onto the next line, and that
+  // orphan looked exactly like a company name sitting above the next title.
+  const continues = (l) => Boolean(l) && /[|,;–—-]$/.test(l);
+
+  // Is the line at `i` a company header, rather than the tail of the previous
+  // role's description?
+  const isCompanyAt = (i) => i >= 0 && looksCompany(exp[i]) && !continues(exp[i - 1]);
+
+  // Where the header block for the role anchored at date index `d` begins.
+  const headerStart = (d) => {
+    let s = d - 1;                                        // the title
+    if (s - 1 >= 0 && LI_DURATION.test(exp[s - 1])) s -= 2;   // company + duration
+    else if (isCompanyAt(s - 1)) s -= 1;                      // company
+    return Math.max(0, s);
+  };
+
+  let lastCompany = '';
+  dateAt.forEach((d, n) => {
+    const [, start, end] = exp[d].match(LI_DATE);
+    const role = exp[d - 1] || '';
+
+    let company = '';
+    if (LI_DURATION.test(exp[d - 2] || '')) company = exp[d - 3] || '';
+    else if (isCompanyAt(d - 2)) company = exp[d - 2];
+    // A later role under the same company lists no company of its own.
+    if (!company || !looksCompany(company)) company = lastCompany;
+    if (company) lastCompany = company;
+
+    let j = d + 1;
+    if (LI_DURATION.test(exp[j] || '')) j += 1;       // "(1 year 10 months)"
+    let location = '';
+    if (looksLocation(exp[j] || '')) { location = exp[j]; j += 1; }
+
+    const stop = n + 1 < dateAt.length ? headerStart(dateAt[n + 1]) : exp.length;
+    const bullets = exp.slice(j, Math.max(j, stop))
+      .filter((l) => !LI_DURATION.test(l))
       .map((l) => l.replace(BULLET_START, ''));
 
     data.experience.push({
@@ -997,23 +1256,44 @@ export function parseLinkedInPdf(text, base) {
       current: /present/i.test(end),
       bullets: bullets.join('\n'),
     });
-  }
+  });
   if (data.experience.length) found.push('experience');
 
-  /* education: school, then "Degree · (2014 - 2017)" */
+  /* education
+   *
+   *   Techno Main - Salt Lake                     <- school
+   *   Bachelor of Technology - BTech, Electronics <- the degree wraps
+   *   and Communication Engineering
+   *   · (July 2017 - July 2021)                   <- dates on their own line
+   *
+   * So each date line closes an entry, and everything since the previous one
+   * is [school, ...degree].
+   */
   const edu = grab('Education');
-  for (let i = 0; i < edu.length; i += 1) {
-    const m = edu[i].match(/^(.*?)\s*[·•]?\s*\((\d{4})\s*[-–—]\s*(\d{4}|Present)\)\s*$/);
-    if (!m) continue;
-    data.education.push({
-      degree: clean(m[1]),
-      school: edu[i - 1] || '',
-      location: '',
-      start: m[2],
-      end: /present/i.test(m[3]) ? '' : m[3],
-      score: '',
-      details: '',
-    });
+  let chunk = [];
+  const seenEdu = new Set();
+  for (const line of edu) {
+    const m = line.match(LI_EDU_DATE);
+    if (!m) { chunk.push(line); continue; }
+    if (chunk.length) {
+      const school = chunk[0];
+      const degree = clean(chunk.slice(1).join(' '));
+      const key = school + '|' + degree;
+      // LinkedIn's PDF repeats an entry when it spans a page break.
+      if (!seenEdu.has(key)) {
+        seenEdu.add(key);
+        data.education.push({
+          degree,
+          school,
+          location: '',
+          start: clean(m[1]),
+          end: /present/i.test(m[2]) ? '' : clean(m[2]),
+          score: '',
+          details: '',
+        });
+      }
+    }
+    chunk = [];
   }
   if (data.education.length) found.push('education');
 
