@@ -35,11 +35,29 @@ export async function fileToText(file) {
     }
     return { text, how: 'PDF' };
   }
+  if (/\.zip$/.test(name)) {
+    // A LinkedIn archive holds a lot more than a CV - messages, connections,
+    // ad targeting, their inferences about you. Only the profile files are
+    // opened, and the report names which ones, so nothing is read quietly.
+    const files = await unzip(await file.arrayBuffer(), isProfileCsv);
+    const csvs = {};
+    for (const [path, text] of Object.entries(files)) {
+      csvs[path.split('/').pop().toLowerCase()] = text;
+    }
+    if (!Object.keys(csvs).length) {
+      throw new ImportError('No LinkedIn profile files were found in that zip. The archive should '
+        + 'contain Profile.csv and Positions.csv. If you picked the "Connections only" export, '
+        + 'request the full one instead - or use the quicker route: your LinkedIn profile, '
+        + 'More, Save to PDF.');
+    }
+    return { csvs, how: 'LinkedIn archive' };
+  }
   if (/\.doc$/.test(name)) {
     throw new ImportError('Old .doc files cannot be read here. Open it and save as .docx or PDF, '
       + 'or paste the text into the box.');
   }
-  throw new ImportError('Unsupported file type. Use PDF, .docx, .txt, or paste the text.');
+  throw new ImportError('Unsupported file type. Use PDF, .docx, .txt, a LinkedIn .zip archive, '
+    + 'or paste the text.');
 }
 
 export class ImportError extends Error {}
@@ -57,22 +75,28 @@ async function inflate(bytes, raw) {
   }
 }
 
-async function docxToText(buffer) {
+/**
+ * Walks a zip's central directory and decodes the entries `want` accepts.
+ * Hand-written because a .docx and a LinkedIn archive are both zips, and
+ * neither is worth a dependency. Returns { entryName: text }.
+ */
+async function unzip(buffer, want) {
   const bytes = new Uint8Array(buffer);
   const view = new DataView(buffer);
+  const out = {};
 
   // End of central directory: scan back for the 0x06054b50 signature.
   let eocd = -1;
   for (let i = bytes.length - 22; i >= 0 && i > bytes.length - 65558; i -= 1) {
     if (view.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
   }
-  if (eocd < 0) return '';
+  if (eocd < 0) return out;
 
   const count = view.getUint16(eocd + 10, true);
   let p = view.getUint32(eocd + 16, true);
 
   for (let n = 0; n < count; n += 1) {
-    if (view.getUint32(p, true) !== 0x02014b50) break;
+    if (p + 46 > bytes.length || view.getUint32(p, true) !== 0x02014b50) break;
     const method = view.getUint16(p + 10, true);
     const compressed = view.getUint32(p + 20, true);
     const nameLen = view.getUint16(p + 28, true);
@@ -81,18 +105,22 @@ async function docxToText(buffer) {
     const localAt = view.getUint32(p + 42, true);
     const entryName = DEC.decode(bytes.subarray(p + 46, p + 46 + nameLen));
 
-    if (entryName === 'word/document.xml') {
-      if (view.getUint32(localAt, true) !== 0x04034b50) return '';
+    if (want(entryName) && view.getUint32(localAt, true) === 0x04034b50) {
       const lNameLen = view.getUint16(localAt + 26, true);
       const lExtraLen = view.getUint16(localAt + 28, true);
       const start = localAt + 30 + lNameLen + lExtraLen;
       const raw = bytes.subarray(start, start + compressed);
-      const xml = method === 0 ? raw : await inflate(raw, true);
-      return xml ? xmlToText(DEC.decode(xml)) : '';
+      const body = method === 0 ? raw : await inflate(raw, true);
+      if (body) out[entryName] = DEC.decode(body);
     }
     p += 46 + nameLen + extraLen + commentLen;
   }
-  return '';
+  return out;
+}
+
+async function docxToText(buffer) {
+  const files = await unzip(buffer, (n) => n === 'word/document.xml');
+  return files['word/document.xml'] ? xmlToText(files['word/document.xml']) : '';
 }
 
 function xmlToText(xml) {
@@ -485,6 +513,14 @@ function parseSimpleList(lines, build) {
  * a parser like this is right most of the time and wrong often enough to matter.
  */
 export function parseCV(text, base) {
+  // A LinkedIn export has a layout we can read exactly rather than guess at, so
+  // it gets its own parser. If that finds no roles the generic path is better,
+  // and we fall through to it.
+  if (looksLikeLinkedIn(text)) {
+    const li = parseLinkedInPdf(text, base);
+    if (li.data.experience.length || li.data.education.length) return li;
+  }
+
   const data = base ? JSON.parse(JSON.stringify(base)) : blankData();
   const { head, sections } = sectionise(text);
   const found = [];
@@ -589,6 +625,419 @@ export function parseCV(text, base) {
       notes,
       name: data.basics.fullName || '',
       chars: text.length,
+    },
+  };
+}
+
+/* ============================== LinkedIn ================================
+ *
+ * Two routes in, both handed over by the person themselves. There is no third:
+ * no public API returns a member's positions or education, and scraping
+ * breaches LinkedIn's terms and risks their account, not ours.
+ *
+ *   1. Profile -> More -> Save to PDF. Instant, and the layout is fixed enough
+ *      to parse properly rather than guess at.
+ *   2. Settings -> Data privacy -> Get a copy of your data. Cleaner data, but
+ *      10 minutes to 72 hours to arrive, so it is the second route.
+ * ---------------------------------------------------------------------- */
+
+const LI_CSVS = ['profile', 'positions', 'education', 'skills', 'certifications',
+  'languages', 'projects', 'email addresses', 'phone numbers', 'honors', 'publications'];
+
+/** Only the profile files. The rest of the archive is none of our business. */
+function isProfileCsv(path) {
+  const file = path.split('/').pop().toLowerCase();
+  if (!file.endsWith('.csv')) return false;
+  const stem = file.slice(0, -4);
+  return LI_CSVS.some((n) => stem === n || stem.startsWith(n));
+}
+
+/** RFC 4180 enough for LinkedIn: quoted fields, commas and newlines inside them. */
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let cell = '';
+  let quoted = false;
+  const src = String(text || '').replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+
+  for (let i = 0; i < src.length; i += 1) {
+    const c = src[i];
+    if (quoted) {
+      if (c === '"') {
+        if (src[i + 1] === '"') { cell += '"'; i += 1; } else quoted = false;
+      } else cell += c;
+      continue;
+    }
+    if (c === '"') { quoted = true; continue; }
+    if (c === ',') { row.push(cell); cell = ''; continue; }
+    if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; continue; }
+    cell += c;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter((r) => r.some((v) => String(v).trim()));
+}
+
+/**
+ * Turns a CSV into objects. LinkedIn puts a "Notes:" preamble above the header
+ * in some files, so the header is the first row carrying an expected column
+ * rather than simply the first row.
+ */
+function csvRows(text, expect) {
+  const rows = parseCsv(text);
+  if (!rows.length) return [];
+  const wanted = expect.map((e) => e.toLowerCase());
+  let at = rows.findIndex((r) => r.some((c) => wanted.includes(clean(c).toLowerCase())));
+  if (at < 0) at = 0;
+  const head = rows[at].map((h) => clean(h).toLowerCase());
+  return rows.slice(at + 1).map((r) => {
+    const o = {};
+    // Trimmed, not cleaned: a Description field carries the line breaks that
+    // become the bullets, and collapsing whitespace here would lose them.
+    head.forEach((h, i) => { o[h] = String(r[i] || '').trim(); });
+    return o;
+  });
+}
+
+/** First matching column, so a renamed header degrades instead of blanking. */
+const col = (row, ...names) => {
+  for (const n of names) {
+    const v = row[n.toLowerCase()];
+    if (v) return v;
+  }
+  return '';
+};
+
+/** A description blob becomes one line per bullet, without the glyphs. */
+function toBullets(text) {
+  return String(text || '')
+    .replace(/\r/g, '')
+    .split('\n')
+    .map((l) => clean(l).replace(BULLET_START, ''))
+    .filter(Boolean)
+    .join('\n');
+}
+
+// LinkedIn's proficiency wording is not the app's, and an unmatched value would
+// leave the select showing the wrong level.
+function toLevel(raw) {
+  const s = String(raw || '').toLowerCase();
+  if (/native|bilingual/.test(s)) return 'Native';
+  if (/full professional|professional working/.test(s)) return 'Fluent';
+  if (/limited working/.test(s)) return 'Intermediate';
+  if (/elementary/.test(s)) return 'Basic';
+  return 'Fluent';
+}
+
+export function parseLinkedInArchive(csvs, base) {
+  const data = base ? JSON.parse(JSON.stringify(base)) : blankData();
+  const found = [];
+  const notes = [];
+  const read = [];
+  const get = (stem) => {
+    const key = Object.keys(csvs).find((k) => k.slice(0, -4) === stem || k.startsWith(stem));
+    if (key) read.push(key);
+    return key ? csvs[key] : '';
+  };
+
+  const profile = csvRows(get('profile'), ['First Name', 'Headline', 'Summary']);
+  if (profile.length) {
+    const p = profile[0];
+    const name = [col(p, 'First Name'), col(p, 'Last Name')].filter(Boolean).join(' ');
+    if (name) data.basics.fullName = name;
+    data.basics.headline = col(p, 'Headline') || data.basics.headline;
+    data.basics.summary = col(p, 'Summary') || data.basics.summary;
+    data.basics.location = col(p, 'Geo Location', 'Location') || data.basics.location;
+    const site = col(p, 'Websites');
+    if (site) data.basics.website = site.replace(/^\[|\]$/g, '').split(',')[0].replace(/^\w+:/, '');
+    if (name) found.push('profile');
+  }
+
+  const emails = csvRows(get('email addresses'), ['Email Address']);
+  const primary = emails.find((e) => /yes|true/i.test(col(e, 'Primary'))) || emails[0];
+  if (primary) data.basics.email = col(primary, 'Email Address') || data.basics.email;
+
+  const phones = csvRows(get('phone numbers'), ['Number']);
+  if (phones.length) data.basics.phone = col(phones[0], 'Number') || data.basics.phone;
+
+  const positions = csvRows(get('positions'), ['Company Name', 'Title']);
+  positions.forEach((r) => {
+    const role = col(r, 'Title');
+    const company = col(r, 'Company Name');
+    if (!role && !company) return;
+    const end = col(r, 'Finished On');
+    data.experience.push({
+      role,
+      company,
+      location: col(r, 'Location'),
+      start: col(r, 'Started On'),
+      end,
+      current: !end,
+      bullets: toBullets(col(r, 'Description')),
+    });
+  });
+  if (data.experience.length) found.push('experience');
+
+  csvRows(get('education'), ['School Name']).forEach((r) => {
+    const school = col(r, 'School Name');
+    if (!school) return;
+    data.education.push({
+      degree: col(r, 'Degree Name'),
+      school,
+      location: '',
+      start: col(r, 'Start Date'),
+      end: col(r, 'End Date'),
+      score: '',
+      details: toBullets(col(r, 'Notes', 'Activities')),
+    });
+  });
+  if (data.education.length) found.push('education');
+
+  const skills = csvRows(get('skills'), ['Name']).map((r) => col(r, 'Name')).filter(Boolean);
+  if (skills.length) {
+    data.skills.push({ group: 'Skills', items: skills.join(', ') });
+    found.push('skills');
+    notes.push('LinkedIn exports skills as one flat list, so they arrived as a single group. '
+      + 'Splitting them into named groups reads better on a CV.');
+  }
+
+  csvRows(get('certifications'), ['Name', 'Authority']).forEach((r) => {
+    const name = col(r, 'Name');
+    if (!name) return;
+    data.certifications.push({
+      name,
+      issuer: col(r, 'Authority'),
+      year: (col(r, 'Started On').match(/(19|20)\d{2}/) || [''])[0],
+      link: col(r, 'Url'),
+    });
+  });
+  if (data.certifications.length) found.push('certifications');
+
+  csvRows(get('languages'), ['Name']).forEach((r) => {
+    const name = clean(col(r, 'Name'));
+    if (name) data.languages.push({ name, level: toLevel(col(r, 'Proficiency')) });
+  });
+  if (data.languages.length) found.push('languages');
+
+  csvRows(get('projects'), ['Title']).forEach((r) => {
+    const name = col(r, 'Title');
+    if (!name) return;
+    data.projects.push({
+      name,
+      tech: '',
+      link: col(r, 'Url'),
+      date: col(r, 'Started On'),
+      bullets: toBullets(col(r, 'Description')),
+    });
+  });
+  if (data.projects.length) found.push('projects');
+
+  if (!data.experience.length) {
+    notes.push('No positions were found. If Positions.csv is missing, the archive was the '
+      + '"Connections only" export rather than the full one.');
+  }
+  if (data.experience.some((e) => !e.bullets)) {
+    notes.push('Some roles have no description - LinkedIn only exports what you filled in there. '
+      + 'Those are the ones worth writing first.');
+  }
+
+  const counts = {};
+  for (const id of Object.keys(SECTIONS)) {
+    if (Array.isArray(data[id])) counts[id] = data[id].length;
+  }
+
+  return {
+    data,
+    report: {
+      found: [...new Set(found)],
+      counts,
+      notes,
+      name: data.basics.fullName || '',
+      chars: Object.values(csvs).reduce((n, t) => n + t.length, 0),
+      source: 'LinkedIn archive',
+      read,
+    },
+  };
+}
+
+/* ------------------------------------------------------- the profile PDF */
+
+// LinkedIn's own PDF is unmistakeable: the contact block prints the profile URL
+// followed by "(LinkedIn)", and the left rail is headed "Top Skills".
+export function looksLikeLinkedIn(text) {
+  const t = String(text || '');
+  return /linkedin\.com\/in\//i.test(t)
+    && (/\(LinkedIn\)/.test(t) || /^\s*Top Skills\s*$/m.test(t) || /Page \d+ of \d+/.test(t));
+}
+
+// The rail prints before the main column, so these are read first and removed.
+const LI_RAIL = ['Contact', 'Top Skills', 'Languages', 'Certifications',
+  'Honors-Awards', 'Publications', 'Interests'];
+const LI_MAIN = ['Summary', 'Experience', 'Education', 'Volunteer Experience',
+  'Licenses & Certifications', 'Projects'];
+
+const LI_DATE = /^([A-Z][a-z]+ \d{4}|\d{4})\s*[-–—]\s*(Present|[A-Z][a-z]+ \d{4}|\d{4})/;
+const LI_DURATION = /^\(?\d+\s+(year|month)s?(\s+\d+\s+months?)?\)?$/i;
+
+export function parseLinkedInPdf(text, base) {
+  const data = base ? JSON.parse(JSON.stringify(base)) : blankData();
+  const notes = [];
+  const found = [];
+
+  const lines = String(text)
+    .split('\n')
+    .map((l) => clean(l))
+    // Page furniture, and the duration LinkedIn prints after every date range.
+    .filter((l) => l && !/^Page \d+ of \d+$/.test(l));
+
+  const heads = new Set([...LI_RAIL, ...LI_MAIN]);
+
+  // Name, headline and location print with no heading of their own, directly
+  // before the first main-column section. Lift them out first, or they get
+  // swallowed by whichever rail section happens to precede them.
+  const mainAt = lines.findIndex((l) => LI_MAIN.includes(l));
+  const identity = [];
+  let idFrom = mainAt;
+  if (mainAt > 0) {
+    for (let i = mainAt - 1; i >= 0 && identity.length < 3; i -= 1) {
+      if (heads.has(lines[i])) break;
+      identity.unshift(lines[i]);
+      idFrom = i;
+    }
+  }
+
+  const rest = mainAt > 0
+    ? lines.filter((_, i) => i < idFrom || i >= mainAt)
+    : lines;
+
+  const blocks = [];
+  let current = { id: '', lines: [] };
+  for (const line of rest) {
+    if (heads.has(line)) {
+      if (current.id || current.lines.length) blocks.push(current);
+      current = { id: line, lines: [] };
+    } else current.lines.push(line);
+  }
+  blocks.push(current);
+
+  const grab = (id) => (blocks.find((b) => b.id === id) || { lines: [] }).lines;
+
+  /* contact rail */
+  for (const l of grab('Contact')) {
+    if (/@/.test(l) && !data.basics.email) data.basics.email = l.replace(/\s*\(.*\)$/, '');
+    else if (/linkedin\.com\/in\//i.test(l) && !data.basics.linkedin) {
+      data.basics.linkedin = l.replace(/\s*\(LinkedIn\)\s*$/i, '');
+    } else if (/^[+(\d][\d\s()+-]{7,}$/.test(l) && !data.basics.phone) {
+      data.basics.phone = l.replace(/\s*\(.*\)$/, '');
+    }
+  }
+
+  const skills = grab('Top Skills').filter((l) => l.length < 60);
+  if (skills.length) {
+    data.skills.push({ group: 'Skills', items: skills.join(', ') });
+    found.push('skills');
+  }
+
+  grab('Languages').forEach((l) => {
+    const m = l.match(/^(.+?)\s*\((.+)\)$/);
+    data.languages.push({ name: clean(m ? m[1] : l), level: toLevel(m ? m[2] : '') });
+  });
+  if (data.languages.length) found.push('languages');
+
+  grab('Certifications').forEach((l) => {
+    data.certifications.push({ name: l, issuer: '', year: '', link: '' });
+  });
+  if (data.certifications.length) found.push('certifications');
+
+  grab('Honors-Awards').forEach((l) => data.achievements.push({ text: l }));
+  if (data.achievements.length) found.push('achievements');
+
+  if (identity.length) {
+    data.basics.fullName = identity[0];
+    if (identity[1] && identity[1].length < 140) data.basics.headline = identity[1];
+    if (identity[2] && identity[2].split(',').length >= 2 && identity[2].length < 80) {
+      data.basics.location = identity[2];
+    }
+    found.push('profile');
+  }
+
+  const summary = grab('Summary');
+  if (summary.length) { data.basics.summary = summary.join('\n'); found.push('summary'); }
+
+  /* experience: company, title, dates, location, then the description */
+  const exp = grab('Experience');
+  for (let i = 0; i < exp.length; i += 1) {
+    if (!LI_DATE.test(exp[i])) continue;
+    const [, start, end] = exp[i].match(LI_DATE);
+    const role = exp[i - 1] || '';
+    let company = exp[i - 2] || '';
+    // Multi-role companies print "Acme Media" then "5 years 2 months".
+    if (LI_DURATION.test(company)) company = exp[i - 3] || '';
+
+    const body = [];
+    let j = i + 1;
+    // A location line is short, comma-separated and never a sentence.
+    if (exp[j] && exp[j].length < 70 && exp[j].split(',').length >= 2
+      && !/[.;:]$/.test(exp[j]) && !LI_DATE.test(exp[j])) j += 1;
+    const location = j > i + 1 ? exp[i + 1] : '';
+    for (; j < exp.length; j += 1) {
+      if (LI_DATE.test(exp[j])) break;
+      body.push(exp[j]);
+    }
+    // Trailing lines belonging to the next role's company/title.
+    const tail = j < exp.length ? 2 : 0;
+    const bullets = body.slice(0, body.length - tail)
+      .map((l) => l.replace(BULLET_START, ''));
+
+    data.experience.push({
+      role,
+      company,
+      location,
+      start,
+      end: /present/i.test(end) ? '' : end,
+      current: /present/i.test(end),
+      bullets: bullets.join('\n'),
+    });
+  }
+  if (data.experience.length) found.push('experience');
+
+  /* education: school, then "Degree · (2014 - 2017)" */
+  const edu = grab('Education');
+  for (let i = 0; i < edu.length; i += 1) {
+    const m = edu[i].match(/^(.*?)\s*[·•]?\s*\((\d{4})\s*[-–—]\s*(\d{4}|Present)\)\s*$/);
+    if (!m) continue;
+    data.education.push({
+      degree: clean(m[1]),
+      school: edu[i - 1] || '',
+      location: '',
+      start: m[2],
+      end: /present/i.test(m[3]) ? '' : m[3],
+      score: '',
+      details: '',
+    });
+  }
+  if (data.education.length) found.push('education');
+
+  if (!data.experience.length) {
+    notes.push('No roles were recognised in this PDF. It may be an older LinkedIn layout - '
+      + 'paste the text instead, or use the data archive route.');
+  }
+  notes.push('Read as a LinkedIn profile export. LinkedIn writes in the first person and its '
+    + 'own house style, so expect the check to flag plenty. That is the point of it.');
+
+  const counts = {};
+  for (const id of Object.keys(SECTIONS)) {
+    if (Array.isArray(data[id])) counts[id] = data[id].length;
+  }
+
+  return {
+    data,
+    report: {
+      found: [...new Set(found)],
+      counts,
+      notes,
+      name: data.basics.fullName || '',
+      chars: text.length,
+      source: 'LinkedIn PDF',
     },
   };
 }

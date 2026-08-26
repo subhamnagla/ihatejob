@@ -160,6 +160,41 @@ Parsing a CV from formatting alone is approximate and the app says so. PDFs that
 are scans, or that use embedded font encodings, cannot be read at all — it tells
 you to paste the text instead rather than producing nonsense.
 
+### Import from LinkedIn
+
+Most people arrive with a LinkedIn profile and no CV. Two routes in, both handed
+over by the person themselves, because **no LinkedIn API returns a member's
+positions or education** — those endpoints are Recruiter and CRM partner only,
+and scraping the site breaches its terms and risks *their* account.
+
+**Their profile as a PDF** (More → Save to PDF) is the front door: instant, and
+the layout is fixed enough to parse exactly rather than guess at. The parser
+reads the contact rail, top skills, languages, certifications, the identity
+block, summary, roles with dates and locations, and education. If it finds no
+roles it falls through to the generic parser rather than producing a worse
+result.
+
+**Their data archive** (Settings → Data privacy → Get a copy of your data) is
+cleaner — real CSV fields, no guessing — but LinkedIn takes 10 minutes to 72
+hours to send it, so it is the second route. Drop the `.zip` in and it reads
+`Profile`, `Positions`, `Education`, `Skills`, `Certifications`, `Languages`,
+`Projects`, `Email Addresses` and `Phone Numbers`.
+
+The archive also contains messages, connections, ad targeting and LinkedIn's
+inferences about the person. **Only the profile files are opened**, and the
+import report names exactly which ones, so nothing is read quietly.
+
+### Fix my LinkedIn
+
+The reverse trip, under *More*. Nothing can write to a LinkedIn profile, so this
+sizes the text to LinkedIn's own fields instead — headline 220 characters, About
+2,600, each role 2,000 — counts against those limits live, and flags filler with
+the same phrase lists the CV checker uses, via `checkPhrases` in `review.js`.
+One rule set, so the two can never disagree.
+
+It never rewrites anything for you. Inventing a number you did not give would be
+inventing a fact about your career.
+
 ### Downloads
 
 - **PDF** via the print dialog (set Margins to None, Background graphics on)

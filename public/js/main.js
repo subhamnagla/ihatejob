@@ -8,8 +8,8 @@ import {
 import {
   applyProfession, applyRegion, professionOf, PROFESSIONS,
 } from './professions.js';
-import { reviewCV } from './review.js';
-import { fileToText, parseCV, ImportError } from './import.js';
+import { reviewCV, checkPhrases } from './review.js';
+import { fileToText, parseCV, parseLinkedInArchive, ImportError } from './import.js';
 import { buildSample } from './samples.js';
 import { PLANETS, planetFor, starsFor, starRow, planetSVG } from './planets.js';
 import { availableFixes, applyFixes } from './fixes.js';
@@ -532,6 +532,7 @@ document.addEventListener('click', () => $('moreMenu').classList.remove('open'))
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   $('moreMenu').classList.remove('open');
+  $('liModal').classList.remove('open');
   $('printModal').classList.remove('open');
   $('importModal').classList.remove('open');
   closePlanet();
@@ -548,6 +549,7 @@ $('moreMenu').addEventListener('click', (e) => {
   // Their own buttons are hidden below 900px, so the menu carries them there.
   if (act === 'import') { openImport(); return; }
   if (act === 'example') { loadExample(); return; }
+  if (act === 'linkedin') { openLinkedIn(); return; }
 
   if (act === 'reset') {
     if (!confirm('Clear every field and start from an empty CV? Download your data first if you want to keep it.')) return;
@@ -731,6 +733,7 @@ function renderReview() {
     + '</b>. Every check runs on your machine - nothing is uploaded, and no AI is involved.</p>'
     + '<div class="score-actions">'
     + '<button class="btn btn-sm" type="button" data-act="planet">Show my planet</button>'
+    + '<button class="btn btn-sm" type="button" data-act="linkedin">Fix my LinkedIn</button>'
     + '<button class="btn btn-sm btn-primary" type="button" data-act="fix">Clean up automatically</button>'
     + '</div>'
     + '</div></div>'
@@ -784,6 +787,7 @@ $('stageTabs').addEventListener('click', (e) => {
 // "Take me there" - open the right editor section and put the cursor in it.
 reviewPane.addEventListener('click', (e) => {
   if (e.target.closest('[data-act="fix"]')) { openFixes(); return; }
+  if (e.target.closest('[data-act="linkedin"]')) { openLinkedIn(); return; }
   if (e.target.closest('[data-act="planet"]')) {
     showPlanet(reviewCV(current(), { pages: pageCount }));
     return;
@@ -854,6 +858,104 @@ $('fixApply').addEventListener('click', () => {
 $('fixModal').addEventListener('click', (e) => {
   if (e.target.id === 'fixModal' || e.target.hasAttribute('data-close')) {
     $('fixModal').classList.remove('open');
+  }
+});
+
+/* --------------------------------------------------------- fix my LinkedIn */
+
+// LinkedIn's own field limits. Nothing can write to a profile through an API,
+// so the most this can do is size the text correctly and check it.
+const LI_FIELDS = [
+  {
+    k: 'headline', label: 'Headline', limit: 220, rows: 2,
+    hint: 'One line. What you do, not what you are like.',
+    from: (d) => d.basics.headline,
+  },
+  {
+    k: 'about', label: 'About', limit: 2600, rows: 7,
+    hint: 'LinkedIn shows the first ~3 lines before "see more". Put the point there.',
+    from: (d) => d.basics.summary,
+  },
+];
+
+function liFieldsFor(d) {
+  const roles = d.experience.slice(0, 3).map((e, i) => ({
+    k: 'role' + i,
+    label: 'Role — ' + (e.role || e.company || 'Experience ' + (i + 1)),
+    limit: 2000,
+    rows: 5,
+    hint: 'One achievement per line, the same as the CV.',
+    from: () => String(e.bullets || ''),
+  }));
+  return [...LI_FIELDS, ...roles];
+}
+
+function liRefresh(k) {
+  const box = document.getElementById('li-' + k);
+  if (!box) return;
+  const limit = Number(box.dataset.limit);
+  const n = box.value.length;
+  const count = document.getElementById('lic-' + k);
+  count.textContent = n.toLocaleString() + ' / ' + limit.toLocaleString();
+  count.classList.toggle('over', n > limit);
+
+  const flags = document.getElementById('lif-' + k);
+  const hits = checkPhrases(box.value);
+  if (!hits.length) {
+    flags.className = 'li-clear';
+    flags.textContent = box.value.trim()
+      ? 'Nothing flagged. This one would pass.'
+      : 'Empty — LinkedIn will show nothing here.';
+    return;
+  }
+  flags.className = 'li-flags';
+  flags.innerHTML = hits.map((h) => (
+    '<span class="li-flag' + (h.kind === 'tell' ? '' : ' soft') + '">'
+    + esc(h.replacement ? h.phrase + ' → ' + h.replacement : h.phrase) + '</span>'
+  )).join('');
+}
+
+function openLinkedIn() {
+  const fields = liFieldsFor(state);
+  $('liFields').innerHTML = fields.map((f) => (
+    '<div class="li-field">'
+    + '<div class="li-head"><label for="li-' + f.k + '">' + esc(f.label) + '</label>'
+    + '<span class="li-count" id="lic-' + f.k + '"></span>'
+    + '<button class="btn btn-sm" type="button" data-licopy="' + f.k + '">Copy</button></div>'
+    + '<textarea class="input li-box" id="li-' + f.k + '" rows="' + f.rows + '"'
+    + ' data-limit="' + f.limit + '">' + esc(f.from(state) || '') + '</textarea>'
+    + '<p class="li-hint">' + esc(f.hint) + '</p>'
+    + '<div id="lif-' + f.k + '"></div>'
+    + '</div>'
+  )).join('');
+
+  fields.forEach((f) => liRefresh(f.k));
+  $('liModal').classList.add('open');
+}
+
+$('liFields').addEventListener('input', (e) => {
+  const box = e.target.closest('.li-box');
+  if (box) liRefresh(box.id.slice(3));
+});
+
+$('liFields').addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-licopy]');
+  if (!btn) return;
+  const box = document.getElementById('li-' + btn.dataset.licopy);
+  try {
+    await navigator.clipboard.writeText(box.value);
+    const was = btn.textContent;
+    btn.textContent = 'Copied';
+    setTimeout(() => { btn.textContent = was; }, 1400);
+  } catch {
+    box.select();
+    toast('Press Ctrl+C to copy.');
+  }
+});
+
+$('liModal').addEventListener('click', (e) => {
+  if (e.target.id === 'liModal' || e.target.hasAttribute('data-close')) {
+    $('liModal').classList.remove('open');
   }
 });
 
@@ -1147,6 +1249,13 @@ async function readCVFile(file) {
       toast('Loaded your saved data file.');
       return;
     }
+    // A LinkedIn archive is a set of CSVs, not prose - there is no text to show
+    // in the paste box, so it goes straight to the report.
+    if (out.csvs) {
+      showImportReport(parseLinkedInArchive(out.csvs, importBase()));
+      toast('Read the LinkedIn archive.');
+      return;
+    }
     $('pasteBox').value = out.text;
     toast('Read the ' + out.how + '. Check the text below, then press "Read it".');
   } catch (err) {
@@ -1159,17 +1268,14 @@ async function readCVFile(file) {
   }
 }
 
-$('btnParse').addEventListener('click', () => {
-  const text = $('pasteBox').value.trim();
-  if (text.length < 40) {
-    importError('There is no text to read yet. Choose a file above, or paste your CV text here.');
-    return;
-  }
-  importError('');
-  // Keep the current profession and region - those are choices, not content.
+// Keep the current profession and region - those are choices, not content.
+function importBase() {
   const base = blankData();
   base.settings = JSON.parse(JSON.stringify(state.settings));
-  const { data, report } = parseCV(text, base);
+  return base;
+}
+
+function showImportReport({ data, report }) {
   pendingImport = data;
 
   const rows = Object.entries(report.counts)
@@ -1177,16 +1283,37 @@ $('btnParse').addEventListener('click', () => {
     .map(([id, n]) => '<li class="' + (n ? '' : 'none') + '"><span>' + esc(SECTIONS[id].title)
       + '</span><span class="n">' + (n || 'not found') + '</span></li>').join('');
 
-  $('importReport').innerHTML =
-    '<p style="margin-bottom:10px">Read <b>' + report.chars.toLocaleString() + '</b> characters'
-    + (report.name ? ' for <b>' + esc(report.name) + '</b>' : '') + '.</p>'
+  const head = report.source === 'LinkedIn archive'
+    ? '<p style="margin-bottom:10px">Read your <b>LinkedIn archive</b>'
+      + (report.name ? ' for <b>' + esc(report.name) + '</b>' : '') + '.</p>'
+      + '<div class="report-note">Only your profile files were opened: <b>'
+      + esc((report.read || []).join(', ')) + '</b>. The rest of the archive &mdash; messages, '
+      + 'connections, ad targeting &mdash; was left alone.</div>'
+    : '<p style="margin-bottom:10px">Read <b>' + report.chars.toLocaleString() + '</b> characters'
+      + (report.source ? ' from your <b>' + esc(report.source) + '</b>' : '')
+      + (report.name ? ' for <b>' + esc(report.name) + '</b>' : '') + '.</p>';
+
+  $('importReport').innerHTML = head
     + report.notes.map((n) => '<div class="report-note">' + esc(n) + '</div>').join('')
     + '<ul class="report-list">' + rows + '</ul>'
-    + '<p style="margin:0">Parsing a CV from formatting alone is approximate. Nothing is applied '
-    + 'until you press Use this, and everything stays editable afterwards.</p>';
+    + '<p style="margin:0">'
+    + (report.source === 'LinkedIn archive'
+      ? 'These came from real fields, so they should be accurate.'
+      : 'Parsing a CV from formatting alone is approximate.')
+    + ' Nothing is applied until you press Use this, and everything stays editable afterwards.</p>';
 
   $('importStep1').hidden = true;
   $('importStep2').hidden = false;
+}
+
+$('btnParse').addEventListener('click', () => {
+  const text = $('pasteBox').value.trim();
+  if (text.length < 40) {
+    importError('There is no text to read yet. Choose a file above, or paste your CV text here.');
+    return;
+  }
+  importError('');
+  showImportReport(parseCV(text, importBase()));
 });
 
 $('btnImportBack').addEventListener('click', () => {

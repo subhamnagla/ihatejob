@@ -139,6 +139,29 @@ function findPhrases(units, list) {
   return hits;
 }
 
+/**
+ * Checks one loose piece of text - a LinkedIn headline, an About section - with
+ * the same phrase lists the CV rules use, so the two can never disagree about
+ * what counts as filler. Returns [{ phrase, replacement, kind }].
+ */
+export function checkPhrases(text) {
+  const units = [{ text: String(text || '') }];
+  const hits = [
+    ...findPhrases(units, TELLS).map((h) => ({ ...h, kind: 'tell' })),
+    ...findPhrases(units, WEAK_OPENERS).map((h) => ({ ...h, kind: 'weak' })),
+    ...findPhrases(units, ESSAY_LINKERS).map((h) => ({ ...h, kind: 'weak' })),
+  ];
+  // An intensifier is only empty when the text carries no figure at all -
+  // "cut costs significantly, by 32%" is doing its job.
+  if (!/\d/.test(String(text || ''))) {
+    hits.push(...findPhrases(units, VAGUE).map((h) => ({ ...h, kind: 'vague' })));
+  }
+  const seen = new Set();
+  return hits
+    .filter((h) => (seen.has(h.phrase) ? false : seen.add(h.phrase)))
+    .map(({ phrase, replacement, kind }) => ({ phrase, replacement, kind }));
+}
+
 function letterFor(ratio) {
   if (ratio >= 0.95) return 'A+';
   if (ratio >= 0.87) return 'A';

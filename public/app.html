@@ -82,6 +82,9 @@
           <button class="menu-item narrow-only" data-act="example" type="button">
             Load an example<small>A worked sample for your profession</small>
           </button>
+          <button class="menu-item" data-act="linkedin" type="button">
+            Fix my LinkedIn<small>Your text, cut to LinkedIn's fields, ready to paste</small>
+          </button>
           <div class="menu-sep"></div>
           <button class="menu-item" data-act="word" type="button">
             Download as Word<small>.doc file that opens in Word or Google Docs</small>
@@ -206,9 +209,27 @@
     <div id="importStep1">
       <div class="dropzone" id="dropzone" tabindex="0" role="button">
         <b>Drop a file here</b>
-        <span>or click to choose &mdash; PDF, Word (.docx), .txt, or a saved .json</span>
+        <span>or click to choose &mdash; PDF, Word (.docx), .txt, a LinkedIn .zip, or a saved .json</span>
         <span>You can also drop a file anywhere on the page.</span>
       </div>
+
+      <!-- Most people arrive with a LinkedIn profile and no CV, so the route in
+           from it is spelled out rather than left to be discovered. -->
+      <details class="from-li">
+        <summary>Coming from LinkedIn?</summary>
+        <div>
+          <p><b>Fastest &mdash; your profile as a PDF.</b> Open your own LinkedIn profile,
+            press <b>More</b>, choose <b>Save to PDF</b>, and drop the file above. It is instant,
+            and the layout is read properly rather than guessed at.</p>
+          <p><b>More complete &mdash; your data archive.</b> LinkedIn &rarr; <b>Settings &amp;
+            Privacy</b> &rarr; <b>Data privacy</b> &rarr; <b>Get a copy of your data</b>. Drop the
+            <b>.zip</b> above when it arrives. Better data, but LinkedIn takes ten minutes to three
+            days to send it. Only the profile files inside are opened.</p>
+          <p class="from-li-note">There is no &ldquo;connect to LinkedIn&rdquo; button because no
+            LinkedIn API gives out your positions or education. Nothing here signs in to anything.</p>
+        </div>
+      </details>
+
       <div class="import-error" id="importError" hidden></div>
       <div class="or-line"><span>or paste the text</span></div>
       <textarea class="input" id="pasteBox" rows="7"
@@ -225,6 +246,23 @@
         <button class="btn" id="btnImportBack" type="button">Back</button>
         <button class="btn btn-primary" id="btnImportApply" type="button">Use this</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Nothing can write back to a LinkedIn profile - no public API does it, and
+     automating the site risks the visitor's account. So: their text, cut to
+     LinkedIn's own field limits, checked, and copyable. They paste it. -->
+<div class="modal-backdrop" id="liModal">
+  <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="liTitle">
+    <h2 id="liTitle">Fix my LinkedIn</h2>
+    <p>Your CV, cut to LinkedIn&rsquo;s fields and checked against the same rules. Copy each one
+      and paste it into LinkedIn &mdash; no site can write to your profile for you.</p>
+    <div id="liFields"></div>
+    <p class="fix-caveat">Nothing here is rewritten for you. Inventing a number you did not give
+      would be inventing a fact about your career.</p>
+    <div class="modal-actions">
+      <button class="btn" data-close type="button">Close</button>
     </div>
   </div>
 </div>
@@ -271,7 +309,7 @@
 <div class="toast" id="toast"></div>
 <input type="file" id="fileInput" accept="application/json,.json" hidden>
 <input type="file" id="photoInput" accept="image/*" hidden>
-<input type="file" id="cvInput" accept=".pdf,.docx,.doc,.rtf,.txt,.md,.json,application/pdf" hidden>
+<input type="file" id="cvInput" accept=".pdf,.docx,.doc,.rtf,.txt,.md,.json,.zip,application/pdf,application/zip" hidden>
 <div class="drop-veil" id="dropVeil" hidden><div>Drop your CV to read it</div></div>
 
 <script type="module" src="/js/main.js"></script>
