@@ -286,11 +286,23 @@ async function pdfToText(buffer) {
     const start = m.index + m[0].length;
     const end = ascii.indexOf('endstream', start);
     if (end < 0) continue;
+    re.lastIndex = end;
+
+    // An embedded font program is binary, and a big one reliably contains the
+    // bytes "Tj" somewhere by chance - enough to be mistaken for a content
+    // stream and drown the real text in mojibake. The object's own dictionary
+    // says what it is: /Length1 means a font file, and images and metadata
+    // announce themselves too.
+    const objAt = ascii.lastIndexOf(' obj', m.index);
+    const dict = objAt > 0 ? ascii.slice(objAt, m.index) : '';
+    if (/\/Length1\b|\/Subtype\s*\/(Image|Type1C|CIDFontType0C)\b|\/Type\s*\/Metadata\b/.test(dict)) {
+      continue;
+    }
+
     const slice = bytes.subarray(start, end);
     // zlib-wrapped (FlateDecode) streams start 0x78; try raw bytes otherwise.
     const out = slice[0] === 0x78 ? await inflate(slice, false) : slice;
     if (out) chunks.push(latin1(out));
-    re.lastIndex = end;
   }
 
   const text = chunks.map((c) => extractPdfText(c, cmaps)).join('\n');
@@ -306,13 +318,33 @@ function latin1(bytes) {
   return s;
 }
 
-// Pull the string operands of Tj / TJ / ' / " out of a content stream.
+/**
+ * Pull the text out of a content stream.
+ *
+ * Word processors emit a separate text run for every formatting change, so an
+ * ordinary line of a CV arrives as five or six runs. Breaking a line at every
+ * `ET` therefore shredded words - "Subham" became "S" and "ubhamnagla". What
+ * actually marks a new line is the text position moving down the page, so this
+ * tracks it: `Tm` sets it outright, `Td`/`TD`/`T*` move it, and only a change
+ * in Y ends the line.
+ */
 function extractPdfText(content, cmaps) {
   if (!/(Tj|TJ)\b/.test(content)) return '';
-  let out = '';
-  let i = 0;
-  let font = '';        // the resource name from the last `/Fxx ... Tf`
+
+  const lines = [];
+  let line = '';
+  let font = '';        // resource name from the last `/Fxx ... Tf`
   let lastName = '';
+  let nums = [];        // operands collected since the last operator
+  let y = null;
+  let inArray = false;
+  let i = 0;
+
+  const endLine = () => { if (line.trim()) lines.push(line.trim()); line = ''; };
+  const moveTo = (newY) => {
+    if (y !== null && Math.abs(newY - y) > 1.2) endLine();
+    y = newY;
+  };
 
   const readString = () => {
     let depth = 1;
@@ -344,9 +376,9 @@ function extractPdfText(content, cmaps) {
   while (i < content.length) {
     const c = content[i];
 
-    if (c === '(') { out += readString(); continue; }
+    if (c === '(') { line += readString(); continue; }
 
-    // A PDF name: remembered so that "/F15 12 Tf" can set the current font.
+    // A PDF name, so that "/F15 12 Tf" can set the current font.
     if (c === '/') {
       let j = i + 1;
       let name = '';
@@ -355,9 +387,8 @@ function extractPdfText(content, cmaps) {
       i = j;
       continue;
     }
-    if (content.startsWith('Tf', i)) { font = lastName; i += 2; continue; }
 
-    // <hex> string: two-byte glyph ids under Identity-H. "<<" is a dictionary.
+    // <hex>: two-byte glyph ids under Identity-H. "<<" opens a dictionary.
     if (c === '<' && content[i + 1] !== '<') {
       const close = content.indexOf('>', i + 1);
       if (close < 0) { i += 1; continue; }
@@ -365,30 +396,54 @@ function extractPdfText(content, cmaps) {
       const map = cmaps && cmaps[font];
       if (map) {
         for (let k = 0; k + 4 <= hex.length; k += 4) {
-          const glyph = parseInt(hex.slice(k, k + 4), 16);
-          const ch = map.get(glyph);
-          if (ch !== undefined) out += ch;
+          const ch = map.get(parseInt(hex.slice(k, k + 4), 16));
+          if (ch !== undefined) line += ch;
         }
       }
       i = close + 1;
       continue;
     }
 
-    // Inside a TJ array a sufficiently negative kern is a word gap.
-    if (c === '-' && /^-\d/.test(content.slice(i, i + 3))) {
-      const num = /^-\d+(\.\d+)?/.exec(content.slice(i, i + 12));
-      if (num && parseFloat(num[0]) <= -100 && !/\s$/.test(out)) out += ' ';
-      i += num ? num[0].length : 1;
+    if (c === '[') { inArray = true; i += 1; continue; }
+    if (c === ']') { inArray = false; i += 1; continue; }
+
+    // A number: an operand, and inside a TJ array also a possible word gap.
+    if (/[0-9+.-]/.test(c) && /^[+-]?(\d+\.?\d*|\.\d+)/.test(content.slice(i, i + 24))) {
+      const num = /^[+-]?(\d+\.?\d*|\.\d+)/.exec(content.slice(i, i + 24))[0];
+      const value = parseFloat(num);
+      if (inArray && value <= -120 && line && !/\s$/.test(line)) line += ' ';
+      nums.push(value);
+      i += num.length;
       continue;
     }
 
-    if (c === 'T' && (content[i + 1] === 'd' || content[i + 1] === 'D' || content[i + 1] === '*')) {
-      out += '\n'; i += 2; continue;
+    // An operator.
+    if (/[A-Za-z'"*]/.test(c)) {
+      let j = i;
+      let op = '';
+      while (j < content.length && /[A-Za-z0-9*'"]/.test(content[j])) { op += content[j]; j += 1; }
+      i = j || i + 1;
+
+      if (op === 'Tf') font = lastName;
+      else if (op === 'Tm' && nums.length >= 6) moveTo(nums[nums.length - 1]);
+      else if ((op === 'Td' || op === 'TD') && nums.length >= 2) {
+        const ty = nums[nums.length - 1];
+        if (Math.abs(ty) > 1.2) endLine();
+        y = y === null ? ty : y + ty;
+      } else if (op === 'T*' || op === "'" || op === '"') endLine();
+      // `BT` deliberately does nothing here. A word processor wraps every run
+      // in its own BT/ET pair, so ending the line at one split words down the
+      // middle; the `Tm` inside each pair says whether the line really moved.
+
+      nums = [];
+      continue;
     }
-    if (content.startsWith('ET', i)) { out += '\n'; i += 2; continue; }
+
     i += 1;
   }
-  return out;
+
+  endLine();
+  return lines.join('\n');
 }
 
 // Identity-H and other custom encodings decode to control characters. If the
@@ -440,9 +495,14 @@ const HEADING_LOOKUP = (() => {
   return map;
 })();
 
-const MONTH = '(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\\.?';
+const MONTH = '\\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\\.?';
+// Each word alternative carries its own boundaries. Without them "now" matched
+// inside "knowledge" and the date splitter cut the middle out of the word - on
+// a CV, of all documents, where "knowledge" is not a rare word. "current" did
+// the same to "concurrent".
 const DATE_TOKEN = new RegExp(
-  `(${MONTH}\\s*'?\\d{2,4}|\\d{1,2}[/.-]\\d{4}|\\b(?:19|20)\\d{2}\\b|present|current|till\\s*date|to\\s*date|ongoing|now)`,
+  `(${MONTH}\\s*'?\\d{2,4}|\\d{1,2}[/.-]\\d{4}|\\b(?:19|20)\\d{2}\\b`
+  + '|\\b(?:present|current|till\\s*date|to\\s*date|ongoing|now)\\b)',
   'gi',
 );
 const BULLET_START = /^\s*[•·▪‣◦*\-–—o]\s+/;

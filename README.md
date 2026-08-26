@@ -156,9 +156,25 @@ Drop in a PDF, a `.docx`, or paste the text. The file is read in the browser —
 content streams. Text is parsed into sections, roles, dates, skills and scores,
 shown as a report for you to confirm, and then checked.
 
-Parsing a CV from formatting alone is approximate and the app says so. PDFs that
-are scans, or that use embedded font encodings, cannot be read at all — it tells
-you to paste the text instead rather than producing nonsense.
+Getting text out of a PDF takes more care than it sounds:
+
+- **`DecompressionStream` rejects trailing bytes** that zlib ignores, and
+  discards the whole result when it does. A PDF stream is delimited by the
+  `endstream` keyword, so the slice nearly always carries the writer's newline —
+  meaning every compressed stream failed and the reader saw nothing. It now
+  keeps whatever decoded before the complaint.
+- **Embedded fonts are binary and large enough to contain the bytes `Tj` by
+  chance**, which made them look like content streams and drowned the real text.
+  The object's own dictionary says what it is: `/Length1` means a font program.
+- **Subset fonts store glyph ids, not letters.** Each carries a `/ToUnicode`
+  CMap; the reader resolves every font resource to its map and translates.
+- **A word processor emits a separate run per formatting change**, so breaking
+  the line at each `ET` split words in half — "Subham" became "S" + "ubham".
+  Line breaks come from the text matrix moving down the page instead.
+
+Parsing the structure out of that text is still approximate, and the app says
+so. A scanned PDF has no text to find at all — it tells you to paste instead
+rather than producing nonsense.
 
 ### Import from LinkedIn
 
@@ -182,8 +198,9 @@ then looks exactly like the next company, degrees spread over three lines with
 the dates on a fourth, entries the PDF repeats across a page break, and
 "Page 1 of 2" arriving as four separate lines.
 
-`npm test` runs that suite — 31 checks over both LinkedIn routes, including the
-guardrails that stop an ordinary CV being pushed through the LinkedIn parser.
+`npm test` runs the import suite — 36 checks over both LinkedIn routes and the
+date parser, including the guardrails that stop an ordinary CV being pushed
+through the LinkedIn one.
 
 **Their data archive** (Settings → Data privacy → Get a copy of your data) is
 cleaner — real CSV fields, no guessing — but LinkedIn takes 10 minutes to 72

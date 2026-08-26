@@ -102,5 +102,25 @@ check('language level', c.data.languages[0].level, 'Native');
 check('messages ignored', JSON.stringify(c.data).includes('private'), false);
 check('files named', c.report.read.includes('messages.csv'), false);
 
+/* --- date tokens must not match inside words --------------------------- */
+console.log(NL + '=== date tokens ===');
+const withLine = (line) => {
+  const t = j('Jane Doe', 'jane@example.com', '', 'Experience', line, '- Did a thing');
+  return parseCV(t, blankData()).data.experience[0] || {};
+};
+// "now" inside "knowledge" and "current" inside "concurrent" were being cut
+// out of the middle of the word by the date splitter.
+check('knowledge survives', withLine('Acquired in-depth knowledge through coursework').role,
+  'Acquired in-depth knowledge through coursework');
+check('concurrent survives', withLine('Ran concurrent workloads across nodes').role,
+  'Ran concurrent workloads across nodes');
+const dated = (line) => {
+  const e = withLine(line);
+  return (e.start || '') + '|' + (e.end || '');
+};
+check('slash dates still split', dated('Consultant 11/2024 - Present'), '11/2024|');
+check('month dates still split', dated('Engineer Mar 2021 - Jul 2024'), 'Mar 2021|Jul 2024');
+check('bare "now" still splits', dated('Engineer 2021 - now'), '2021|');
+
 console.log(NL + (fails ? fails + ' FAILING' : 'all pass'));
 process.exit(fails ? 1 : 0);
