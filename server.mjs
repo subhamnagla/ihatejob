@@ -3,8 +3,23 @@ import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import submit from './api/submit.js';
+import content from './api/content.js';
+
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), 'public');
 const PORT = Number(process.env.PORT) || 5190;
+
+// The API is routed here rather than left to Vercel's /api auto-detection.
+// Vercel builds this file as the project's single entrypoint, and in that mode
+// the api/ directory is never turned into separate functions - the deployment
+// carried exactly two lambdas, this one and the middleware, so every /api/*
+// request was falling through to the static handler and being answered with
+// index.html. Importing the handlers means one code path that works in
+// production and in `npm run dev` alike.
+const API = {
+  '/api/submit': submit,
+  '/api/content': content,
+};
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -21,6 +36,13 @@ const TYPES = {
 createServer(async (req, res) => {
   try {
     const { pathname } = new URL(req.url, 'http://localhost');
+
+    const api = API[pathname];
+    if (api) {
+      await api(req, res);
+      return;
+    }
+
     let rel = decodeURIComponent(pathname);
     // "/" is the landing page; "/app" is the builder.
     if (rel === '/app' || rel === '/app/') rel = '/app.html';

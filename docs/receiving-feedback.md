@@ -16,8 +16,19 @@ to say "this helped" loses almost all of them, and keeps only the
 unrepresentative few who already had an account.
 
 It needs the same two variables the admin uses: `GITHUB_TOKEN` (with **Issues:
-read and write**, not just Contents) and `GITHUB_REPO`. Without them the
-endpoint returns 503 and the forms fall back to the routes below.
+read and write** — the admin's saving also wants **Contents: read and write**)
+and `GITHUB_REPO`. Without them the endpoint returns 503 and the forms fall back
+to the routes below.
+
+**The API is routed through `server.mjs`, not Vercel's `/api` auto-detection.**
+Vercel builds this project with `server.mjs` as its single entrypoint, and in
+that mode the `api/` directory is never turned into separate functions — the
+deployment carried exactly two lambdas, the entrypoint and the middleware. Every
+`/api/*` request was quietly answered with `index.html`. `server.mjs` imports the
+handlers instead, so one code path serves both production and `npm run dev`.
+
+If you ever add a handler under `api/`, register it in the `API` map at the top
+of `server.mjs` or it will not be reachable.
 
 Because it is the one unauthenticated write path on the site, it also carries a
 honeypot field, a minimum time-on-page, per-address rate limiting, a link cap,
