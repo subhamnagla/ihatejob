@@ -281,7 +281,11 @@ $('reviewboxBody').addEventListener('click', (e) => {
   store.reviews.items.unshift({
     id: uid(),
     quote: parsed.quote,
-    name: parsed.name || (issue.user && issue.user.login ? issue.user.login : ''),
+    // Sent through the site's form, the issue is opened by the site's own
+    // token - so the GitHub account is ours, not theirs. Only fall back to
+    // it for an issue somebody filed on GitHub directly.
+    name: parsed.name
+      || (parsed.known ? '' : (issue.user && issue.user.login) || ''),
     role: parsed.role,
     place: '',
     planet: parsed.planet || 10,
@@ -363,7 +367,11 @@ $('storyboxBody').addEventListener('click', (e) => {
     slug: slugify(title) || 'journey-' + issue.number,
     date: String(issue.created_at || '').slice(0, 10),
     outcome: parsed.outcome,
-    name: parsed.name || (issue.user && issue.user.login ? issue.user.login : ''),
+    // Sent through the site's form, the issue is opened by the site's own
+    // token - so the GitHub account is ours, not theirs. Only fall back to
+    // it for an issue somebody filed on GitHub directly.
+    name: parsed.name
+      || (parsed.known ? '' : (issue.user && issue.user.login) || ''),
     role: parsed.role,
     place: '',
     excerpt: '',

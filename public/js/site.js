@@ -430,7 +430,14 @@ $('reviewForm').addEventListener('submit', (e) => {
   if (!reviewReady()) return;
   const p = PLANETS[picked - 1];
   const who = $('rvName').value.trim();
-  sendIssue('review', 'Review: ' + p.name + (who ? ' - ' + who : ''), reviewText());
+  const btn = $('reviewForm').querySelector('[type="submit"]');
+  btn.disabled = true;
+  sendIssue('review', p.name + (who ? ' - ' + who : ''), reviewText(), $('rvWebsite').value)
+    .then((r) => {
+      btn.disabled = false;
+      if (r.ok) $('reviewForm').reset();
+      else if (r.error) $('rvNote').textContent = r.error;
+    });
 });
 
 $('rvCopy').addEventListener('click', async () => {
@@ -472,18 +479,57 @@ $('aiCost').innerHTML = '<b>Why there is no AI here yet.</b> Everything above is
 const ISSUE = (labels, title, body) => SITE.repo + '/issues/new?labels=' + encodeURIComponent(labels)
   + '&title=' + encodeURIComponent(title) + '&body=' + encodeURIComponent(body);
 
-// Delivery chain: the repository if it exists, then email, then an honest
-// dead end. Never claim something was sent when there is nowhere to send it.
-async function sendIssue(labels, title, body) {
+// When the page was opened. The endpoint rejects anything submitted within a
+// few seconds of it, which no person manages and every bot does.
+const OPENED_AT = Date.now();
+
+/**
+ * Delivery chain, in order of how little it asks of the visitor:
+ *
+ *   1. POST to /api/submit, which files it under the site's own token. No
+ *      account, no sign-up, no leaving the page. This is the whole point -
+ *      asking someone to register with GitHub to say "this helped" loses
+ *      almost all of them, and keeps only the unrepresentative few.
+ *   2. A pre-filled GitHub issue, for anyone who would rather post publicly
+ *      under their own name, and as the fallback when the endpoint is not
+ *      deployed (local dev, or no token set).
+ *   3. Email, then the clipboard, then an honest dead end.
+ *
+ * Never claim something was sent when there was nowhere to send it.
+ */
+async function sendIssue(kind, title, body, honeypot) {
+  try {
+    const res = await fetch('/api/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        kind, title, body, website: honeypot || '', startedAt: OPENED_AT,
+      }),
+    });
+    // A non-JSON reply means the function is not running here at all.
+    const type = res.headers.get('content-type') || '';
+    if (type.includes('application/json')) {
+      const out = await res.json();
+      if (res.ok && out.ok) {
+        toast('Sent. Thank you - it reaches us directly, no account needed.');
+        return { ok: true };
+      }
+      if (res.status !== 503) return { ok: false, error: out.error || 'That could not be sent.' };
+    }
+  } catch { /* offline, or the endpoint is absent - fall through */ }
+
+  // Not configured here: fall back to the routes that need no server. The
+  // prefix is added by the endpoint, so the fallback has to add it itself.
   if (REPO_READY) {
-    window.open(ISSUE(labels, title, body), '_blank', 'noopener');
-    return;
+    const [label, prefix] = KIND[kind] || KIND.idea;
+    window.open(ISSUE(label, prefix + title, body), '_blank', 'noopener');
+    return { ok: true };
   }
   if (MAIL_READY) {
     window.location.href = 'mailto:' + SITE.contactEmail
       + '?subject=' + encodeURIComponent(title)
       + '&body=' + encodeURIComponent(body);
-    return;
+    return { ok: true };
   }
   try {
     await navigator.clipboard.writeText([title, '', body].join('\n'));
@@ -491,6 +537,7 @@ async function sendIssue(labels, title, body) {
   } catch {
     toast('Nothing was sent - no repository or email address is configured yet.');
   }
+  return { ok: false };
 }
 
 // Anchors only navigate when there is somewhere real to go.
@@ -550,10 +597,19 @@ $('suggestForm').addEventListener('submit', (e) => {
     $('sgNote').textContent = 'Add a one-line summary first.';
     return;
   }
+  if ($('sgBody').value.trim().length < 12) {
+    $('sgNote').textContent = 'Add a little more detail so it is actionable.';
+    return;
+  }
   $('sgNote').textContent = '';
-  const kind = $('sgKind').value;
-  const [label, prefix] = KIND[kind] || KIND.idea;
-  sendIssue(label, prefix + $('sgTitle').value.trim(), $('sgBody').value.trim());
+  const btn = $('suggestForm').querySelector('[type="submit"]');
+  btn.disabled = true;
+  sendIssue($('sgKind').value, $('sgTitle').value.trim(), $('sgBody').value.trim(),
+    $('sgWebsite').value).then((r) => {
+    btn.disabled = false;
+    if (r.ok) $('suggestForm').reset();
+    else if (r.error) $('sgNote').textContent = r.error;
+  });
 });
 
 $('sgCopy').addEventListener('click', async () => {

@@ -220,6 +220,13 @@
           </div>
         </div>
 
+        <!-- Hidden from people, irresistible to bots. Off the tab order and
+             out of the accessibility tree so it reaches neither. -->
+        <div class="hp" aria-hidden="true">
+          <label for="rvWebsite">Website</label>
+          <input id="rvWebsite" type="text" tabindex="-1" autocomplete="off">
+        </div>
+
         <label class="check rv-consent">
           <input type="checkbox" id="rvConsent" checked>
           <span>You may quote this on the site, with the credit above.</span>
@@ -230,8 +237,8 @@
           <button class="btn" type="button" id="rvCopy">Copy instead</button>
           <span class="hint" id="rvNote" style="margin:0"></span>
         </div>
-        <p class="rv-fineprint">Reviews are published as-is, good or bad. Nothing is edited into
-          a compliment.</p>
+        <p class="rv-fineprint">No account needed &mdash; this reaches us directly. Reviews are
+          published as-is, good or bad, and nothing is edited into a compliment.</p>
       </form>
     </div>
   </section>
@@ -263,9 +270,8 @@
 
       <div class="suggest" id="suggest">
         <h3>Report an issue or suggest a change</h3>
-        <p>Opens a pre-filled issue on the repository, so it is public and does not get lost in
-          an inbox. Telling us how it went for you is a <a href="#review">review</a>, and has its
-          own form above.</p>
+        <p>Goes straight to us &mdash; no account, no sign-up. Telling us how it went for you is a
+          <a href="#review">review</a>, and has its own form above.</p>
         <form id="suggestForm">
           <div class="grid">
             <div class="field s6">
@@ -289,8 +295,12 @@
                 placeholder="What is missing, and how do you know? Having worked in the field is exactly the context a reviewer cannot get elsewhere."></textarea>
             </div>
           </div>
+          <div class="hp" aria-hidden="true">
+            <label for="sgWebsite">Website</label>
+            <input id="sgWebsite" type="text" tabindex="-1" autocomplete="off">
+          </div>
           <div class="suggest-actions">
-            <button class="btn btn-primary" type="submit">Open the issue</button>
+            <button class="btn btn-primary" type="submit">Send it</button>
             <button class="btn" type="button" id="sgCopy">Copy instead</button>
             <span class="hint" id="sgNote" style="margin:0"></span>
           </div>

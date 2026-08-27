@@ -15,6 +15,10 @@ import { SITE } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 
+// When the page opened. The submit endpoint rejects anything sent within a
+// few seconds of it, which no person manages and every bot does.
+const OPENED_AT = Date.now();
+
 $('btnTheme').addEventListener('click', () => {
   const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
   document.documentElement.dataset.theme = next;
@@ -326,6 +330,8 @@ function shareForm() {
     + ' placeholder="Where you started, what you tried, what did nothing, what finally worked, '
     + 'and how long the whole thing took. The dull middle is the useful part."></textarea></div>'
     + '</div>'
+    + '<div class="hp" aria-hidden="true"><label for="syWebsite">Website</label>'
+    + '<input id="syWebsite" type="text" tabindex="-1" autocomplete="off"></div>'
     + '<label class="check rv-consent"><input type="checkbox" id="syConsent" checked>'
     + '<span>You may publish this on the site, with the credit above.</span></label>'
     + '<div class="suggest-actions">'
@@ -333,8 +339,8 @@ function shareForm() {
     + '<button class="btn" type="button" id="syCopy">Copy instead</button>'
     + '<span class="hint" id="syNote" style="margin:0"></span>'
     + '</div>'
-    + '<p class="rv-fineprint">It opens a public thread on the repository, which becomes the place '
-    + 'other people reply. Published as written &mdash; nothing is edited into a happy ending.</p>'
+    + '<p class="rv-fineprint">No account needed. It reaches us directly and becomes the thread '
+    + 'other people reply on. Published as written &mdash; nothing is edited into a happy ending.</p>'
     + '</section>';
 }
 
@@ -368,10 +374,47 @@ function wireShareForm() {
   const send = $('sySend');
   if (!send) return;
 
-  send.addEventListener('click', () => {
+  send.addEventListener('click', async () => {
     if (!storyReady()) return;
+    send.disabled = true;
+    $('syNote').textContent = 'Sending…';
+
+    // Straight to us, with no account. A journey is a long thing to write; being
+    // asked to register with GitHub at the end of it would waste the effort.
+    try {
+      const res = await fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          kind: 'story',
+          title: $('syTitle').value.trim(),
+          body: storyText(),
+          website: $('syWebsite').value,
+          startedAt: OPENED_AT,
+        }),
+      });
+      const type = res.headers.get('content-type') || '';
+      if (type.includes('application/json')) {
+        const out = await res.json();
+        if (res.ok && out.ok) {
+          $('syNote').textContent = '';
+          $('sySend').closest('.st-form').querySelectorAll('.input').forEach((i) => { i.value = ''; });
+          toast('Sent. Thank you - it reaches us directly, no account needed.');
+          send.disabled = false;
+          return;
+        }
+        if (res.status !== 503) {
+          $('syNote').textContent = out.error || 'That could not be sent.';
+          send.disabled = false;
+          return;
+        }
+      }
+    } catch { /* offline or not deployed - fall through */ }
+
+    send.disabled = false;
+    $('syNote').textContent = '';
     if (!REPO_READY) {
-      $('syNote').textContent = 'No repository is configured yet, so use Copy instead.';
+      $('syNote').textContent = 'Sending is not set up here yet - use Copy instead.';
       return;
     }
     const url = 'https://github.com/' + OWNER + '/' + REPO + '/issues/new?labels=story'

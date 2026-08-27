@@ -1,8 +1,27 @@
 # Where reviews and suggestions arrive
 
 Everything a visitor sends — a review, a missing profession, a bug — goes to one
-of two places, decided by `public/js/config.js`. Nothing is stored on the site
+of two places, decided by `public/js/config.js`. Nothing about them is stored on the site
 itself, because the site has no backend.
+
+## No account required
+
+Reviews, journeys and suggestions post to **`/api/submit`**, a serverless
+function that files them as issues using the site's own `GITHUB_TOKEN`. The
+visitor fills a form and presses send — they never see GitHub and never make an
+account.
+
+That matters more than it sounds. Asking a staff nurse to register with GitHub
+to say "this helped" loses almost all of them, and keeps only the
+unrepresentative few who already had an account.
+
+It needs the same two variables the admin uses: `GITHUB_TOKEN` (with **Issues:
+read and write**, not just Contents) and `GITHUB_REPO`. Without them the
+endpoint returns 503 and the forms fall back to the routes below.
+
+Because it is the one unauthenticated write path on the site, it also carries a
+honeypot field, a minimum time-on-page, per-address rate limiting, a link cap,
+length bounds, and a label allowlist. `npm test` covers all of them.
 
 ## Set a channel first
 
@@ -22,7 +41,12 @@ export const SITE = {
 
 Submissions become issues on your repository, pre-filled and labelled.
 
-**Where to look:** `https://github.com/YOUR-NAME/ihatejob/issues`
+**Where to look:** `https://github.com/YOUR-NAME/ihatejob/issues` — or the
+admin, which is the same list with the moderation controls attached.
+
+Issues filed through the form are opened by your own token, so their GitHub
+author is you. The person's name comes from the `Credit:` line in the body, and
+the admin reads that rather than the account.
 
 Filter by what you care about:
 
@@ -156,6 +180,8 @@ May be published on the site: yes
 2. Reload the front page and open the browser console — the messages about
    hidden visitor numbers and reviews tell you what is still unconfigured.
 3. Go to **Rate us on the same scale we rate you**, pick a planet, write a line
-   and submit. It should open a GitHub issue form with the `review` label
-   already applied and the rating header filled in.
-4. If the label chip is missing on that form, you skipped the label step above.
+   and submit. It should say "Sent" **without opening GitHub**, and the issue
+   should appear in your repository with the `review` label.
+4. If it opens GitHub instead, `/api/submit` returned 503 — the token or repo
+   variable is missing, or the deployment predates them.
+5. If the issue appears with no label, you skipped the label step above.

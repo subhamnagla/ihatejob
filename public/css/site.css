@@ -502,6 +502,16 @@ body {
   color: var(--placeholder);
   letter-spacing: 0.02em;
 }
+/* The honeypot. Not `display:none` - some bots skip hidden fields, and this one
+   has to look real to them while staying out of a person's way entirely. */
+.hp {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
 .rv-consent { margin-top: 16px; align-items: flex-start; }
 .rv-consent input { margin-top: 2px; flex: 0 0 auto; }
 .rv-fineprint { margin: 14px 0 0; font-size: 12.5px; color: var(--muted); line-height: 1.6; }

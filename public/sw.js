@@ -4,7 +4,7 @@
 // this only has to hold the shell. There is nothing user-specific in the cache
 // - CVs live in localStorage and are never fetched - so a shared cache is safe.
 
-const VERSION = 'ihatejob-v12';
+const VERSION = 'ihatejob-v13';
 
 const SHELL = [
   '/',
