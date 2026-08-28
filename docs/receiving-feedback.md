@@ -15,10 +15,36 @@ That matters more than it sounds. Asking a staff nurse to register with GitHub
 to say "this helped" loses almost all of them, and keeps only the
 unrepresentative few who already had an account.
 
-It needs the same two variables the admin uses: `GITHUB_TOKEN` (with **Issues:
-read and write** — the admin's saving also wants **Contents: read and write**)
-and `GITHUB_REPO`. Without them the endpoint returns 503 and the forms fall back
-to the routes below.
+It has two delivery channels, and **either one on its own is enough**:
+
+| Channel | Variables | You get |
+| --- | --- | --- |
+| GitHub issues | `GITHUB_TOKEN` (**Issues: read and write** — the admin's saving also wants **Contents: read and write**), `GITHUB_REPO` | A labelled, threaded queue and the admin's moderation tools |
+| Email | `RESEND_API_KEY`, `NOTIFY_EMAIL` | Submissions in your inbox, no GitHub involved |
+
+Set both and every submission is filed *and* emailed. Set one and it goes there
+alone. With neither, the endpoint returns 503 and the forms fall back to the
+routes below.
+
+If both are on and one fails, the submission still counts as sent — a GitHub
+outage must not throw away a message the email delivered perfectly well. The
+visitor is told it failed only when **both** channels fail, and never sees which
+one broke or why, because those errors name the repository, the recipient and
+the token's scopes.
+
+### Email, specifically
+
+`NOTIFY_EMAIL` is an environment variable rather than a field in `config.js` on
+purpose. `config.js` is committed to a public repository, and a personal address
+sitting in one is scraped within days.
+
+Resend will only send from `onboarding@resend.dev` until you verify a domain,
+which is fine here: the mail is going to you, and you can whitelist it. Once you
+own a domain, verify it and set `NOTIFY_FROM`. The free tier is 3,000 emails a
+month and 100 a day — far more than a feedback form will ever use.
+
+Nothing is emailed to the *visitor*: the form never asks for their address, so
+there is none to send to.
 
 **The API is routed through `server.mjs`, not Vercel's `/api` auto-detection.**
 Vercel builds this project with `server.mjs` as its single entrypoint, and in
@@ -193,6 +219,8 @@ May be published on the site: yes
 3. Go to **Rate us on the same scale we rate you**, pick a planet, write a line
    and submit. It should say "Sent" **without opening GitHub**, and the issue
    should appear in your repository with the `review` label.
-4. If it opens GitHub instead, `/api/submit` returned 503 — the token or repo
-   variable is missing, or the deployment predates them.
+4. If it opens GitHub instead, `/api/submit` returned 503 — **neither** channel
+   is configured, or the deployment predates the variables. Setting
+   `RESEND_API_KEY` and `NOTIFY_EMAIL` alone is enough to stop this, without any
+   GitHub token at all.
 5. If the issue appears with no label, you skipped the label step above.

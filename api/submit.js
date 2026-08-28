@@ -11,11 +11,24 @@
 // This endpoint is deliberately outside the admin's middleware matcher: it has
 // to be public. Everything below is there because of that.
 //
-// Required environment variables (the same ones the admin already uses):
-//   GITHUB_TOKEN   fine-grained PAT with Issues: read and write on this repo
-//   GITHUB_REPO    owner/repo, e.g. subhamnagla/ihatejob
+// Two delivery channels, and either one on its own is enough. Set both and a
+// submission is filed and emailed; set one and it goes there alone. The point
+// is that nobody has to hold a GitHub token just to receive a review.
+//
+//   GITHUB_TOKEN     fine-grained PAT with Issues: read and write on this repo
+//   GITHUB_REPO      owner/repo, e.g. subhamnagla/ihatejob
+//
+//   RESEND_API_KEY   from resend.com
+//   NOTIFY_EMAIL     where submissions land. An environment variable and not
+//                    config.js on purpose: config.js is committed to a public
+//                    repository, and a personal address in one is scraped
+//                    within days.
+//   NOTIFY_FROM      optional. Resend will only send from its own address
+//                    until a domain is verified, which is fine when the mail
+//                    is going to the account holder.
 
 const API = 'https://api.github.com';
+const RESEND = 'https://api.resend.com/emails';
 
 // Only labels the site itself offers. Never take a label from the request.
 const KINDS = {
@@ -76,6 +89,33 @@ const clean = (s, max) => String(s == null ? '' : s)
   .trim()
   .slice(0, max);
 
+async function fileIssue({ token, repo, title, body, label }) {
+  const r = await fetch(`${API}/repos/${repo}/issues`, {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + token,
+      Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28',
+      'User-Agent': 'ihatejob-site',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ title, body, labels: [label] }),
+  });
+  if (!r.ok) throw new Error('GitHub ' + r.status + ': ' + (await r.text()).slice(0, 300));
+  const issue = await r.json();
+  return { via: 'github', number: issue.number, url: issue.html_url };
+}
+
+async function mailOut({ key, to, from, title, body }) {
+  const r = await fetch(RESEND, {
+    method: 'POST',
+    headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from, to: [to], subject: title, text: body }),
+  });
+  if (!r.ok) throw new Error('Resend ' + r.status + ': ' + (await r.text()).slice(0, 300));
+  return { via: 'email' };
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -84,7 +124,13 @@ export default async function handler(req, res) {
 
   const TOKEN = process.env.GITHUB_TOKEN;
   const REPO = process.env.GITHUB_REPO;
-  if (!TOKEN || !REPO) {
+  const MAIL_KEY = process.env.RESEND_API_KEY;
+  const MAIL_TO = process.env.NOTIFY_EMAIL;
+  const MAIL_FROM = process.env.NOTIFY_FROM || 'onboarding@resend.dev';
+
+  const canFile = Boolean(TOKEN && REPO);
+  const canMail = Boolean(MAIL_KEY && MAIL_TO);
+  if (!canFile && !canMail) {
     // The form falls back to its copy button on this, and says so.
     return send(res, 503, {
       error: 'Not configured',
@@ -133,37 +179,42 @@ export default async function handler(req, res) {
   // The submitter is anonymous to GitHub - the issue is opened by the site's
   // own token - so the body has to carry who they said they are. The admin
   // reads the credit line rather than the GitHub account.
-  const footer = '\n\n---\nSent from the site by a visitor. Not a GitHub account.';
+  const footer = '\n\n---\nSent through the form by a visitor. No account was involved.';
+  const subject = kind.prefix + title;
+  const full = text + footer;
 
-  try {
-    const r = await fetch(`${API}/repos/${REPO}/issues`, {
-      method: 'POST',
-      headers: {
-        Authorization: 'Bearer ' + TOKEN,
-        Accept: 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-        'User-Agent': 'ihatejob-site',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        title: kind.prefix + title,
-        body: text + footer,
-        labels: [kind.label],
-      }),
-    });
+  const jobs = [];
+  if (canFile) {
+    jobs.push(fileIssue({
+      token: TOKEN, repo: REPO, title: subject, body: full, label: kind.label,
+    }));
+  }
+  if (canMail) {
+    jobs.push(mailOut({
+      key: MAIL_KEY, to: MAIL_TO, from: MAIL_FROM, title: subject, body: full,
+    }));
+  }
 
-    if (!r.ok) {
-      const detail = await r.text();
-      // Never hand a GitHub error back to a visitor - it can name the repo or
-      // the token's scopes.
-      console.error('[submit] GitHub ' + r.status + ': ' + detail.slice(0, 300));
-      return send(res, 502, { error: 'That could not be sent just now. Please try again shortly.' });
-    }
+  // allSettled, not all: with both channels on, a GitHub outage must not throw
+  // away a submission the email delivered perfectly well.
+  const settled = await Promise.allSettled(jobs);
 
-    const issue = await r.json();
-    return send(res, 200, { ok: true, number: issue.number, url: issue.html_url });
-  } catch (err) {
-    console.error('[submit] ' + (err && err.message));
+  // Every failure is logged here and nowhere else. A GitHub or Resend error can
+  // name the repository, the recipient or the token's scopes, so none of it
+  // goes back to the visitor.
+  settled.filter((s) => s.status === 'rejected')
+    .forEach((s) => console.error('[submit] ' + (s.reason && s.reason.message)));
+
+  const done = settled.filter((s) => s.status === 'fulfilled').map((s) => s.value);
+  if (!done.length) {
     return send(res, 502, { error: 'That could not be sent just now. Please try again shortly.' });
   }
+
+  // One channel getting through is a success - the message reached a person.
+  // Which channels those were is not the visitor's business.
+  const issue = done.find((d) => d.via === 'github');
+  return send(res, 200, {
+    ok: true,
+    ...(issue ? { number: issue.number, url: issue.url } : {}),
+  });
 }

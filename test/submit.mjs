@@ -44,10 +44,20 @@ check('does not leak env detail', /token|secret/i.test(JSON.stringify(r.body)), 
 process.env.GITHUB_TOKEN = 'test-token';
 process.env.GITHUB_REPO = 'someone/somewhere';
 
-// Intercept the GitHub call so nothing leaves the machine.
-let sent = null;
+// Intercept both outbound calls so nothing leaves the machine.
+let sent = null;      // the GitHub issue
+let mailed = null;    // the Resend email
+let failGithub = false;
+let failMail = false;
 globalThis.fetch = async (url, opts) => {
-  sent = { url, opts, body: JSON.parse(opts.body) };
+  const rec = { url, opts, body: JSON.parse(opts.body) };
+  if (String(url).includes('resend.com')) {
+    mailed = rec;
+    if (failMail) return { ok: false, status: 401, text: async () => 'bad key sk_live_secret' };
+    return { ok: true, json: async () => ({ id: 'mail-1' }), text: async () => '' };
+  }
+  sent = rec;
+  if (failGithub) return { ok: false, status: 403, text: async () => 'token scope missing' };
   return {
     ok: true,
     json: async () => ({ number: 42, html_url: 'https://example.test/issues/42' }),
@@ -93,7 +103,7 @@ check('reports the issue number', r.body.number, 42);
 check('label is from the allowlist', sent.body.labels, ['review']);
 check('title carries the prefix', sent.body.title, 'Review: Uranus - Asha R');
 check('body kept', sent.body.body.includes('licence check'), true);
-check('marked as from a visitor', sent.body.body.includes('Not a GitHub account'), true);
+check('marked as from a visitor', sent.body.body.includes('No account was involved'), true);
 check('token not in the URL', sent.url.includes('test-token'), false);
 check('token sent as a header', sent.opts.headers.Authorization, 'Bearer test-token');
 
@@ -111,6 +121,50 @@ console.log(NL + '=== control characters ===');
 sent = null;
 await post({ ...good(), title: 'Nul' + String.fromCharCode(0) + 'led' + String.fromCharCode(27) + '[31m title' }, { ip: '6.6.6.6' });
 check('control chars stripped', /[\u0000-\u001F]/.test(sent.body.title), false);
+
+console.log(NL + '=== email as the only channel ===');
+process.env.GITHUB_TOKEN = '';
+process.env.GITHUB_REPO = '';
+process.env.RESEND_API_KEY = 'test-key';
+process.env.NOTIFY_EMAIL = 'owner@example.test';
+
+sent = null; mailed = null;
+r = await post(good(), { ip: '10.0.0.1' });
+check('accepted on email alone', r.statusCode, 200);
+check('nothing filed on GitHub', sent, null);
+check('emailed to the owner', mailed.body.to, ['owner@example.test']);
+check('subject carries the prefix', mailed.body.subject, 'Review: Uranus - Asha R');
+check('body kept', mailed.body.text.includes('licence check'), true);
+check('no issue number invented', 'number' in r.body, false);
+check('key sent as a header', mailed.opts.headers.Authorization, 'Bearer test-key');
+check('key not in the URL', mailed.url.includes('test-key'), false);
+check('default sender until a domain is verified', mailed.body.from, 'onboarding@resend.dev');
+
+console.log(NL + '=== both channels ===');
+process.env.GITHUB_TOKEN = 'test-token';
+process.env.GITHUB_REPO = 'someone/somewhere';
+
+sent = null; mailed = null;
+r = await post(good(), { ip: '10.0.0.2' });
+check('filed and emailed', [Boolean(sent), Boolean(mailed)], [true, true]);
+check('still reports the issue number', r.body.number, 42);
+
+console.log(NL + '=== one channel failing ===');
+failGithub = true;
+r = await post(good(), { ip: '10.0.0.3' });
+check('email alone still counts as sent', r.statusCode, 200);
+check('no issue number when GitHub failed', 'number' in r.body, false);
+
+failGithub = false; failMail = true;
+r = await post(good(), { ip: '10.0.0.4' });
+check('GitHub alone still counts as sent', r.statusCode, 200);
+
+failGithub = true;
+r = await post(good(), { ip: '10.0.0.5' });
+check('both failing is a 502', r.statusCode, 502);
+check('no provider detail reaches the visitor',
+  /resend|github|scope|sk_live/i.test(JSON.stringify(r.body)), false);
+failGithub = false; failMail = false;
 
 console.log(NL + (fails ? fails + ' FAILING' : 'all pass'));
 process.exit(fails ? 1 : 0);
