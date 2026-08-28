@@ -61,6 +61,13 @@ silently overwriting the first. Reload and reapply.
 
 ## Two inboxes, not one
 
+> **Submissions now arrive by email, not here.** Both blocks below read GitHub
+> issues, and `/api/submit` no longer files any — it emails you instead, so that
+> nobody has to sign up anywhere to leave a review. The queues still work, but
+> they will only ever show issues you filed yourself. To publish something that
+> came in by email, use **Add blank** under Reviews or **Write one** under
+> Journeys and paste it in. See [receiving-feedback.md](receiving-feedback.md).
+
 **Reviews people sent** and **Issues & ideas** are separate blocks, because they
 are separate jobs: one is a moderation queue, the other is a to-do list. A
 review never appears in the issues list, and the label filters there no longer

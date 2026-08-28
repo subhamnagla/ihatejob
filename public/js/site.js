@@ -12,12 +12,10 @@ import { PLANETS, planetSVG, starsFor, starRow } from './planets.js';
 
 const $ = (id) => document.getElementById(id);
 
-// Until SITE.repo points at a repository that exists, every "open an issue"
-// link would land on a GitHub 404. Detect the placeholder and copy the text to
-// the clipboard instead of sending someone to a dead page.
-const REPO_READY = !/your-username|example\.com|^$/.test(SITE.repo);
+// Submissions go to /api/submit, which emails them. contactEmail is only the
+// fallback for when that endpoint is not deployed - local dev, or before the
+// environment variables are set.
 const MAIL_READY = /.+@.+\..+/.test(SITE.contactEmail || '');
-const CAN_RECEIVE = REPO_READY || MAIL_READY;
 
 /* ---------------------------------------------------------------- theme */
 
@@ -455,9 +453,6 @@ $('rvCopy').addEventListener('click', async () => {
 function openReviewForm(e) {
   if (e) e.preventDefault();
   $('review').scrollIntoView({ behavior: 'smooth' });
-  if (!CAN_RECEIVE) {
-    toast('Write it here - note there is no inbox configured yet, so it will only be copied.');
-  }
 }
 
 ['footReview', 'btnLeaveReview'].forEach((id) => {
@@ -476,9 +471,6 @@ $('aiCost').innerHTML = '<b>Why there is no AI here yet.</b> Everything above is
 
 /* ------------------------------------------------------------ open source */
 
-const ISSUE = (labels, title, body) => SITE.repo + '/issues/new?labels=' + encodeURIComponent(labels)
-  + '&title=' + encodeURIComponent(title) + '&body=' + encodeURIComponent(body);
-
 // When the page was opened. The endpoint rejects anything submitted within a
 // few seconds of it, which no person manages and every bot does.
 const OPENED_AT = Date.now();
@@ -486,14 +478,14 @@ const OPENED_AT = Date.now();
 /**
  * Delivery chain, in order of how little it asks of the visitor:
  *
- *   1. POST to /api/submit, which files it under the site's own token. No
- *      account, no sign-up, no leaving the page. This is the whole point -
- *      asking someone to register with GitHub to say "this helped" loses
- *      almost all of them, and keeps only the unrepresentative few.
- *   2. A pre-filled GitHub issue, for anyone who would rather post publicly
- *      under their own name, and as the fallback when the endpoint is not
- *      deployed (local dev, or no token set).
- *   3. Email, then the clipboard, then an honest dead end.
+ *   1. POST to /api/submit, which emails it to the site owner. No account, no
+ *      sign-up, no leaving the page. This is the whole point - asking someone
+ *      to register somewhere to say "this helped" loses almost all of them,
+ *      and keeps only the unrepresentative few.
+ *   2. Email, then the clipboard, then an honest dead end.
+ *
+ * Nothing here sends anyone to GitHub. A visitor with something to say should
+ * never meet a sign-up page on the way to saying it.
  *
  * Never claim something was sent when there was nowhere to send it.
  */
@@ -518,13 +510,7 @@ async function sendIssue(kind, title, body, honeypot) {
     }
   } catch { /* offline, or the endpoint is absent - fall through */ }
 
-  // Not configured here: fall back to the routes that need no server. The
-  // prefix is added by the endpoint, so the fallback has to add it itself.
-  if (REPO_READY) {
-    const [label, prefix] = KIND[kind] || KIND.idea;
-    window.open(ISSUE(label, prefix + title, body), '_blank', 'noopener');
-    return { ok: true };
-  }
+  // Not configured here: fall back to the routes that need no server.
   if (MAIL_READY) {
     window.location.href = 'mailto:' + SITE.contactEmail
       + '?subject=' + encodeURIComponent(title)
@@ -535,27 +521,28 @@ async function sendIssue(kind, title, body, honeypot) {
     await navigator.clipboard.writeText([title, '', body].join('\n'));
     toast('Copied to your clipboard. No inbox is set up yet, so nothing was sent.');
   } catch {
-    toast('Nothing was sent - no repository or email address is configured yet.');
+    toast('Nothing was sent - no inbox is configured yet.');
   }
   return { ok: false };
 }
 
-// Anchors only navigate when there is somewhere real to go.
+// These used to open a pre-filled GitHub issue, which meant a sign-up page for
+// anyone without an account. They now fill in the form already on this page:
+// same questions, same prompts, nowhere to be sent.
 function wireIssueLink(el, labels, title, body) {
   if (!el) return;
-  if (REPO_READY) {
-    el.href = ISSUE(labels, title, body);
-    el.target = '_blank';
-    el.rel = 'noopener';
-    return;
-  }
   el.href = '#suggest';
   el.addEventListener('click', (e) => {
     e.preventDefault();
     document.getElementById('suggest').scrollIntoView({ behavior: 'smooth' });
     const kind = document.getElementById('sgKind');
     if (kind && [...kind.options].some((o) => o.value === labels)) kind.value = labels;
-    toast('Tell us here - the public repository is not live yet.');
+    // Only prefill an empty form - never overwrite something half-written.
+    const sgTitle = document.getElementById('sgTitle');
+    const sgBody = document.getElementById('sgBody');
+    if (sgBody && !sgBody.value.trim()) sgBody.value = body;
+    if (sgTitle && !sgTitle.value.trim()) sgTitle.placeholder = title.replace(/:\s*$/, '');
+    if (sgTitle) sgTitle.focus();
   });
 }
 
@@ -580,16 +567,6 @@ wireIssueLink($('osTemplate'), 'template', 'New format: ', Q(
   'What does it look like?', '', '',
   'Single column or sidebar?', '', '',
   'Who is it for?', '', ''));
-
-const KIND = {
-  review: ['review', 'Review: '],
-  profession: ['profession', 'New profession: '],
-  region: ['region', 'Region rules: '],
-  template: ['template', 'New format: '],
-  checker: ['checker', 'Checker rule: '],
-  bug: ['bug', 'Bug: '],
-  idea: ['enhancement', 'Idea: '],
-};
 
 $('suggestForm').addEventListener('submit', (e) => {
   e.preventDefault();

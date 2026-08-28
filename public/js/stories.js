@@ -411,16 +411,10 @@ function wireShareForm() {
       }
     } catch { /* offline or not deployed - fall through */ }
 
+    // No GitHub fallback here on purpose. Someone who has just written up their
+    // whole job hunt should not be handed a sign-up page at the end of it.
     send.disabled = false;
-    $('syNote').textContent = '';
-    if (!REPO_READY) {
-      $('syNote').textContent = 'Sending is not set up here yet - use Copy instead.';
-      return;
-    }
-    const url = 'https://github.com/' + OWNER + '/' + REPO + '/issues/new?labels=story'
-      + '&title=' + encodeURIComponent('Story: ' + $('syTitle').value.trim())
-      + '&body=' + encodeURIComponent(storyText());
-    window.open(url, '_blank', 'noopener');
+    $('syNote').textContent = 'Sending is not set up here yet - use Copy instead.';
   });
 
   $('syCopy').addEventListener('click', async () => {
