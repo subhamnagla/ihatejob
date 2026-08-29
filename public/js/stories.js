@@ -200,6 +200,53 @@ function byline(story, cls) {
     + '<span>' + esc(who) + '</span></span></div>';
 }
 
+/* ---------------------------------------------------------- page meta */
+
+// A search result and a link preview both show roughly 155 characters, so cut
+// there - on a word boundary, because a description ending mid-word reads as
+// broken rather than truncated.
+function summarise(story) {
+  const lead = (story.outcome ? story.outcome + '. ' : '')
+    + String(story.body || '').replace(/[#>*_`[\]]/g, ' ').replace(/\s+/g, ' ');
+  const clean = lead.replace(/\s+/g, ' ').trim();
+  if (!clean) return 'A job journey written up on ihatejob.';
+  if (clean.length <= 155) return clean;
+  const cut = clean.slice(0, 155);
+  return cut.slice(0, cut.lastIndexOf(' ')).trim() + '...';
+}
+
+// Every journey is served from the same stories.html, so without this they all
+// share the listing page's title, description and canonical URL. A crawler sees
+// one page where there are twenty, and every share on WhatsApp or LinkedIn
+// looks identical no matter which journey was shared.
+function setSocial(title, description, url) {
+  document.title = title;
+
+  const tag = (attr, key, content) => {
+    const sel = 'meta[' + attr + '="' + key + '"]';
+    let el = document.head.querySelector(sel);
+    if (!el) {
+      el = document.createElement('meta');
+      el.setAttribute(attr, key);
+      document.head.appendChild(el);
+    }
+    el.setAttribute('content', content);
+  };
+
+  tag('name', 'description', description);
+  tag('property', 'og:title', title);
+  tag('property', 'og:description', description);
+  tag('property', 'og:url', url);
+
+  let link = document.head.querySelector('link[rel="canonical"]');
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'canonical';
+    document.head.appendChild(link);
+  }
+  link.setAttribute('href', url);
+}
+
 /* ------------------------------------------------------------- listing */
 
 function listing(stories, meta) {
@@ -233,9 +280,8 @@ function listing(stories, meta) {
 function article(story, all, meta) {
   const idx = all.findIndex((s) => s.slug === story.slug);
   const next = all[idx + 1] || all[idx - 1];
-  document.title = story.title + ' - ihatejob';
-
   const url = SITE.url + '/stories/' + encodeURIComponent(story.slug);
+  setSocial(story.title + ' - ihatejob', summarise(story), url);
   const text = story.title + ' - a job journey on ihatejob';
 
   return '<article class="post st-post">'
@@ -483,7 +529,11 @@ document.addEventListener('click', async (e) => {
 
   const story = live.find((s) => s.slug === slug);
   if (!story) {
-    document.title = 'Journey not found - ihatejob';
+    // Canonical points at the listing, not at itself: a URL with no journey
+    // behind it should not compete in search with the page that has them all.
+    setSocial('Journey not found - ihatejob',
+      'That journey does not exist, or is not published yet.',
+      SITE.url + '/stories');
     root.innerHTML = '<div class="blog-head"><h1>Not found</h1>'
       + '<p>That journey does not exist, or is not published yet.</p>'
       + '<p><a class="btn" href="/stories">All journeys</a></p></div>';

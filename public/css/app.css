@@ -1624,3 +1624,15 @@ textarea.input { resize: vertical; line-height: 1.5; }
   .score-card { flex-direction: column; text-align: center; gap: 14px; }
   .stat-row .stat { flex: 1 1 calc(50% - 4px); }
 }
+
+/* Present to a crawler and a screen reader, absent to everyone else. The
+   builder is all toolbar and canvas - there is nowhere to put a visible page
+   heading without inventing chrome nobody asked for. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
