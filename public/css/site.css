@@ -913,3 +913,13 @@ body {
 .post-next:hover { border-color: var(--brand); }
 .post-next span { display: block; font-size: 12px; color: var(--muted); }
 .post-next b { display: block; margin-top: 3px; font-size: 16px; }
+
+/* The confirmation that replaces the form once a journey is sent. The line is
+   a sentence rather than a heading, so it is sized to be read as one. */
+.st-sent h2 {
+  font-size: 20px;
+  line-height: 1.4;
+  font-weight: 650;
+  max-width: 46ch;
+}
+.st-sent .section-lede { max-width: 52ch; }

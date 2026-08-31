@@ -353,6 +353,40 @@ async function fillComments(number) {
 
 /* ------------------------------------------------------- share yours */
 
+// Sent, and going nowhere until a person says so. Saying that plainly would be
+// honest and instantly forgettable, so it gets said with a straight face and
+// some theatre. Written from scratch on purpose: no real actor is quoted or
+// impersonated and no film dialogue is borrowed - the joke is the register, and
+// the register is free.
+const SENT_LINES = [
+  'It is in. Somewhere a man in a swivel chair is reading it very slowly and has not blinked in four minutes.',
+  'Filed. It now sits in a queue guarded by one person, one inbox, and an alarming quantity of chai.',
+  'Received. Cue thunder. Cue slow zoom on a face. Cue an ordinary bloke clicking approve tomorrow morning.',
+  'Logged. It waits, dramatically, in a queue of exactly one. The review is faster than the buildup suggests.',
+  'In. One human reads every single one of these, which is either reassuring or terrifying depending on what you wrote.',
+  'Sent. Nobody can see it yet. Not recruiters. Not your old manager. Not yet.',
+  'Accepted for review, in the manner of a stern uncle accepting a marriage proposal: slowly, and with follow-up questions.',
+  'Your journey has entered the building. It will be read, weighed, and - should it survive - published.',
+];
+
+function sentPanel(consented) {
+  const line = SENT_LINES[Math.floor(Math.random() * SENT_LINES.length)];
+  return '<section class="rv-form st-form st-sent" id="share-yours">'
+    + '<h2>' + esc(line) + '</h2>'
+    // The joke does not get to replace the facts, so both are always here.
+    + '<p class="section-lede">Nothing is public yet. It stays unpublished until a person '
+    + 'reads it and approves it, usually within a day.</p>'
+    + (consented
+      ? '<p class="section-lede">If it goes up it appears under <a href="/stories">journeys</a>, '
+        + 'with the credit you gave.</p>'
+      : '<p class="section-lede">You said not to publish it, so it will be read and never '
+        + 'posted. That is honoured by the site itself, not just by us remembering.</p>')
+    + '<div class="suggest-actions">'
+    + '<button class="btn" type="button" id="syAgain">Write another</button>'
+    + '<a class="btn btn-primary" href="/stories">Read other journeys</a>'
+    + '</div></section>';
+}
+
 function shareForm() {
   return '<section class="rv-form st-form" id="share-yours">'
     + '<h2>Share your journey</h2>'
@@ -443,10 +477,18 @@ function wireShareForm() {
       if (type.includes('application/json')) {
         const out = await res.json();
         if (res.ok && out.ok) {
-          $('syNote').textContent = '';
-          $('sySend').closest('.st-form').querySelectorAll('.input').forEach((i) => { i.value = ''; });
-          toast('Sent. Thank you - it reaches us directly, no account needed.');
-          send.disabled = false;
+          // Read the answer before the form is replaced by the panel that
+          // reports it back.
+          const consented = $('syConsent').checked;
+          const host = document.getElementById('share-yours');
+          host.outerHTML = sentPanel(consented);
+          document.getElementById('share-yours').scrollIntoView({ behavior: 'smooth' });
+          document.getElementById('syAgain').addEventListener('click', () => {
+            const panel = document.getElementById('share-yours');
+            panel.outerHTML = shareForm();
+            wireShareForm();
+            document.getElementById('share-yours').scrollIntoView({ behavior: 'smooth' });
+          });
           return;
         }
         if (res.status !== 503) {
