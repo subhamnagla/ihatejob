@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import submit from './api/submit.js';
 import content from './api/content.js';
+import approve from './api/approve.js';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), 'public');
 const PORT = Number(process.env.PORT) || 5190;
@@ -19,6 +20,8 @@ const PORT = Number(process.env.PORT) || 5190;
 const API = {
   '/api/submit': submit,
   '/api/content': content,
+  // In production middleware.js puts the admin password in front of this one.
+  '/api/approve': approve,
 };
 
 const TYPES = {

@@ -24,7 +24,80 @@
 //                    until a domain is verified, which is fine when the mail
 //                    is going to the account holder.
 
+import { repoConfig, repoReady, readJson, writeJson, STORIES } from './repo.js';
+
 const RESEND = 'https://api.resend.com/emails';
+
+// Read per request rather than at import: a serverless module is reused across
+// invocations, and reading env at load time bakes in whatever existed at cold
+// start. Only used to build the approve link in the email.
+const siteUrl = () => (process.env.SITE_URL || 'https://ihatejob.app').replace(/\/+$/, '');
+
+const OUTCOME = /^Outcome:\s*(.*)$/im;
+const CREDIT = /^Credit:\s*(.*)$/im;
+const CONSENT = /^May be published on the site:\s*(.*)$/im;
+
+const headerValue = (text, re) => {
+  const m = text.match(re);
+  return m ? m[1].trim() : '';
+};
+
+// The share form writes a fixed header above the journey itself. Reading it
+// back means a journey can be published without anyone retyping it, and means
+// the answer to "may we publish this?" travels with the text rather than being
+// remembered by whoever read the email.
+function toStory(title, text) {
+  const credit = headerValue(text, CREDIT);
+  const outcome = headerValue(text, OUTCOME);
+  const at = text.indexOf('\n\n');
+  const [name, role] = credit.split(' - ');
+
+  return {
+    id: 'sub-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8),
+    title,
+    slug: '',
+    date: new Date().toISOString().slice(0, 10),
+    outcome: /^not said$/i.test(outcome) ? '' : outcome,
+    name: /^anonymous$/i.test(name || '') ? '' : String(name || '').trim(),
+    role: String(role || '').trim(),
+    place: '',
+    excerpt: '',
+    body: at === -1 ? text : text.slice(at + 2).trim(),
+    consent: /^yes$/i.test(headerValue(text, CONSENT)),
+    published: false,
+  };
+}
+
+// A slug is a URL, so it has to stay unique and stay stable. Colliding titles
+// get a number rather than quietly overwriting each other's page.
+function slugify(title, taken) {
+  const base = String(title).toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60) || 'journey';
+  let slug = base;
+  let n = 2;
+  while (taken.has(slug)) {
+    slug = base + '-' + n;
+    n += 1;
+  }
+  return slug;
+}
+
+// Queued unpublished, never live. stories.js only renders entries with
+// published:true, so a submission is invisible to visitors until it is
+// approved, while the admin can already see, edit and delete it.
+async function queueStory(title, text) {
+  const cfg = repoConfig();
+  if (!repoReady(cfg)) return null;
+
+  const { items, sha } = await readJson(STORIES, cfg);
+  const story = toStory(title, text);
+  story.slug = slugify(title, new Set(items.map((s) => s.slug).filter(Boolean)));
+  items.unshift(story);
+  await writeJson(STORIES, items, sha, 'Journey submitted: ' + title, cfg);
+  return story;
+}
 
 // Only labels the site itself offers. Never take a label from the request.
 const KINDS = {
@@ -156,8 +229,32 @@ export default async function handler(req, res) {
   // reads the credit line rather than the GitHub account.
   // The kind is repeated as a line rather than left in the subject alone, so a
   // mail filter can sort on it without depending on how the subject is worded.
+  // A journey is queued before the email goes out, so the email can carry a
+  // link that publishes it. If queueing fails the email still sends: the text
+  // is in the message either way, and losing someone's job history because
+  // GitHub had a bad minute is not acceptable.
+  let queued = null;
+  if (kindKey === 'story') {
+    try {
+      queued = await queueStory(title, text);
+    } catch (err) {
+      console.error('[submit] queue: ' + (err && err.message));
+    }
+  }
+
+  let approve = '';
+  if (queued && queued.consent) {
+    approve = '\n\nPublish it:\n' + siteUrl() + '/api/approve?id=' + encodeURIComponent(queued.id)
+      + '\n\nThat link asks for the admin password, so only you can use it. Until it is'
+      + '\nclicked the journey sits unpublished and no visitor can see it.';
+  } else if (queued) {
+    approve = '\n\nNo publish link: they answered "no" to being published.'
+      + '\nIt is queued unpublished in the admin if you want to ask them first.';
+  }
+
   const header = 'Kind: ' + kind.label + '\n\n';
-  const footer = '\n\n---\nSent through the form on the site. The visitor has no account.';
+  const footer = approve
+    + '\n\n---\nSent through the form on the site. The visitor has no account.';
 
   try {
     await mailOut({

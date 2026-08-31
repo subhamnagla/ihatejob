@@ -13,8 +13,14 @@
 // admin panel that is accidentally public is worse than one that is broken.
 
 export const config = {
-  matcher: ['/admin', '/admin.html', '/admin/:path*', '/api/content'],
+  matcher: ['/admin', '/admin.html', '/admin/:path*', '/api/content', '/api/approve'],
 };
+
+// Endpoints rather than pages: they answer with their own body instead of
+// being rewritten to admin.html, and a secret ADMIN_PATH does not hide them -
+// an approve link already sent by email has to keep working whatever the
+// admin page is called.
+const API_PATHS = new Set(['/api/content', '/api/approve']);
 
 function unauthorised(message) {
   return new Response(message || 'Authentication required', {
@@ -56,7 +62,7 @@ export default function middleware(request) {
   const PASS = process.env.ADMIN_PASSWORD || '';
   const SECRET_PATH = (process.env.ADMIN_PATH || '').replace(/\/+$/, '');
 
-  const isApi = path === '/api/content';
+  const isApi = API_PATHS.has(path);
 
   // When a secret address is set, the default ones stop existing entirely.
   if (!isApi && SECRET_PATH && path !== SECRET_PATH) return notFound();

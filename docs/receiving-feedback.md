@@ -77,6 +77,40 @@ A journey carries the same shape, with `Outcome:` in place of `Rating:` and
 Filter your inbox on the `Kind:` line: `review`, `story`, `profession`,
 `region`, `template`, `checker`, `bug`, `enhancement`.
 
+## Journeys publish from the email itself
+
+A journey is different from a review: it is queued the moment it arrives.
+
+1. The submission is written straight into `public/data/stories.json` with
+   **`published: false`**. `stories.js` only renders entries with
+   `published: true`, so no visitor can see it — but it is already in the
+   admin's Journeys editor, where you can read, edit or delete it.
+2. The email carries a **Publish it** link.
+3. Clicking it flips the flag, commits, and the journey is live in about a
+   minute.
+
+The link points at `/api/approve`, which sits behind the same admin password as
+everything else. That is the whole security model: no signing scheme to get
+subtly wrong and no second secret to rotate. Anyone who could use that link
+could already have published the journey by hand.
+
+It is safe to click twice — a second click reports "already published" and
+commits nothing. Refreshes, forwarded mail and mail clients that prefetch links
+all end up doing this.
+
+**Consent is enforced at both ends.** The form asks "May be published on the
+site". If the answer was no, the email carries no publish link and
+`/api/approve` refuses the journey outright with a 403. Publishing it anyway
+means opening the admin and doing it deliberately, having presumably asked
+them first.
+
+`SITE_URL` sets the domain used in that link. It defaults to
+`https://ihatejob.app`.
+
+If GitHub is unreachable when a journey arrives, **the email still sends** with
+the full text — it just carries no publish link. Losing someone's job history
+because GitHub had a bad minute is not an acceptable failure.
+
 ## Publishing a review once you have one
 
 Reviews do not appear on the site automatically. That is deliberate: you decide
