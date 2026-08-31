@@ -783,6 +783,24 @@ $('rvSave').addEventListener('click', () => saveContent('reviews', 'reviews'));
 
 /* ---------------------------------------------------------- journey editor */
 
+// Both halves of the vote. /api/vote gives anyone the like count; the dislike
+// number is only readable here, which is the whole point of counting it
+// separately - the person who wrote the journey never gets shown a tally of
+// strangers who did not care for it.
+const VOTES = {};
+
+async function loadVotes(slugs) {
+  const wanted = slugs.filter(Boolean);
+  if (!wanted.length) return;
+  try {
+    const res = await fetch('/api/votes-report?slugs=' + encodeURIComponent(wanted.join(',')),
+      { cache: 'no-store' });
+    if (!res.ok) return;
+    Object.assign(VOTES, await res.json());
+    renderStoriesEditor();
+  } catch { /* no store configured, or offline: the counts simply do not appear */ }
+}
+
 function renderStoriesEditor() {
   const items = store.stories.items;
   const list = $('stList');
@@ -808,6 +826,10 @@ function renderStoriesEditor() {
     + '<span class="edit-n">' + (i + 1) + '</span>'
     + '<b>' + esc(p.title || 'Untitled') + '</b>'
     + (p.published ? '<span class="tag-on">published</span>' : '<span class="tag-off">draft</span>')
+    + (VOTES[p.slug]
+      ? '<span class="vote-tally" title="Likes are public. Dislikes are only visible here.">'
+        + '&#128077; ' + VOTES[p.slug].likes + '  &#128078; ' + VOTES[p.slug].dislikes + '</span>'
+      : '')
     + '<span class="spacer"></span>'
     + '<a class="btn btn-sm" href="/stories/' + esc(p.slug || '') + '" target="_blank" rel="noopener">View</a>'
     + '<button class="btn btn-sm btn-icon" data-act="up" type="button" aria-label="Move up">&#9650;</button>'
@@ -897,7 +919,12 @@ async function refresh() {
     loadInbox(),
     loadTraffic(),
     loadContent('reviews', '/data/reviews.json').then(renderReviewsEditor),
-    loadContent('stories', '/data/stories.json').then(renderStoriesEditor),
+    loadContent('stories', '/data/stories.json').then(() => {
+      renderStoriesEditor();
+      // After the render, not during it: loadVotes re-renders when the
+      // counts land, and calling it from inside would recurse.
+      loadVotes(store.stories.items.map((s) => s.slug));
+    }),
   ]);
 }
 

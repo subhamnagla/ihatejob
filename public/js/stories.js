@@ -1,11 +1,18 @@
 // Job journeys: what visitors went through, start to finish.
 //
-// A story is written by the person who lived it, sent as a GitHub issue, and
-// published from the admin - so nothing appears here that was not moderated
-// first. Once published, the issue stays the story's discussion thread: the
-// likes and comments below are the real reactions and replies on it, read from
-// the public GitHub API. That is the whole backend. Nothing is invented, and
-// there is no counter for anyone to inflate.
+// A story is written by the person who lived it, emailed to the site owner,
+// and published by a link in that email - so nothing appears here that was not
+// read by a person first.
+//
+// Likes are counted in a key-value store and shown. Dislikes are counted in the
+// same place and deliberately never shown here: a journey is someone writing
+// about being turned down for months, and a public tally of strangers who
+// disliked reading it is a way to make the person who was bravest here regret
+// it. That number is readable in the admin instead.
+//
+// Comments still come from a GitHub issue thread, for the journeys that have
+// one. Nothing is invented anywhere: a count that cannot be read is left blank
+// rather than shown as zero.
 //
 // The Markdown renderer is deliberately small and escapes before it adds any
 // markup, which matters more here than on a blog: comment bodies come from
@@ -184,11 +191,71 @@ const ICON = {
 const svg = (key, size) => '<svg viewBox="0 0 24 24" width="' + (size || 15) + '" height="'
   + (size || 15) + '" fill="currentColor" aria-hidden="true"><path d="' + ICON[key] + '"/></svg>';
 
+/* --------------------------------------------------------------- votes */
+
+// Which way this browser voted. It is a convenience, not an identity: clearing
+// storage lets someone vote twice, and the endpoint's per-address limit only
+// slows that down. So the counts are indicative, and the site never claims
+// otherwise anywhere a visitor can read.
+const votedKey = (slug) => 'ihatejob.vote.' + slug;
+const votedAs = (slug) => {
+  try { return localStorage.getItem(votedKey(slug)) || ''; } catch { return ''; }
+};
+const rememberVote = (slug, value) => {
+  try {
+    if (value) localStorage.setItem(votedKey(slug), value);
+    else localStorage.removeItem(votedKey(slug));
+  } catch { /* private mode: the vote still counts, it is just not remembered */ }
+};
+
+// Counts arrive after the page renders, so a slow or absent store never holds
+// the journey itself up. Until they land nothing is shown - absent, rather
+// than a zero, which would be a different and wrong claim.
+async function fillVotes(slugs) {
+  const wanted = slugs.filter(Boolean);
+  if (!wanted.length) return;
+  let data = {};
+  try {
+    const res = await fetch('/api/vote?slugs=' + encodeURIComponent(wanted.join(',')));
+    // No store on this deployment: take the buttons away rather than leave
+    // controls that do nothing when pressed.
+    if (res.status === 503) {
+      document.querySelectorAll('.st-vote, .st-count').forEach((el) => el.remove());
+      return;
+    }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    data = await res.json();
+  } catch {
+    return;                       // no counts is a fine answer; a wrong one is not
+  }
+  document.querySelectorAll('[data-likes]').forEach((el) => {
+    const c = data[el.getAttribute('data-likes')];
+    if (c && typeof c.likes === 'number') el.textContent = c.likes;
+  });
+}
+
 function counts(story, meta) {
   const c = meta[story.issue];
-  if (!story.issue || !c) return '';
-  return '<span class="st-count">' + svg('like', 14) + c.likes + '</span>'
-    + '<span class="st-count">' + svg('comment', 14) + c.comments + '</span>';
+  return '<span class="st-count" title="People who found this useful">'
+    + svg('like', 14) + '<b data-likes="' + esc(story.slug) + '"></b></span>'
+    + (story.issue && c
+      ? '<span class="st-count">' + svg('comment', 14) + c.comments + '</span>'
+      : '');
+}
+
+// Like is public. Dislike is counted and deliberately never shown here - a
+// journey is someone writing about being turned down for months, and a public
+// tally of strangers who disliked reading it is a way to make the person who
+// was bravest here regret it. The number is readable in the admin instead.
+function voteButtons(story) {
+  const mine = votedAs(story.slug);
+  const btn = (dir, label) => '<button class="btn st-vote st-vote-' + dir + '"'
+    + ' type="button" data-vote="' + dir + '" data-slug="' + esc(story.slug) + '"'
+    + ' aria-pressed="' + (mine === dir ? 'true' : 'false') + '">'
+    + svg('like') + '<span>' + label + '</span>'
+    + (dir === 'up' ? '<i data-likes="' + esc(story.slug) + '"></i>' : '')
+    + '</button>';
+  return btn('up', 'Like') + btn('down', 'Dislike');
 }
 
 function byline(story, cls) {
@@ -296,11 +363,7 @@ function article(story, all, meta) {
     + '<div class="post-body">' + markdown(story.body) + '</div>'
 
     + '<div class="st-actions">'
-    + (story.issue
-      ? '<a class="btn st-like" href="' + esc(issueUrl(story.issue)) + '" target="_blank"'
-        + ' rel="noopener">' + svg('like') + '<span>Like</span>'
-        + (meta[story.issue] ? '<i>' + meta[story.issue].likes + '</i>' : '') + '</a>'
-      : '')
+    + voteButtons(story)
     + '<button class="btn st-share" type="button" data-share'
     + ' data-url="' + esc(url) + '" data-text="' + esc(text) + '">'
     + svg('share') + '<span>Share</span></button>'
@@ -548,6 +611,44 @@ document.addEventListener('click', async (e) => {
   }
 });
 
+// Delegated, because the buttons are rendered into innerHTML after this runs.
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-vote]');
+  if (!btn) return;
+
+  const slug = btn.getAttribute('data-slug');
+  const dir = btn.getAttribute('data-vote');
+  const previous = votedAs(slug);
+  // Pressing the same button again takes the vote back rather than stacking.
+  const next = previous === dir ? 'none' : dir;
+
+  const group = [...document.querySelectorAll('[data-slug="' + slug + '"][data-vote]')];
+  group.forEach((b) => { b.disabled = true; });
+
+  try {
+    const res = await fetch('/api/vote', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug, vote: next, previous }),
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok || !out.ok) {
+      toast(out.error || 'That could not be counted just now.');
+      return;
+    }
+    rememberVote(slug, next === 'none' ? '' : next);
+    group.forEach((b) => {
+      b.setAttribute('aria-pressed', String(b.getAttribute('data-vote') === next));
+    });
+    document.querySelectorAll('[data-likes="' + slug + '"]')
+      .forEach((el) => { el.textContent = out.likes; });
+  } catch {
+    toast('That could not be counted just now.');
+  } finally {
+    group.forEach((b) => { b.disabled = false; });
+  }
+});
+
 (async () => {
   const root = $('storyRoot');
   let stories = [];
@@ -566,6 +667,7 @@ document.addEventListener('click', async (e) => {
   if (!slug) {
     root.innerHTML = listing(live, meta);
     wireShareForm();
+    fillVotes(live.map((s) => s.slug));
     return;
   }
 
@@ -583,6 +685,7 @@ document.addEventListener('click', async (e) => {
   }
 
   root.innerHTML = article(story, live, meta);
+  fillVotes([story.slug]);
   if (story.issue) fillComments(story.issue);
 })();
 

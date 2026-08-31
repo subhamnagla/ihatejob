@@ -111,6 +111,40 @@ If GitHub is unreachable when a journey arrives, **the email still sends** with
 the full text — it just carries no publish link. Losing someone's job history
 because GitHub had a bad minute is not an acceptable failure.
 
+## Likes and dislikes on a journey
+
+Both are counted. **Only the like count is public.**
+
+That split is the whole design. A journey is someone writing about being turned
+down, repeatedly, often for months. A public number telling them how many
+strangers disliked reading it is a way to make the person who was bravest here
+regret it. The signal is worth having; publishing it is not.
+
+- `/api/vote` — public. Casts a vote, and returns **like counts only**. The
+  dislike number never leaves the function.
+- `/api/votes-report` — behind the admin password. Returns both, and the admin's
+  Journeys list shows 👍/👎 on each row.
+
+Votes need a key-value store, because this is the one thing the repository
+cannot hold: a commit and a full rebuild per click, and two people voting at
+once would collide on the sha and lose one.
+
+Add one in **Vercel → Storage → Create → Redis (Upstash)**. The free tier is
+256MB and 30,000 commands a day, which is far more than this needs. Vercel
+injects `KV_REST_API_URL` and `KV_REST_API_TOKEN` itself — there is nothing to
+copy by hand. `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` are accepted
+too, for connecting to Upstash directly.
+
+Until a store exists `/api/vote` answers 503 and **the buttons remove
+themselves**, rather than sitting on the page doing nothing when pressed. A
+count that cannot be read is left blank rather than shown as zero.
+
+**The counts are soft, and the site never pretends otherwise.** With no
+accounts, clearing browser storage lets someone vote again, and the per-address
+limit only slows that down. One vote per browser is remembered in
+`localStorage`, clicking the other button moves the vote, and clicking the same
+one again takes it back.
+
 ## Publishing a review once you have one
 
 Reviews do not appear on the site automatically. That is deliberate: you decide

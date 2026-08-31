@@ -13,14 +13,15 @@
 // admin panel that is accidentally public is worse than one that is broken.
 
 export const config = {
-  matcher: ['/admin', '/admin.html', '/admin/:path*', '/api/content', '/api/approve'],
+  matcher: ['/admin', '/admin.html', '/admin/:path*', '/api/content', '/api/approve',
+    '/api/votes-report'],
 };
 
 // Endpoints rather than pages: they answer with their own body instead of
 // being rewritten to admin.html, and a secret ADMIN_PATH does not hide them -
 // an approve link already sent by email has to keep working whatever the
 // admin page is called.
-const API_PATHS = new Set(['/api/content', '/api/approve']);
+const API_PATHS = new Set(['/api/content', '/api/approve', '/api/votes-report']);
 
 function unauthorised(message) {
   return new Response(message || 'Authentication required', {

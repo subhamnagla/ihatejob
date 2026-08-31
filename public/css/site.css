@@ -923,3 +923,15 @@ body {
   max-width: 46ch;
 }
 .st-sent .section-lede { max-width: 52ch; }
+
+/* Like and dislike. The dislike is the same thumb, turned over - one icon,
+   and no second path to keep in sync with the first. */
+.st-vote { gap: 7px; }
+.st-vote-down svg { transform: rotate(180deg); }
+.st-vote[aria-pressed="true"] { border-color: currentColor; font-weight: 620; }
+.st-vote-up[aria-pressed="true"] { color: var(--ok, #2f9e5f); }
+.st-vote-down[aria-pressed="true"] { color: var(--warn, #c2683a); }
+.st-vote i { font-style: normal; opacity: .75; font-variant-numeric: tabular-nums; }
+.st-vote:disabled { opacity: .55; cursor: progress; }
+/* Empty until the counts land, so the row does not jump as they arrive. */
+.st-count b { font-weight: 600; font-variant-numeric: tabular-nums; }

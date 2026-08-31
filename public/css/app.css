@@ -1636,3 +1636,12 @@ textarea.input { resize: vertical; line-height: 1.5; }
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* Likes and dislikes on a journey row in the admin. The dislike half exists
+   nowhere else - it is deliberately never sent to the public endpoint. */
+.vote-tally {
+  font-size: 12px;
+  opacity: .75;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
