@@ -935,3 +935,11 @@ body {
 .st-vote:disabled { opacity: .55; cursor: progress; }
 /* Empty until the counts land, so the row does not jump as they arrive. */
 .st-count b { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* The two ways out of LinkedIn. Numbered because they are steps someone
+   follows in another tab, not a list of features. */
+.li-routes .os-card h3 { margin: 0 0 6px; font-size: 17px; }
+.li-routes ol { margin: 12px 0 10px; padding-left: 20px; }
+.li-routes ol li { margin-bottom: 5px; }
+.li-routes .hint { margin: 0; font-size: 13px; }
+.li-no-api { max-width: 62ch; margin-top: 18px; }
