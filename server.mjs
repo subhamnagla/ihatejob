@@ -62,6 +62,12 @@ createServer(async (req, res) => {
     }
     if (rel === '/stories' || rel.startsWith('/stories/')) rel = '/stories.html';
     if (rel.endsWith('/')) rel += 'index.html';
+    // Vercel serves these with cleanUrls; this is the same rule locally, so
+    // /cv/nursing resolves to the generated file in dev as well as production.
+    if (!extname(rel)) {
+      const asHtml = join(ROOT, normalize(rel + '.html'));
+      if (await stat(asHtml).then((s) => s.isFile()).catch(() => false)) rel += '.html';
+    }
     // join + the prefix check below is what actually contains traversal
     const file = join(ROOT, normalize(rel));
     if (file !== ROOT && !file.startsWith(ROOT + sep)) {
