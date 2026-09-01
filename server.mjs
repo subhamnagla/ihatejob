@@ -75,10 +75,14 @@ createServer(async (req, res) => {
       return;
     }
     const info = await stat(file).catch(() => null);
-    // Unknown paths fall back to the landing page, not the builder.
-    const target = info && info.isFile() ? file : join(ROOT, 'index.html');
+    const found = Boolean(info && info.isFile());
+    // Unknown paths still show the landing page rather than a bare error, but
+    // they say 404 while doing it. Answering 200 for a URL that does not exist
+    // is a soft 404: a crawler indexes it as a real page, and every mistyped
+    // link becomes a duplicate of the front page in search results.
+    const target = found ? file : join(ROOT, 'index.html');
     const body = await readFile(target);
-    res.writeHead(200, {
+    res.writeHead(found ? 200 : 404, {
       'Content-Type': TYPES[extname(target)] || 'application/octet-stream',
       'Cache-Control': 'no-store',
       // A stale service worker pins a stale app, so it must never be cached.

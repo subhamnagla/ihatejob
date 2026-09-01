@@ -73,7 +73,7 @@ const HEAD = (p, slug, description) => {
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[
 {"@type":"ListItem","position":1,"name":"ihatejob","item":"${SITE}/"},
-{"@type":"ListItem","position":2,"name":"CV formats by profession","item":"${SITE}/cv/"},
+{"@type":"ListItem","position":2,"name":"CV formats by profession","item":"${SITE}/cv"},
 {"@type":"ListItem","position":3,"name":${JSON.stringify(short + ' CV')}}]}
 </script>
 <script>
@@ -105,7 +105,7 @@ const FOOT = `
     <div><b>ihatejob</b><p>A CV builder that runs entirely in your browser. MIT licensed.</p></div>
     <nav>
       <a href="/app">Builder</a>
-      <a href="/cv/">All professions</a>
+      <a href="/cv">All professions</a>
       <a href="/stories">Journeys</a>
       <a href="/#review">Leave a review</a>
     </nav>
@@ -209,11 +209,11 @@ function indexPage(entries) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CV formats by profession | ihatejob</title>
 <meta name="description" content="${esc(description)}">
-<link rel="canonical" href="${SITE}/cv/">
+<link rel="canonical" href="${SITE}/cv">
 <meta property="og:title" content="CV formats by profession">
 <meta property="og:description" content="${esc(description)}">
 <meta property="og:type" content="website">
-<meta property="og:url" content="${SITE}/cv/">
+<meta property="og:url" content="${SITE}/cv">
 <meta property="og:site_name" content="ihatejob">
 <meta property="og:image" content="${SITE}/icons/icon-512.png">
 <meta name="twitter:card" content="summary">
@@ -261,7 +261,7 @@ for (const [slug, p] of entries) {
 await writeFile(join(OUT, 'index.html'), indexPage(entries), 'utf8');
 
 const urls = [
-  ['/', '1.0'], ['/app', '0.9'], ['/cv/', '0.8'], ['/stories', '0.6'],
+  ['/', '1.0'], ['/app', '0.9'], ['/cv', '0.8'], ['/stories', '0.6'],
   ...entries.map(([s]) => ['/cv/' + s, '0.7']),
 ];
 await writeFile(join(ROOT, 'public', 'sitemap.xml'),
