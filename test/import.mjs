@@ -150,5 +150,51 @@ check('contact block did not become a section',
 const notHeadings = parseCV(j('J R R T O L K I E N', 'A B C D E F', 'Some text.'), blankData()).data;
 check('a spaced name is not a section', notHeadings.experience.length, 0);
 
+/* --- jobs written as blocks of Label : Value ---------------------------- */
+// Common on Indian CVs. The generic splitter opened a new job at
+// "Responsibilities:" - short line, bullet underneath - so one job became four
+// and the employer was never read at all.
+const LABELLED = j(
+  'Work Experience',
+  'Current organization:',
+  'Entity : Deloitte Consulting PVT. LTD.',
+  'Role : Consultant',
+  'Dec 2023 - Present',
+  'Location: Kolkata, India',
+  'Project :',
+  'Modernising mainframe legacy applications for an investment bank.',
+  'TECHNOLOGIES USED: Cobol, JCL, DB2',
+  'Responsibilities:',
+  '• Gathering requirements and representing the team in client meetings.',
+  '• Estimating and planning tasks with the architect.',
+  'Previous Organization:',
+  'Company: Tata Consultancy Services LTD',
+  'Role: Lead Developer and Subject Matter Expert',
+  'Nov 2017-Nov 2023',
+  'Location: Kolkata, India',
+  'Responsibilities:',
+  '• Developed additional modules for existing applications.');
+
+console.log(NL + '=== jobs written as Label : Value ===');
+const lab = parseCV(LABELLED, blankData()).data.experience;
+check('two jobs, not one per label', lab.length, 2);
+check('employer read', lab.map((e) => e.company),
+  ['Deloitte Consulting PVT. LTD.', 'Tata Consultancy Services LTD']);
+check('title read', lab.map((e) => e.role),
+  ['Consultant', 'Lead Developer and Subject Matter Expert']);
+check('location read', lab[0].location, 'Kolkata, India');
+check('dates read', [lab[0].start, lab[0].current], ['Dec 2023', true]);
+check('closed range read', [lab[1].start, lab[1].end], ['Nov 2017', 'Nov 2023']);
+check('detail kept as bullets', lab[0].bullets.includes('client meetings'), true);
+// "Responsibilities:" would repeat on every entry and says nothing.
+check('divider labels dropped', lab[0].bullets.includes('Responsibilities'), false);
+check('technologies kept', lab[0].bullets.includes('Cobol, JCL, DB2'), true);
+
+// The ordinary layout must still take the ordinary path.
+const plainExp = parseCV(j('Experience', 'Senior Engineer, Acme Mar 2021 - Jul 2024',
+  '• Did the thing.'), blankData()).data.experience;
+check('unlabelled CVs unaffected', plainExp.length, 1);
+check('unlabelled dates still split', [plainExp[0].start, plainExp[0].end], ['Mar 2021', 'Jul 2024']);
+
 console.log(NL + (fails ? fails + ' FAILING' : 'all pass'));
 process.exit(fails ? 1 : 0);

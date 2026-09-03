@@ -51,7 +51,10 @@ const lengthLine = (pages) => {
 
 const HEAD = (p, slug, description) => {
   const short = shortName(p.name);
-  const title = short + ' CV: what to include, and in what order';
+  // Both words, because they are the same document either side of the
+  // Atlantic and someone searching for one will never find a page that only
+  // says the other.
+  const title = short + ' CV and resume format: what to include, and in what order';
   return `<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(title)} | ihatejob</title>
@@ -124,11 +127,14 @@ function page(slug, p, siblings) {
     ? 'A ' + short.toLowerCase() + ' CV has to carry '
       + req.map((k) => label(p, k).toLowerCase()).join(', ') + '. '
     : '')
-    + 'What to put first, what to quantify, and what gets a CV rejected in this field.';
+    + 'What to put first, what to quantify, and what gets one rejected in this field. '
+    + 'Free CV and resume builder, no account.';
 
   const body = [];
 
   body.push('<header class="blog-head"><h1>How to write a ' + esc(short) + ' CV</h1>'
+    + '<p class="post-lede">Called a resume in the US and a CV almost everywhere else '
+    + '&mdash; the same document, and these are the rules it gets judged by.</p>'
     + '<p>The conventions below are the ones this field actually uses. They are what the '
     + 'builder applies when you pick <b>' + esc(p.name) + '</b>, and what the rating checks '
     + 'a finished CV against.</p></header>');
@@ -202,12 +208,12 @@ function indexPage(entries) {
   entries.forEach(([slug, p]) => {
     (groups[p.group || 'Other'] = groups[p.group || 'Other'] || []).push([slug, p]);
   });
-  const description = 'CV conventions for ' + entries.length + ' professions: what each field '
+  const description = 'CV and resume conventions for ' + entries.length + ' professions: what each field '
     + 'expects first, what to quantify, and what gets a CV rejected.';
 
   return `<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>CV formats by profession | ihatejob</title>
+<title>CV and resume formats by profession | ihatejob</title>
 <meta name="description" content="${esc(description)}">
 <link rel="canonical" href="${SITE}/cv">
 <meta property="og:title" content="CV formats by profession">

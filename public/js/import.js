@@ -696,7 +696,94 @@ function parseEntries(lines, build) {
   return out;
 }
 
+/* --------------------------------------------- experience, labelled style */
+
+// Common across Indian CVs and plenty of others: each job is a little block of
+// "Label : Value" lines rather than one title-and-dates line. The generic
+// splitter cannot read these - it starts a new job at "Responsibilities:",
+// because the line is short and the next one is a bullet, so one job becomes
+// four and the employer is never found.
+const EXP_LABEL = {
+  company: /^(?:entity|company|organi[sz]ation|organisation name|employer|firm)\s*[:\-–]\s*(.+)$/i,
+  role: /^(?:role|designation|position|job title|title)\s*[:\-–]\s*(.+)$/i,
+  location: /^(?:location|based (?:in|at)|place|city)\s*[:\-–]\s*(.+)$/i,
+  dates: /^(?:duration|period|tenure|dates?)\s*[:\-–]\s*(.+)$/i,
+};
+
+// "Current organization:" with nothing after it separates one job from the
+// next rather than naming anything.
+const ORG_DIVIDER =
+  /^(?:current|previous|prior|past|latest|recent)\s+(?:organi[sz]ation|employer|company)\s*[:\-–]?\s*$/i;
+
+// A label that introduces detail belonging to the job above it. Left in as
+// context would only repeat itself on every entry, so it is dropped.
+const DETAIL_LABEL =
+  /^(?:responsibilities|key responsibilities|roles?\s*(?:and|&)\s*responsibilities|duties|project|projects|description)\s*[:\-–]?\s*$/i;
+
+function looksLabelled(lines) {
+  let hits = 0;
+  for (const l of lines) {
+    const t = clean(l);
+    if (EXP_LABEL.company.test(t) || EXP_LABEL.role.test(t)) hits += 1;
+    if (hits >= 2) return true;
+  }
+  return false;
+}
+
+function parseLabelledExperience(lines) {
+  const out = [];
+  let cur = null;
+  const open = () => {
+    cur = { role: '', company: '', location: '', start: '', end: '', current: false, __b: [] };
+    out.push(cur);
+    return cur;
+  };
+
+  for (const raw of lines) {
+    const t = clean(raw);
+    if (!t) continue;
+
+    if (ORG_DIVIDER.test(t)) { cur = null; continue; }
+    if (DETAIL_LABEL.test(t)) continue;
+
+    const co = t.match(EXP_LABEL.company);
+    if (co) {
+      // A second employer means a second job, even without a divider between.
+      if (!cur || cur.company) open();
+      cur.company = clean(co[1]);
+      continue;
+    }
+
+    const role = t.match(EXP_LABEL.role);
+    if (role) {
+      if (!cur || cur.role) open();
+      cur.role = clean(role[1]);
+      continue;
+    }
+
+    const loc = t.match(EXP_LABEL.location);
+    if (loc) { (cur || open()).location = clean(loc[1]); continue; }
+
+    const dl = t.match(EXP_LABEL.dates);
+    const dateSource = dl ? clean(dl[1]) : t;
+    const { rest, start, end, current } = splitDates(dateSource);
+    // A line that is mostly dates sets the range; one that merely mentions a
+    // year in a sentence is a bullet and keeps its text.
+    if (start && (dl || rest.length <= 24)) {
+      const e = cur || open();
+      if (!e.start) { e.start = start; e.end = end; e.current = current; }
+      if (!e.role && rest && !dl) e.role = rest;
+      continue;
+    }
+
+    (cur || open()).__b.push(t.replace(BULLET_START, ''));
+  }
+
+  return out.map(({ __b, ...rest }) => ({ ...rest, bullets: __b.join('\n') }));
+}
+
 function parseExperience(lines) {
+  if (looksLabelled(lines)) return parseLabelledExperience(lines);
   return parseEntries(lines, (line) => {
     const { rest, start, end, current } = splitDates(line);
     const [a, b] = splitPair(rest);
