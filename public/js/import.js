@@ -467,11 +467,14 @@ function tidy(s) {
 const HEADINGS = [
   ['summary', ['summary', 'profile', 'objective', 'career objective', 'professional summary',
     'about me', 'about', 'personal statement', 'career summary', 'professional profile', 'overview',
-    'profile summary', 'career profile', 'executive summary']],
+    'profile summary', 'career profile', 'executive summary', 'career snapshot',
+    'professional snapshot', 'snapshot', 'career overview', 'introduction']],
   ['experience', ['experience', 'work experience', 'professional experience', 'employment',
     'employment history', 'work history', 'career history', 'professional background',
     'relevant experience', 'clinical experience', 'teaching experience', 'legal experience',
-    'academic appointments', 'internships', 'internship experience']],
+    'academic appointments', 'internships', 'internship experience',
+    'employment record', 'work record', 'career record', 'professional employment',
+    'experience summary', 'organisational experience', 'organizational experience']],
   ['education', ['education', 'academic qualifications', 'academics', 'qualifications',
     'educational qualifications', 'academic background', 'education & training']],
   ['skills', ['skills', 'technical skills', 'key skills', 'core competencies', 'competencies',
@@ -517,7 +520,21 @@ const DATE_TOKEN = new RegExp(
   + '|\\b(?:present|current|till\\s*date|to\\s*date|ongoing|now)\\b)',
   'gi',
 );
-const BULLET_START = /^\s*[•·▪‣◦*\-–—o]\s+/;
+const BULLET_START = /^\s*[•·▪‣◦*\-–—o→⇒➔➤►▶✓✔❖]\s+/;
+
+// A row of rules under a heading. Left in, it becomes the first entry of the
+// section and everything real is pushed into a second one.
+const RULE_LINE = /^[_\-–—=~.·*─-╿\s]{3,}$/;
+
+// A job title almost always contains one of these; a company name almost never
+// does. It is the only thing that tells "Product Manager / Flipkart" apart from
+// "Infosys / Systems Engineer", which are the same shape and opposite meanings.
+const ROLE_WORD = new RegExp('\\b(?:engineer|manager|developer|analyst|consultant|designer'
+  + '|director|lead|head|officer|executive|associate|specialist|administrator|architect'
+  + '|scientist|nurse|doctor|physician|surgeon|teacher|lecturer|professor|accountant'
+  + '|intern|trainee|technician|supervisor|coordinator|president|partner|chef|pilot'
+  + '|advocate|lawyer|solicitor|pharmacist|therapist|assistant|clerk|operator|founder'
+  + '|strategist|recruiter|auditor|planner|writer|editor|programmer|tester|volunteer)\\b', 'i');
 
 const clean = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 
@@ -702,19 +719,58 @@ function isEntryHead(line, next) {
   return t.length < 70 && Boolean(next) && BULLET_START.test(next);
 }
 
-function parseEntries(lines, build) {
+// A range printed on its own line belongs to the entry above it, not to a new
+// one. "Product Manager / Flipkart / June 2021 - August 2024" is one job
+// written over three lines; read as three heads it became two jobs and lost
+// both the employer and the dates.
+function absorbDates(cur, t) {
+  if (!cur || cur.start) return false;
+  const { rest, start, end, current } = splitDates(t);
+  // A sentence that merely mentions a year is a bullet, not a date line.
+  if (!start || rest.length > 24) return false;
+
+  cur.start = start;
+  cur.end = end;
+  if ('current' in cur) cur.current = current;
+
+  // The line between the head and the dates is the other half of the pair -
+  // employer, or title, depending which way round this CV writes them.
+  const pending = cur.__bullets.length === 1 ? cur.__bullets[0] : '';
+  const first = cur.role || cur.degree || '';
+  // Not `cur.company || cur.school`: an experience entry has no school key at
+  // all, so an empty company fell through to undefined and never looked empty.
+  const other = 'company' in cur ? cur.company : cur.school;
+  if (pending && other === '') {
+    cur.__bullets.shift();
+    if (ROLE_WORD.test(first) || !ROLE_WORD.test(pending)) {
+      if ('company' in cur) cur.company = pending; else cur.school = pending;
+    } else if ('company' in cur) {
+      cur.company = first;
+      cur.role = pending;
+    } else {
+      cur.school = first;
+      cur.degree = pending;
+    }
+  } else if (rest && other === '') {
+    if ('company' in cur) cur.company = rest; else cur.school = rest;
+  }
+  return true;
+}
+
+function parseEntries(lines, build, absorb) {
   const out = [];
   let cur = null;
   for (let i = 0; i < lines.length; i += 1) {
-    const line = lines[i];
-    if (!clean(line)) continue;
-    if (isEntryHead(line, lines[i + 1])) {
-      cur = build(line);
+    const t = clean(lines[i]);
+    if (!t || RULE_LINE.test(t)) continue;
+    if (isEntryHead(lines[i], lines[i + 1])) {
+      if (absorb && absorbDates(cur, t)) continue;
+      cur = build(lines[i]);
       out.push(cur);
     } else if (cur) {
-      cur.__bullets.push(clean(line).replace(BULLET_START, ''));
+      cur.__bullets.push(t.replace(BULLET_START, ''));
     } else {
-      cur = build(line);
+      cur = build(lines[i]);
       out.push(cur);
     }
   }
@@ -813,7 +869,7 @@ function parseExperience(lines) {
     const { rest, start, end, current } = splitDates(line);
     const [a, b] = splitPair(rest);
     return { role: a, company: b, location: '', start, end, current, bullets: '', __bullets: [] };
-  }).map((e) => {
+  }, true).map((e) => {
     const { __bullets, ...rest } = e;
     return { ...rest, bullets: __bullets.join('\n') };
   });
@@ -824,7 +880,7 @@ function parseEducation(lines) {
     const { rest, start, end } = splitDates(line);
     const [a, b] = splitPair(rest);
     return { degree: a, school: b, location: '', start, end, score: '', details: '', __bullets: [] };
-  }).map((e) => {
+  }, true).map((e) => {
     const { __bullets, ...rest } = e;
     const score = __bullets.find((l) => /cgpa|gpa|%|percent|first class|distinction|division/i.test(l));
     return {
