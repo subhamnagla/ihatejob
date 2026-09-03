@@ -639,6 +639,31 @@ function parseContact(headLines, wholeText) {
     basics.fullName = t;
     break;
   }
+
+  // A template that prints its sidebar before its header puts the name well
+  // down the page, past where the loop above looks, and the CV imports with an
+  // empty header - the checker then reports a missing name that is plainly
+  // there on the PDF.
+  //
+  // The email is the way back to it: oupamyabanerjee@gmail.com and
+  // "OUPAMYA BANERJEE" reduce to the same letters, and nothing else on a page
+  // does that by accident. Guessing from capitalisation instead would cheerfully
+  // decide that someone is called "Technologies Used".
+  if (!basics.fullName && basics.email) {
+    const local = basics.email.split('@')[0].replace(/[^a-z]/gi, '').toLowerCase();
+    if (local.length >= 5) {
+      for (const raw of String(wholeText).split('\n')) {
+        const t = clean(raw);
+        if (!t || t.length > 48 || /[@\d]/.test(t)) continue;
+        const w = t.split(' ');
+        if (w.length < 2 || w.length > 5) continue;
+        if (t.replace(/[^a-z]/gi, '').toLowerCase() === local) {
+          basics.fullName = t;
+          break;
+        }
+      }
+    }
+  }
   // Location: the "City, Country" shape, usually sitting in the contact line
   // among pipe-separated fragments.
   const CITY = /^[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,2},\s*[A-Z][A-Za-z.'-]+(?:\s+[A-Za-z.'-]+){0,2}$/;

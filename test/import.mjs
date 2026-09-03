@@ -196,5 +196,40 @@ const plainExp = parseCV(j('Experience', 'Senior Engineer, Acme Mar 2021 - Jul 2
 check('unlabelled CVs unaffected', plainExp.length, 1);
 check('unlabelled dates still split', [plainExp[0].start, plainExp[0].end], ['Mar 2021', 'Jul 2024']);
 
+/* --- a name that sits well down the page ------------------------------- */
+// Where the sidebar is printed before the header, the name is nowhere near the
+// top of the extracted text, and the CV imported with an empty header - the
+// checker then reported a missing name that was plainly on the PDF.
+const SIDEBAR = j(
+  'C O N T A C T D E T A I L S',
+  '+91-9007919036',
+  'oupamyabanerjee@gmail.com',
+  'C O R E C O M P E T E N C I E S',
+  'Mainframe Application Development',
+  'OUPAMYA BANERJEE',
+  'P R O F I L E S U M M A R Y',
+  'Seven years in mainframe development.');
+
+console.log(NL + '=== a name below the fold ===');
+const sb = parseCV(SIDEBAR, blankData()).data.basics;
+check('found via the email', sb.fullName, 'OUPAMYA BANERJEE');
+check('email still read', sb.email, 'oupamyabanerjee@gmail.com');
+
+// It has to match the address, not merely look like a name. Guessing from
+// capitalisation would decide this person is called Technologies Used.
+const noMatch = parseCV(j('C O N T A C T', 'someone@example.com',
+  'W O R K E X P E R I E N C E', 'TECHNOLOGIES USED', 'Cobol and JCL'), blankData()).data.basics;
+check('no name invented when nothing matches', noMatch.fullName, '');
+
+// A name at the top still wins - the search below it is only a fallback.
+const topName = parseCV(j('Priya Sharma', 'unrelated.address@example.com',
+  'Experience', 'Engineer 2020 - 2024'), blankData()).data.basics;
+check('a name at the top still wins', topName.fullName, 'Priya Sharma');
+
+// first.last@ reduces to the same letters once the punctuation goes.
+const dotted = parseCV(j('C O N T A C T', 'asha.rahman@corp.com',
+  'S U M M A R Y', 'Asha Rahman', 'A nurse.'), blankData()).data.basics;
+check('dotted addresses match too', dotted.fullName, 'Asha Rahman');
+
 console.log(NL + (fails ? fails + ' FAILING' : 'all pass'));
 process.exit(fails ? 1 : 0);
