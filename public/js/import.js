@@ -466,7 +466,8 @@ function tidy(s) {
 
 const HEADINGS = [
   ['summary', ['summary', 'profile', 'objective', 'career objective', 'professional summary',
-    'about me', 'about', 'personal statement', 'career summary', 'professional profile', 'overview']],
+    'about me', 'about', 'personal statement', 'career summary', 'professional profile', 'overview',
+    'profile summary', 'career profile', 'executive summary']],
   ['experience', ['experience', 'work experience', 'professional experience', 'employment',
     'employment history', 'work history', 'career history', 'professional background',
     'relevant experience', 'clinical experience', 'teaching experience', 'legal experience',
@@ -474,7 +475,8 @@ const HEADINGS = [
   ['education', ['education', 'academic qualifications', 'academics', 'qualifications',
     'educational qualifications', 'academic background', 'education & training']],
   ['skills', ['skills', 'technical skills', 'key skills', 'core competencies', 'competencies',
-    'areas of expertise', 'skill set', 'technical proficiencies', 'clinical skills', 'expertise']],
+    'areas of expertise', 'skill set', 'technical proficiencies', 'clinical skills', 'expertise',
+    'soft skills', 'secondary skills', 'primary skills', 'core skills', 'technical expertise']],
   ['projects', ['projects', 'key projects', 'personal projects', 'selected work', 'portfolio',
     'academic projects', 'project work', 'selected projects']],
   ['certifications', ['certifications', 'certificates', 'courses', 'training',
@@ -495,6 +497,16 @@ const HEADING_LOOKUP = (() => {
   return map;
 })();
 
+// The same names with every space taken out, for headings that arrive one
+// character at a time. See letterSpaced below.
+const SQUASHED_LOOKUP = (() => {
+  const map = new Map();
+  for (const [id, names] of HEADINGS) {
+    for (const n of names) map.set(n.replace(/[^a-z&]/g, ''), id);
+  }
+  return map;
+})();
+
 const MONTH = '\\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\\.?';
 // Each word alternative carries its own boundaries. Without them "now" matched
 // inside "knowledge" and the date splitter cut the middle out of the word - on
@@ -509,9 +521,34 @@ const BULLET_START = /^\s*[•·▪‣◦*\-–—o]\s+/;
 
 const clean = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 
+// A CV template that letter-spaces its headings comes out of a PDF one
+// character at a time: "W O R K  E X P E R I E N C E". On the page the gap
+// between words is wider, but it arrives as the same single space, so the word
+// boundaries cannot be recovered - which is why the joined form is matched
+// against heading names with their spaces removed rather than by trying to put
+// the gaps back.
+//
+// Most tokens being one character is the signature. A real heading never looks
+// like this, and the result still has to match a known name, so a line of
+// initials cannot become a section by accident.
+function letterSpaced(t) {
+  const parts = t.split(/\s+/);
+  if (parts.length < 4) return '';
+  if (parts.filter((p) => p.length === 1).length / parts.length < 0.8) return '';
+  const joined = parts.join('').replace(/[^a-z&]/g, '');
+  return joined.length >= 4 && joined.length <= 40 ? joined : '';
+}
+
 function headingId(line) {
   const t = clean(line).replace(/[:•\-–—_]+$/, '').trim().toLowerCase();
-  if (!t || t.length > 42 || t.split(/\s+/).length > 5) return null;
+  if (!t) return null;
+
+  // Checked before the word-count guard below, which a spaced-out heading
+  // fails on every time: "W O R K E X P E R I E N C E" is fourteen words.
+  const spaced = letterSpaced(t);
+  if (spaced) return SQUASHED_LOOKUP.get(spaced) || null;
+
+  if (t.length > 42 || t.split(/\s+/).length > 5) return null;
   if (HEADING_LOOKUP.has(t)) return HEADING_LOOKUP.get(t);
   // "WORK EXPERIENCE" in caps with stray punctuation
   const squashed = t.replace(/[^a-z& ]/g, '').trim();
@@ -619,6 +656,10 @@ function parseContact(headLines, wholeText) {
   for (const line of headLines.slice(nameAt + 1, nameAt + 4)) {
     const t = clean(line);
     if (!t || t.length > 70 || /[@]/.test(t) || t.replace(/\D/g, '').length > 5) continue;
+    // A letter-spaced section heading is short enough to pass every test above.
+    // On a template whose sidebar prints first, "C O N T A C T D E T A I L S"
+    // is the very first line, and it was landing in the headline field.
+    if (letterSpaced(t.toLowerCase())) continue;
     basics.headline = t;
     break;
   }

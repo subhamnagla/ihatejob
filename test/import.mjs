@@ -122,5 +122,33 @@ check('slash dates still split', dated('Consultant 11/2024 - Present'), '11/2024
 check('month dates still split', dated('Engineer Mar 2021 - Jul 2024'), 'Mar 2021|Jul 2024');
 check('bare "now" still splits', dated('Engineer 2021 - now'), '2021|');
 
+/* --- headings that letter-space, which a PDF hands back one char at a time - */
+// A real CV that used this template imported as nothing at all: every heading
+// arrived as "W O R K  E X P E R I E N C E", so none were recognised and the
+// whole document went into the summary.
+const SPACED = j(
+  'C O N T A C T D E T A I L S', 'oupamya@example.com', '+91-9007919036',
+  'P R O F I L E S U M M A R Y', 'Seven years in mainframe development.',
+  'T E C H N I C A L S K I L L S', 'COBOL, JCL, DB2',
+  'W O R K E X P E R I E N C E',
+  'Lead Developer Nov 2017-Nov 2023', 'Built things that mattered.',
+  'E D U C A T I O N', 'BSc Computer Science 2013 - 2017');
+
+console.log(NL + '=== letter-spaced headings ===');
+const sp = parseCV(SPACED, blankData()).data;
+check('summary read', sp.basics.summary.includes('mainframe development'), true);
+check('experience found', sp.experience.length > 0, true);
+check('skills found', sp.skills.length > 0, true);
+check('education found', sp.education.length > 0, true);
+// The spaced heading is short enough to pass every headline test, and on a
+// template whose sidebar prints first it is the very first line in the file.
+check('a heading never becomes the headline', sp.basics.headline, '');
+check('contact block did not become a section',
+  JSON.stringify(sp.skills).includes('C O N T A C T'), false);
+
+// Initials and acronyms must not turn into sections just by being spaced out.
+const notHeadings = parseCV(j('J R R T O L K I E N', 'A B C D E F', 'Some text.'), blankData()).data;
+check('a spaced name is not a section', notHeadings.experience.length, 0);
+
 console.log(NL + (fails ? fails + ' FAILING' : 'all pass'));
 process.exit(fails ? 1 : 0);
