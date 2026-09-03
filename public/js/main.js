@@ -523,11 +523,6 @@ $('btnPrintGo').addEventListener('click', () => {
   setTimeout(() => window.print(), 60);
 });
 
-$('printModal').addEventListener('click', (e) => {
-  if (e.target.id === 'printModal' || e.target.hasAttribute('data-close')) {
-    $('printModal').classList.remove('open');
-  }
-});
 
 $('btnMore').addEventListener('click', (e) => {
   e.stopPropagation();
@@ -538,14 +533,24 @@ $('btnMore').addEventListener('click', (e) => {
 
 document.addEventListener('click', () => $('moreMenu').classList.remove('open'));
 
+// Every dialog closes the same two ways: a click on the backdrop, or on
+// anything marked data-close. This was wired per dialog, which meant each new
+// one had to remember to do it - and the job-advert dialog did not, so its
+// Close button and its backdrop both did nothing at all. Delegated here, a
+// dialog cannot be added without a way out of it.
+document.addEventListener('click', (e) => {
+  const hit = e.target.classList.contains('modal-backdrop') ? e.target
+    : (e.target.hasAttribute('data-close') ? e.target.closest('.modal-backdrop') : null);
+  if (hit) hit.classList.remove('open');
+});
+
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   $('moreMenu').classList.remove('open');
-  $('liModal').classList.remove('open');
-  $('printModal').classList.remove('open');
-  $('importModal').classList.remove('open');
+  document.querySelectorAll('.modal-backdrop.open')
+    .forEach((m) => m.classList.remove('open'));
+  // Not a .modal-backdrop, and it has timers to clear.
   closePlanet();
-  $('fixModal').classList.remove('open');
 });
 
 $('moreMenu').addEventListener('click', (e) => {
@@ -864,11 +869,6 @@ $('fixApply').addEventListener('click', () => {
     + before + ' → ' + after + '.');
 });
 
-$('fixModal').addEventListener('click', (e) => {
-  if (e.target.id === 'fixModal' || e.target.hasAttribute('data-close')) {
-    $('fixModal').classList.remove('open');
-  }
-});
 
 /* --------------------------------------------------------- fix my LinkedIn */
 
@@ -962,11 +962,6 @@ $('liFields').addEventListener('click', async (e) => {
   }
 });
 
-$('liModal').addEventListener('click', (e) => {
-  if (e.target.id === 'liModal' || e.target.hasAttribute('data-close')) {
-    $('liModal').classList.remove('open');
-  }
-});
 
 /* ------------------------------------------------------- planet result */
 
@@ -1173,11 +1168,6 @@ function openImport() {
 
 $('btnImport').addEventListener('click', openImport);
 
-$('importModal').addEventListener('click', (e) => {
-  if (e.target.id === 'importModal' || e.target.hasAttribute('data-close')) {
-    $('importModal').classList.remove('open');
-  }
-});
 
 function importError(msg) {
   const box = $('importError');
