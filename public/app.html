@@ -331,6 +331,15 @@
     <p>Paste the advert. Nothing is uploaded &mdash; the comparison runs in this browser,
       against the CV you have open.</p>
 
+    <div class="dropzone dropzone-sm" id="jdDrop" tabindex="0" role="button">
+      <b>Drop the advert here</b>
+      <span>or click to choose &mdash; PDF, Word (.docx) or .txt</span>
+    </div>
+    <div class="or-line"><span>or paste it</span></div>
+
+    <!-- Whatever a file gives up lands in this box rather than going straight
+         to the comparison, so it can be seen and corrected. A JD read badly
+         out of a PDF would otherwise produce confident nonsense. -->
     <textarea class="input" id="jdText" rows="9"
       placeholder="Paste the whole advert - requirements, nice-to-haves, all of it."></textarea>
 
@@ -347,6 +356,7 @@
 <div class="toast" id="toast"></div>
 <input type="file" id="fileInput" accept="application/json,.json" hidden>
 <input type="file" id="photoInput" accept="image/*" hidden>
+<input type="file" id="jdInput" accept=".pdf,.docx,.doc,.rtf,.txt,.md,application/pdf" hidden>
 <input type="file" id="cvInput" accept=".pdf,.docx,.doc,.rtf,.txt,.md,.json,.zip,application/pdf,application/zip" hidden>
 <div class="drop-veil" id="dropVeil" hidden><div>Drop your CV to read it</div></div>
 

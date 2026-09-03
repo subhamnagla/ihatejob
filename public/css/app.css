@@ -1666,3 +1666,8 @@ textarea.input { resize: vertical; line-height: 1.5; }
   font-weight: 600;
 }
 .jd-warn { margin-top: 16px; max-width: 62ch; }
+
+/* The advert dropzone sits above a textarea in a dialog, so it is shallower
+   than the one the whole import panel is built around. */
+.dropzone-sm { padding: 18px 16px; margin-bottom: 4px; }
+.dropzone-sm b { font-size: 15px; }

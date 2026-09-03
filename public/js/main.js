@@ -1398,6 +1398,51 @@ initPWA({ onToast: toast });
 // The terms are always listed. A number on its own would hide a bad reading of
 // the advert behind a confident-looking score; a list lets anyone see at a
 // glance that it has misread one.
+// An advert is as likely to arrive as a PDF or a Word file as it is to be
+// pasted, and fileToText already reads all three. What it gets goes into the
+// box rather than straight into the comparison: a JD read badly out of a PDF
+// would otherwise produce confident nonsense with nothing to show for it.
+async function readAdvert(file) {
+  if (!file) return;
+  // Checked here rather than left to fileToText, whose refusal talks about
+  // LinkedIn archives and saved .json - neither of which is a job advert.
+  if (!/\.(pdf|docx?|rtf|txt|md)$/i.test(file.name)) {
+    $('jdNote').textContent = 'That is not something an advert comes in. Use a PDF, a Word file or plain text - or paste it below.';
+    return;
+  }
+  $('jdNote').textContent = 'Reading ' + file.name + '...';
+  try {
+    const out = await fileToText(file);
+    const text = String(out.text || out || "").trim();
+    if (!text) throw new ImportError("Nothing readable came out of that file.");
+    $('jdText').value = text;
+    $('jdNote').textContent = 'Read ' + text.length.toLocaleString() + ' characters. '
+      + 'Check it looks right, then compare.';
+  } catch (err) {
+    $('jdNote').textContent = err instanceof ImportError ? err.message
+      : 'That file could not be read. Paste the advert instead.';
+  }
+}
+
+const jdDrop = $('jdDrop');
+jdDrop.addEventListener('click', () => $('jdInput').click());
+jdDrop.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('jdInput').click(); }
+});
+['dragenter', 'dragover'].forEach((ev) => jdDrop.addEventListener(ev, (e) => {
+  e.preventDefault();
+  jdDrop.classList.add('over');
+}));
+['dragleave', 'drop'].forEach((ev) => jdDrop.addEventListener(ev, (e) => {
+  e.preventDefault();
+  jdDrop.classList.remove('over');
+}));
+jdDrop.addEventListener('drop', (e) => readAdvert(e.dataTransfer.files[0]));
+$('jdInput').addEventListener('change', (e) => {
+  readAdvert(e.target.files[0]);
+  e.target.value = '';
+});
+
 $('jdRun').addEventListener('click', () => {
   const jd = $('jdText').value.trim();
   if (jd.length < 40) {
