@@ -91,6 +91,9 @@
           <button class="menu-item narrow-only" data-act="example" type="button">
             Load an example<small>A worked sample for your profession</small>
           </button>
+          <button class="menu-item" data-act="jd" type="button">
+            Check against a job advert<small>What the advert asks for, and what your CV is missing</small>
+          </button>
           <button class="menu-item" data-act="linkedin" type="button">
             Fix my LinkedIn<small>Your text, cut to LinkedIn's fields, ready to paste</small>
           </button>
@@ -315,6 +318,30 @@
   </div>
 
   <div class="skip-hint" id="planetSkip">Click to skip</div>
+</div>
+
+
+<!-- Comparing a CV against an advert. An applicant tracking system stores a CV
+     as fields and lets a recruiter search them; this works out which of the
+     things an advert asks for are findable, and shows the terms rather than
+     hiding a bad reading behind a confident-looking score. -->
+<div class="modal-backdrop" id="jdModal">
+  <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="jdTitle">
+    <h2 id="jdTitle">Check your CV against a job advert</h2>
+    <p>Paste the advert. Nothing is uploaded &mdash; the comparison runs in this browser,
+      against the CV you have open.</p>
+
+    <textarea class="input" id="jdText" rows="9"
+      placeholder="Paste the whole advert - requirements, nice-to-haves, all of it."></textarea>
+
+    <div class="suggest-actions">
+      <button class="btn btn-primary" type="button" id="jdRun">Compare</button>
+      <button class="btn" data-close type="button">Close</button>
+      <span class="hint" id="jdNote" style="margin:0"></span>
+    </div>
+
+    <div id="jdOut" hidden></div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>

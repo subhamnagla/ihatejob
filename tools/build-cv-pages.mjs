@@ -109,6 +109,7 @@ const FOOT = `
     <nav>
       <a href="/app">Builder</a>
       <a href="/cv">All professions</a>
+      <a href="/ats">ATS</a>
       <a href="/stories">Journeys</a>
       <a href="/#review">Leave a review</a>
     </nav>
@@ -267,7 +268,7 @@ for (const [slug, p] of entries) {
 await writeFile(join(OUT, 'index.html'), indexPage(entries), 'utf8');
 
 const urls = [
-  ['/', '1.0'], ['/app', '0.9'], ['/cv', '0.8'], ['/stories', '0.6'],
+  ['/', '1.0'], ['/app', '0.9'], ['/cv', '0.8'], ['/ats', '0.8'], ['/stories', '0.6'],
   ...entries.map(([s]) => ['/cv/' + s, '0.7']),
 ];
 await writeFile(join(ROOT, 'public', 'sitemap.xml'),

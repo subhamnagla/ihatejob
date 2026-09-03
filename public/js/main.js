@@ -14,6 +14,7 @@ import { buildSample } from './samples.js';
 import { PLANETS, planetFor, starsFor, starRow, planetSVG } from './planets.js';
 import { availableFixes, applyFixes } from './fixes.js';
 import { initPWA } from './pwa.js';
+import { matchJD } from './jdmatch.js';
 
 const STORE_KEY = 'ihatejob.v1';
 const LEGACY_KEY = 'cvmaker.v1'; // read once so the rename does not lose anyone's CV
@@ -475,6 +476,14 @@ async function standaloneHtml(forWord) {
 }
 
 async function runExport(act) {
+  if (act === 'jd') {
+    $('jdModal').classList.add('open');
+    $('jdOut').hidden = true;
+    $('jdNote').textContent = '';
+    $('jdText').focus();
+    return;
+  }
+
   if (act === 'text') {
     // baseName() already carries the -cover-letter suffix in letter mode.
     download(baseName() + '.txt', 'text/plain;charset=utf-8',
@@ -1383,3 +1392,49 @@ scheduleSave(); // so the "Saved" pill is true even on a first visit
 })();
 
 initPWA({ onToast: toast });
+
+/* ------------------------------------------ checking against an advert */
+
+// The terms are always listed. A number on its own would hide a bad reading of
+// the advert behind a confident-looking score; a list lets anyone see at a
+// glance that it has misread one.
+$('jdRun').addEventListener('click', () => {
+  const jd = $('jdText').value.trim();
+  if (jd.length < 40) {
+    $('jdNote').textContent = 'Paste a bit more of the advert first.';
+    return;
+  }
+  $('jdNote').textContent = '';
+
+  const r = matchJD(jd, renderText(state));
+  const out = $('jdOut');
+
+  if (!r.total) {
+    out.innerHTML = '<p class="hint">' + esc(r.verdict) + '</p>';
+    out.hidden = false;
+    return;
+  }
+
+  const chip = (t) => '<span class="jd-term' + (t.found ? ' on' : '') + '">'
+    + (t.found ? '&#10003; ' : '') + esc(t.label || t.term) + '</span>';
+
+  const group = (weight, title, note) => {
+    const items = r.terms.filter((t) => t.weight === weight);
+    if (!items.length) return '';
+    return '<h3 class="jd-h">' + title + '</h3>'
+      + (note ? '<p class="hint">' + note + '</p>' : '')
+      + '<div class="jd-terms">' + items.map(chip).join('') + '</div>';
+  };
+
+  out.innerHTML = '<p class="jd-verdict"><b>' + r.covered + ' of ' + r.total
+    + '</b> things this advert asks for are findable in your CV.</p>'
+    + '<p>' + esc(r.verdict) + '</p>'
+    + group('must', 'Asked for', 'Listed under requirements, or marked as required.')
+    + group('nice', 'Nice to have', 'Worth having, not worth inventing.')
+    + group('body', 'Mentioned in passing', 'Picked up from the rest of the advert.')
+    + '<p class="hint jd-warn">These are words a recruiter&rsquo;s search would look for. '
+    + 'Add any that are <b>true of you</b> and missing &mdash; and none that are not. '
+    + 'A CV stuffed with terms you cannot talk about falls apart in the first interview, '
+    + 'and this tool cannot tell the difference.</p>';
+  out.hidden = false;
+});

@@ -1645,3 +1645,24 @@ textarea.input { resize: vertical; line-height: 1.5; }
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* Comparing a CV against an advert. Found and missing have to be tellable
+   apart at a glance and without relying on colour alone, hence the tick. */
+.jd-verdict { font-size: 17px; margin: 18px 0 4px; }
+.jd-h { font-size: 14px; margin: 18px 0 4px; letter-spacing: .02em; text-transform: uppercase; opacity: .8; }
+.jd-terms { display: flex; flex-wrap: wrap; gap: 7px; margin: 8px 0 4px; }
+.jd-term {
+  display: inline-block;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 13px;
+  opacity: .72;
+}
+.jd-term.on {
+  border-color: currentColor;
+  color: var(--ok, #2f9e5f);
+  opacity: 1;
+  font-weight: 600;
+}
+.jd-warn { margin-top: 16px; max-width: 62ch; }
