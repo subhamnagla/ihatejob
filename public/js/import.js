@@ -250,12 +250,35 @@ async function objectStream(bytes, ascii, num) {
 }
 
 /** { F15: Map(glyphId -> text) } keyed by the resource name used in `Tf`. */
+/** The body of object `num`, for dictionaries that are not streams. */
+function objectText(ascii, num) {
+  const at = new RegExp('(?:^|[^0-9])' + num + '\\s+0\\s+obj\\b').exec(ascii);
+  if (!at) return '';
+  const end = ascii.indexOf('endobj', at.index);
+  return ascii.slice(at.index, end < 0 ? at.index + 4000 : end);
+}
+
 async function buildCMaps(bytes, ascii) {
   const refs = {};
-  for (const dict of ascii.match(/\/Font\s*<<([\s\S]{0,2000}?)>>/g) || []) {
+  const readPairs = (dict) => {
     const re = /\/([A-Za-z0-9]+)\s+(\d+)\s+0\s+R/g;
     let m;
     while ((m = re.exec(dict)) !== null) refs[m[1]] = Number(m[2]);
+  };
+
+  // A page can name its fonts inline...
+  for (const dict of ascii.match(/\/Font\s*<<([\s\S]{0,2000}?)>>/g) || []) readPairs(dict);
+
+  // ...or point at a dictionary living in its own object: "/Font 13 0 R". One
+  // real CV used the second form on every page, so nothing matched above, no
+  // ToUnicode map was loaded, and an entirely readable document was reported
+  // as unreadable.
+  const seen = new Set();
+  for (const ref of ascii.match(/\/Font\s+(\d+)\s+0\s+R/g) || []) {
+    const num = Number(ref.match(/(\d+)/)[1]);
+    if (seen.has(num)) continue;
+    seen.add(num);
+    readPairs(objectText(ascii, num));
   }
 
   const maps = {};
@@ -267,7 +290,15 @@ async function buildCMaps(bytes, ascii) {
     const tu = dict.match(/\/ToUnicode\s+(\d+)\s+0\s+R/);
     if (!tu) continue;
     const parsed = parseCMap(await objectStream(bytes, ascii, Number(tu[1])));
-    if (parsed.size) maps[name] = parsed;
+    // Whether this font's codes are two bytes wide. A simple font can carry a
+    // /ToUnicode map as well, and reading its one-byte strings in pairs would
+    // turn readable text into nonsense - so the answer comes from the font
+    // itself rather than from the presence of a map.
+    if (parsed.size) {
+      parsed.wide = /\/Subtype\s*\/Type0\b/.test(dict)
+        || /\/Encoding\s*\/Identity-[HV]\b/.test(dict);
+      maps[name] = parsed;
+    }
   }
   return maps;
 }
@@ -419,7 +450,24 @@ function extractPdfText(content, cmaps) {
   while (i < content.length) {
     const c = content[i];
 
-    if (c === '(') { line += readString(); continue; }
+    if (c === '(') {
+      const raw = readString();
+      const map = cmaps && cmaps[font];
+      // Identity-H codes are written as a literal string as readily as a hex
+      // one: "(\x00&\x00(\x006)" is the same three glyphs as "<002600280036>".
+      // Only the hex form was being mapped, so a CV whose generator chose
+      // literals came back as raw glyph ids and was called unreadable - while
+      // the phone number beside it, set in a simple font, read perfectly.
+      if (map && map.wide) {
+        for (let k = 0; k + 1 < raw.length; k += 2) {
+          const ch = map.get((raw.charCodeAt(k) << 8) | raw.charCodeAt(k + 1));
+          if (ch !== undefined) line += ch;
+        }
+      } else {
+        line += raw;
+      }
+      continue;
+    }
 
     // A PDF name, so that "/F15 12 Tf" can set the current font.
     if (c === '/') {
@@ -542,12 +590,15 @@ const HEADINGS = [
     'key strengths', 'strengths', 'technical knowledge', 'tools and technologies',
     'technology stack', 'tech stack', 'technical summary', 'skills summary',
     'professional skills', 'functional skills', 'domain expertise', 'technical skill set',
-    'summary of technologies & tools', 'technologies & tools', 'core strengths']],
+    'summary of technologies & tools', 'technologies & tools', 'core strengths',
+    'skills and tools', 'skills & tools', 'computer qualification',
+    'computer knowledge', 'technical qualification']],
 
   ['projects', ['projects', 'key projects', 'personal projects', 'selected work', 'portfolio',
     'academic projects', 'project work', 'selected projects', 'project details',
     'projects undertaken', 'major projects', 'live projects', 'project profile',
-    'project summary', 'notable projects', 'project experience']],
+    'project summary', 'notable projects', 'project experience',
+    'project description', 'projects handled']],
 
   ['certifications', ['certifications', 'certificates', 'courses', 'training',
     'professional development', 'certifications & training', 'trainings', 'workshops',
@@ -758,12 +809,29 @@ function looksLikeHeading(line) {
   return /:$/.test(t) || (bare === bare.toUpperCase() && /[A-Z]/.test(bare));
 }
 
+// Some templates draw a heading and the first line of its section as one run,
+// so the text arrives as "SKILLSProgramming Languages: Python". The heading is
+// the longest leading run of capitals that is itself a name we know - checked
+// longest-first, because the greedy run swallows the first letter of the word
+// after it ("SKILLSP", "PROJECTSD").
+function splitGlued(line) {
+  const t = clean(line);
+  const m = /^([A-Z][A-Z &]{2,28})(?=[A-Z][a-z]|[a-z])/.exec(t);
+  if (!m) return null;
+  for (let end = m[1].length; end >= 3; end -= 1) {
+    const id = headingId(m[1].slice(0, end));
+    if (id) return { id, rest: t.slice(end).trim() };
+  }
+  return null;
+}
+
 function sectionise(text) {
   const rawLines = String(text).split('\n').map((l) => l.replace(/\s+$/, ''));
   const head = [];
   const sections = [];
   const unknown = [];
   let current = null;
+  let skip = '';
 
   const nextReal = (from) => {
     for (let k = from + 1; k < rawLines.length; k += 1) {
@@ -775,9 +843,31 @@ function sectionise(text) {
   for (let i = 0; i < rawLines.length; i += 1) {
     const line = rawLines[i];
     if (!clean(line)) { if (current) current.lines.push(''); continue; }
+    if (skip && clean(line) === skip) { skip = ''; continue; }
     const id = headingId(line);
     if (id) {
       current = { id, lines: [] };
+      sections.push(current);
+      continue;
+    }
+
+    // A heading wrapped onto two lines: "EDUCATION AND" / "TRAINING". Tried
+    // before the glued split, and only for a short line in capitals, so an
+    // ordinary sentence is never joined to the one after it.
+    const nxt = nextReal(i);
+    if (nxt && /^[A-Z][A-Z &]{2,20}$/.test(clean(line))) {
+      const joined = headingId(clean(line) + ' ' + clean(nxt));
+      if (joined) {
+        current = { id: joined, lines: [] };
+        sections.push(current);
+        skip = clean(nxt);
+        continue;
+      }
+    }
+
+    const glued = splitGlued(line);
+    if (glued) {
+      current = { id: glued.id, lines: glued.rest ? [glued.rest] : [] };
       sections.push(current);
       continue;
     }
@@ -800,6 +890,21 @@ function parseContact(headLines, wholeText) {
   const email = wholeText.match(/[\w.+-]+@[\w-]+\.[\w.]{2,}/);
   if (email) basics.email = email[0];
 
+  // A design that sets the phone and the email side by side hands them back
+  // with nothing between them: "+91 9732036243neha.umrani99@gmail.com". The
+  // local part swallows the number and the address is quietly wrong on the
+  // imported CV - the kind of error nobody thinks to check. Only a leading run
+  // of digits that matches the phone is removed, so an address that genuinely
+  // starts with numbers keeps them.
+  const digits = String(wholeText.match(/\+?\d[\d\s()-]{7,}/) || '').replace(/\D/g, '');
+  if (basics.email && digits.length >= 8) {
+    const [box, host] = basics.email.split('@');
+    const lead = /^\d{6,}/.exec(box);
+    if (lead && digits.includes(lead[0]) && box.slice(lead[0].length).length >= 3) {
+      basics.email = box.slice(lead[0].length) + '@' + host;
+    }
+  }
+
   const phone = wholeText.match(/(\+\d{1,3}[\s-]?)?(\(?\d{2,5}\)?[\s-]?){2,4}\d{2,4}/g);
   if (phone) {
     const best = phone.map(clean).filter((p) => p.replace(/\D/g, '').length >= 8)
@@ -820,41 +925,38 @@ function parseContact(headLines, wholeText) {
     }
   }
 
-  // Name: the first line that reads like a person rather than contact data.
-  for (const line of headLines.slice(0, 6)) {
-    const t = clean(line);
-    if (!t || t.length > 48) continue;
-    if (/[@\d]/.test(t)) continue;
-    const w = t.split(' ');
-    if (w.length < 2 || w.length > 5) continue;
-    basics.fullName = t;
-    break;
-  }
-
-  // A template that prints its sidebar before its header puts the name well
-  // down the page, past where the loop above looks, and the CV imports with an
-  // empty header - the checker then reports a missing name that is plainly
-  // there on the PDF.
-  //
-  // The email is the way back to it: oupamyabanerjee@gmail.com and
-  // "OUPAMYA BANERJEE" reduce to the same letters, and nothing else on a page
-  // does that by accident. Guessing from capitalisation instead would cheerfully
-  // decide that someone is called "Technologies Used".
-  if (!basics.fullName && basics.email) {
-    const local = basics.email.split('@')[0].replace(/[^a-z]/gi, '').toLowerCase();
-    if (local.length >= 5) {
-      for (const raw of String(wholeText).split('\n')) {
-        const t = clean(raw);
-        if (!t || t.length > 48 || /[@\d]/.test(t)) continue;
-        const w = t.split(' ');
-        if (w.length < 2 || w.length > 5) continue;
-        if (t.replace(/[^a-z]/gi, '').toLowerCase() === local) {
-          basics.fullName = t;
-          break;
-        }
+  // Name, by the strongest signal available first: a line whose letters are
+  // exactly the letters of the email's local part. neha.umrani99@gmail.com and
+  // "NEHAUMRANI" reduce to the same thing, and nothing else on a page does
+  // that by accident - so this is trusted over position, and over the word
+  // count, since a template that draws "NEHA" and "UMRANI" as two runs hands
+  // them back with no space between.
+  const local = String(basics.email || '').split('@')[0].replace(/[^a-z]/gi, '').toLowerCase();
+  if (local.length >= 5) {
+    for (const raw of String(wholeText).split('\n')) {
+      const t = clean(raw);
+      if (!t || t.length > 48 || /[@\d]/.test(t)) continue;
+      if (t.split(' ').length > 5) continue;
+      if (t.replace(/[^a-z]/gi, '').toLowerCase() === local) {
+        basics.fullName = t;
+        break;
       }
     }
   }
+
+  // Otherwise: the first line that reads like a person rather than contact data.
+  if (!basics.fullName) {
+    for (const line of headLines.slice(0, 6)) {
+      const t = clean(line);
+      if (!t || t.length > 48) continue;
+      if (/[@\d]/.test(t)) continue;
+      const w = t.split(' ');
+      if (w.length < 2 || w.length > 5) continue;
+      basics.fullName = t;
+      break;
+    }
+  }
+
   // Location: the "City, Country" shape, usually sitting in the contact line
   // among pipe-separated fragments.
   const CITY = /^[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+){0,2},\s*[A-Z][A-Za-z.'-]+(?:\s+[A-Za-z.'-]+){0,2}$/;

@@ -251,6 +251,26 @@ const FIXTURES = [
       'I hereby declare that the above is true.'),
     must: { name: 'Soutrick Das', exp: 1, edu: 3 },
   },
+
+  {
+    name: 'headings glued to content, and split over two lines',
+    why: 'A sidebar template drew the heading and its first line as one run,'
+      + ' and wrapped another heading onto a second line.',
+    text: j(
+      'Ahmad Raza',
+      'raza@example.com',
+      '',
+      'EXPERIENCE',
+      'Data Engineer, Infosys  05/2022 - Present',
+      '• Built ETL pipelines.',
+      'SKILLSProgramming Languages: Python, SQL',
+      'Big Data: PySpark, Spark',
+      'EDUCATION AND',
+      'TRAINING',
+      'B.Tech, Vellore Institute of Technology  2019',
+      'CERTIFICATIONSDatabricks Certified Data Engineer'),
+    must: { name: 'Ahmad Raza', exp: 1, edu: 1, skills: true },
+  },
 ];
 
 /* ------------------------------------------------------------- scoring */
