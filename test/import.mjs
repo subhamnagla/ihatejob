@@ -256,5 +256,46 @@ check('an accent that is not mojibake is left alone',
 check('a lone lead byte is not mangled',
   unmojibake('Â alone'), 'Â alone');
 
+/* --- headings the parser does not know ----------------------------------- */
+// No table holds every name a CV gives its sections, so the ones it cannot
+// place are reported instead of silently folded into the section above.
+console.log(NL + '=== unrecognised headings ===');
+
+const REPORTED = parseCV(j(
+  'Ravi Kumar', 'ravi@example.com', '',
+  'CAREER ABSTRACT:', 'Ten years in logistics.', '',
+  'WORK EXPOSURE:', 'Ops Manager, Blue Dart  2016 - 2024', '• Ran a depot.', '',
+  'SCHOLASTIC RECORD:', 'B.Com, Delhi University  2012 - 2015', '',
+  'COMPUTER PROFICIENCY:', 'Excel, SAP', '',
+  'SOMETHING WE HAVE NEVER SEEN:', 'Mystery content.', '',
+  'DECLARATION:', 'All true.'), blankData());
+
+// The widened table should place all of these without help.
+check('career abstract read as a summary',
+  REPORTED.data.basics.summary.includes('logistics'), true);
+check('work exposure read as experience', REPORTED.data.experience.length, 1);
+check('scholastic record read as education', REPORTED.data.education.length, 1);
+check('computer proficiency read as skills', REPORTED.data.skills.length > 0, true);
+
+check('the one it cannot place is named',
+  REPORTED.report.unknownHeadings, ['SOMETHING WE HAVE NEVER SEEN']);
+check('a recognised heading is never reported',
+  REPORTED.report.unknownHeadings.some((h) => /SCHOLASTIC|EXPOSURE|ABSTRACT/.test(h)), false);
+check('declaration is dropped, not reported',
+  REPORTED.report.unknownHeadings.includes('DECLARATION'), false);
+
+// The noise this must not produce, all of it seen on real CVs.
+const QUIET = parseCV(j(
+  'Experience', 'Engineer, Acme  2020 - 2024', '• Did the thing.',
+  'Skills', 'COBOL', 'JCL', 'IMS'), blankData()).report.unknownHeadings;
+check('single capitalised words are not headings', QUIET, []);
+
+// A capitalised line directly above a real heading has nothing under it - on a
+// sidebar-first CV that line is the person's own name, halfway down the page.
+const SIDEBAR_UNKNOWN = parseCV(j(
+  'Skills', 'COBOL, JCL', 'OUPAMYA BANERJEE', 'Summary', 'Seven years.'),
+  blankData()).report.unknownHeadings;
+check('a name above a heading is not reported', SIDEBAR_UNKNOWN, []);
+
 console.log(NL + (fails ? fails + ' FAILING' : 'all pass'));
 process.exit(fails ? 1 : 0);

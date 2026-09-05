@@ -511,36 +511,75 @@ const HEADINGS = [
   ['summary', ['summary', 'profile', 'objective', 'career objective', 'professional summary',
     'about me', 'about', 'personal statement', 'career summary', 'professional profile', 'overview',
     'profile summary', 'career profile', 'executive summary', 'career snapshot',
-    'professional snapshot', 'snapshot', 'career overview', 'introduction']],
+    'professional snapshot', 'snapshot', 'career overview', 'introduction',
+    'summary of qualifications', 'professional overview', 'brief profile', 'career synopsis',
+    'synopsis', 'professional synopsis', 'preface', 'career abstract', 'abstract']],
+
   ['experience', ['experience', 'work experience', 'professional experience', 'employment',
     'employment history', 'work history', 'career history', 'professional background',
     'relevant experience', 'clinical experience', 'teaching experience', 'legal experience',
     'academic appointments', 'internships', 'internship experience',
     'employment record', 'work record', 'career record', 'professional employment',
-    'experience summary', 'organisational experience', 'organizational experience']],
+    'experience summary', 'organisational experience', 'organizational experience',
+    // The vocabulary an Indian CV tends to use.
+    'work exposure', 'professional exposure', 'industry exposure', 'industrial experience',
+    'employment details', 'work profile', 'career progression', 'positions held',
+    'professional engagements', 'present employment', 'current employment',
+    'previous employment', 'past employment', 'work summary', 'job history',
+    'professional career', 'career details', 'experience details']],
+
   ['education', ['education', 'academic qualifications', 'academics', 'qualifications',
-    'educational qualifications', 'academic background', 'education & training']],
+    'educational qualifications', 'academic background', 'education & training',
+    'academic details', 'academic record', 'academic credentials', 'scholastic record',
+    'educational details', 'educational background', 'academic profile', 'education details',
+    'educational credentials', 'academic history', 'scholastics', 'schooling',
+    'education and training', 'academic achievements']],
+
   ['skills', ['skills', 'technical skills', 'key skills', 'core competencies', 'competencies',
     'areas of expertise', 'skill set', 'technical proficiencies', 'clinical skills', 'expertise',
-    'soft skills', 'secondary skills', 'primary skills', 'core skills', 'technical expertise']],
+    'soft skills', 'secondary skills', 'primary skills', 'core skills', 'technical expertise',
+    'it skills', 'computer skills', 'computer proficiency', 'technical competencies',
+    'key strengths', 'strengths', 'technical knowledge', 'tools and technologies',
+    'technology stack', 'tech stack', 'technical summary', 'skills summary',
+    'professional skills', 'functional skills', 'domain expertise', 'technical skill set',
+    'summary of technologies & tools', 'technologies & tools', 'core strengths']],
+
   ['projects', ['projects', 'key projects', 'personal projects', 'selected work', 'portfolio',
-    'academic projects', 'project work', 'selected projects']],
+    'academic projects', 'project work', 'selected projects', 'project details',
+    'projects undertaken', 'major projects', 'live projects', 'project profile',
+    'project summary', 'notable projects', 'project experience']],
+
   ['certifications', ['certifications', 'certificates', 'courses', 'training',
-    'professional development', 'certifications & training']],
+    'professional development', 'certifications & training', 'trainings', 'workshops',
+    'credentials', 'professional certifications', 'courses and certifications',
+    'additional courses', 'certifications and licenses', 'training and certifications']],
+
   ['licences', ['licences', 'licenses', 'licensure', 'registration', 'bar admission',
-    'professional registration', 'licences & registrations']],
+    'professional registration', 'licences & registrations', 'professional licences',
+    'registration details', 'professional licenses', 'council registration']],
+
   ['publications', ['publications', 'papers', 'research', 'research publications',
-    'conference papers', 'journal articles', 'selected publications']],
+    'conference papers', 'journal articles', 'selected publications', 'patents',
+    'research work', 'papers published', 'publications & patents']],
+
   ['achievements', ['achievements', 'awards', 'honours', 'honors', 'accomplishments',
     'awards & honours', 'awards and honors', 'extracurricular', 'activities',
-    'grants', 'grants & awards', 'positions of responsibility']],
-  ['languages', ['languages', 'language proficiency', 'languages known']],
+    'grants', 'grants & awards', 'positions of responsibility',
+    'key achievements', 'notable achievements', 'recognitions', 'accolades',
+    'co-curricular activities', 'extra-curricular activities', 'achievements & awards',
+    'awards and achievements', 'milestones', 'highlights', 'career highlights',
+    'core strengths & achievements', 'strengths & achievements']],
+
+  ['languages', ['languages', 'language proficiency', 'languages known',
+    'linguistic proficiency', 'languages spoken', 'language skills']],
+
   // Not sections this site keeps, but they end the one above them. Without
   // these an "Educational Qualification" block ran on through the personal
   // details and the declaration, and both arrived as education entries. The
   // switch in parseCV has no case for this id, so the lines are dropped.
-  ['_end', ['personal details', 'personal information', 'declaration',
-    'references', 'hobbies', 'interests', 'hobbies & interests']],
+  ['_end', ['personal details', 'personal information', 'personal data',
+    'personal particulars', 'declaration', 'references', 'referees',
+    'hobbies', 'interests', 'hobbies & interests', 'hobbies and interests']],
 ];
 
 const HEADING_LOOKUP = (() => {
@@ -628,7 +667,10 @@ function letterSpaced(t) {
 }
 
 function headingId(line) {
-  const t = clean(line).replace(/[:•\-–—_]+$/, '').trim().toLowerCase();
+  const t = clean(line).replace(/[:•\-–—_]+$/, '').trim().toLowerCase()
+    // "Technologies& Tools" is how one real CV spaced it, and an ampersand
+    // typed tight against a word should not decide whether a section is read.
+    .replace(/\s*&\s*/g, ' & ');
   if (!t) return null;
 
   // Checked before the word-count guard below, which a spaced-out heading
@@ -681,13 +723,57 @@ function splitPair(text) {
   return [clean(text), ''];
 }
 
+// A line shaped like a heading that matched nothing in the table.
+//
+// No list holds every name a CV gives its sections. "Educational
+// Qualification" cost one person their entire education section, and the next
+// person will have invented something else. So a heading-shaped line that is
+// not recognised gets reported, rather than quietly folded into whichever
+// section came before it - the reader can rename it, and the name is worth
+// adding to the table.
+function looksLikeHeading(line) {
+  const t = clean(line);
+  if (!t || t.length > 42 || BULLET_START.test(t)) return false;
+  if (/[@\d]/.test(t)) return false;                      // contact detail, or dates
+  // "COBOL, JCL" is a skills line in capitals, not a heading. A section name
+  // hardly ever contains a comma; a list always does.
+  if (/[,;|]/.test(t)) return false;
+  const bare = t.replace(/[:\-–—]+$/, '').trim();
+  const words = bare.split(/\s+/);
+  // Two words at least. A single capitalised word in a skills list - COBOL,
+  // JCL, IMS - is an acronym, and reporting each one buries the real finding.
+  if (!bare || words.length < 2 || words.length > 5) return false;
+
+  // Labels that sit inside an entry rather than opening a section. The
+  // labelled-experience path already reads these, and reporting them would put
+  // noise on the screen for every CV written that way.
+  if (DETAIL_LABEL.test(t) || ORG_DIVIDER.test(t)) return false;
+  if (Object.values(EXP_LABEL).some((re) => re.test(t))) return false;
+  if (/^[A-Za-z ]{2,20}\s*:\s*\S/.test(t)) return false;  // "Location: Kolkata"
+
+  // Capitals or a trailing colon only. Title Case on its own is too weak to
+  // report on: job titles, employers and school names all look exactly like
+  // it, and warning that "Senior Frontend Engineer" was not recognised as a
+  // heading would be noise on nearly every CV.
+  return /:$/.test(t) || (bare === bare.toUpperCase() && /[A-Z]/.test(bare));
+}
+
 function sectionise(text) {
   const rawLines = String(text).split('\n').map((l) => l.replace(/\s+$/, ''));
   const head = [];
   const sections = [];
+  const unknown = [];
   let current = null;
 
-  for (const line of rawLines) {
+  const nextReal = (from) => {
+    for (let k = from + 1; k < rawLines.length; k += 1) {
+      if (clean(rawLines[k])) return rawLines[k];
+    }
+    return '';
+  };
+
+  for (let i = 0; i < rawLines.length; i += 1) {
+    const line = rawLines[i];
     if (!clean(line)) { if (current) current.lines.push(''); continue; }
     const id = headingId(line);
     if (id) {
@@ -695,9 +781,18 @@ function sectionise(text) {
       sections.push(current);
       continue;
     }
+    // Reported only once a section has started - everything above the first
+    // heading is the identity block, where a name in capitals is a name - and
+    // only when something follows it that is not itself a heading. A
+    // capitalised line sitting directly above a real heading has nothing under
+    // it, so it was never a heading: on a sidebar-first CV, that line is the
+    // person's own name arriving halfway down the page.
+    if (current && looksLikeHeading(line) && !headingId(nextReal(i))) {
+      unknown.push(clean(line).replace(/[:\-–—]+$/, '').trim());
+    }
     (current ? current.lines : head).push(line);
   }
-  return { head, sections };
+  return { head, sections, unknown: [...new Set(unknown)].slice(0, 4) };
 }
 
 function parseContact(headLines, wholeText) {
@@ -1081,7 +1176,7 @@ export function parseCV(text, base) {
   }
 
   const data = base ? JSON.parse(JSON.stringify(base)) : blankData();
-  const { head, sections } = sectionise(text);
+  const { head, sections, unknown } = sectionise(text);
   const found = [];
   const notes = [];
 
@@ -1182,6 +1277,10 @@ export function parseCV(text, base) {
       found: [...new Set(found)],
       counts,
       notes,
+      // Headings this parser did not recognise. Shown rather than swallowed:
+      // the section under one of these went somewhere it did not belong, and
+      // saying which name was not understood is more use than a silent gap.
+      unknownHeadings: unknown,
       name: data.basics.fullName || '',
       chars: text.length,
     },

@@ -1671,3 +1671,13 @@ textarea.input { resize: vertical; line-height: 1.5; }
    than the one the whole import panel is built around. */
 .dropzone-sm { padding: 18px 16px; margin-bottom: 4px; }
 .dropzone-sm b { font-size: 15px; }
+
+/* Headings the importer did not recognise. Warmer than an error - nothing has
+   gone wrong, it just could not tell what the section was. */
+.report-unknown { border-left: 3px solid var(--warn, #c2683a); }
+.report-unknown code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--panel-2, rgba(127,127,127,.14));
+  font-size: 12.5px;
+}

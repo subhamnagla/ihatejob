@@ -1292,8 +1292,23 @@ function showImportReport({ data, report }) {
       + (report.source ? ' from your <b>' + esc(report.source) + '</b>' : '')
       + (report.name ? ' for <b>' + esc(report.name) + '</b>' : '') + '.</p>';
 
+  // Headings the parser did not recognise. Whatever sat under one of these went
+  // somewhere it did not belong, so naming it is far more use than a section
+  // that reads "not found" with no clue why.
+  const unknown = report.unknownHeadings || [];
+  const unknownNote = unknown.length
+    ? '<div class="report-note report-unknown"><b>Not recognised as headings:</b> '
+      + unknown.map((h) => '<code>' + esc(h) + '</code>').join(', ')
+      + (unknown.length > 1
+        ? '. Anything under those went into the section above it. If one of them is '
+        : '. Anything under it went into the section above. If that is ')
+      + 'your education or experience, renaming it to the ordinary word fixes the '
+      + 'import.</div>'
+    : '';
+
   $('importReport').innerHTML = head
     + report.notes.map((n) => '<div class="report-note">' + esc(n) + '</div>').join('')
+    + unknownNote
     + '<ul class="report-list">' + rows + '</ul>'
     + '<p style="margin:0">'
     + (report.source === 'LinkedIn archive'
