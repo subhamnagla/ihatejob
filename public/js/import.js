@@ -305,7 +305,7 @@ async function pdfToText(buffer) {
     if (out) chunks.push(latin1(out));
   }
 
-  const text = chunks.map((c) => extractPdfText(c, cmaps)).join('\n');
+  const text = unmojibake(chunks.map((c) => extractPdfText(c, cmaps)).join('\n'));
   return looksLikeProse(text) ? tidy(text) : '';
 }
 
@@ -316,6 +316,49 @@ function latin1(bytes) {
     s += String.fromCharCode.apply(null, bytes.subarray(i, i + step));
   }
   return s;
+}
+
+// The places cp1252 differs from Latin-1, inverted: a byte of 0x9E comes back
+// as U+017E, so getting to the byte again needs this table.
+const TO_BYTE = new Map([
+  [0x20AC, 0x80], [0x201A, 0x82], [0x0192, 0x83], [0x201E, 0x84], [0x2026, 0x85],
+  [0x2020, 0x86], [0x2021, 0x87], [0x02C6, 0x88], [0x2030, 0x89], [0x0160, 0x8A],
+  [0x2039, 0x8B], [0x0152, 0x8C], [0x017D, 0x8E], [0x2018, 0x91], [0x2019, 0x92],
+  [0x201C, 0x93], [0x201D, 0x94], [0x2022, 0x95], [0x2013, 0x96], [0x2014, 0x97],
+  [0x02DC, 0x98], [0x2122, 0x99], [0x0161, 0x9A], [0x203A, 0x9B], [0x0153, 0x9C],
+  [0x017E, 0x9E], [0x0178, 0x9F],
+]);
+
+/**
+ * Undo UTF-8 that was read one byte at a time.
+ *
+ * A content stream is bytes, and reading it as bytes is the only way to find
+ * the operators in it - so a generator that writes UTF-8 into a simple font's
+ * strings hands back one character per byte. The bullet in a Word CV, U+27A2,
+ * arrives as three characters (E2 9E A2), and the same thing happens to every
+ * accented name, rupee sign and em dash in the document.
+ *
+ * All or nothing on purpose: every character has to map back to one byte and
+ * the whole run has to be valid UTF-8. Anything else and the text is returned
+ * exactly as it came, because a wrong repair here would corrupt a document
+ * that was decoded correctly in the first place.
+ */
+export function unmojibake(s) {
+  if (!/[Â-ô]/.test(s)) return s;      // no UTF-8 lead byte in sight
+  const bytes = new Uint8Array(s.length);
+  let n = 0;
+  for (const ch of s) {
+    const cp = ch.codePointAt(0);
+    const b = TO_BYTE.has(cp) ? TO_BYTE.get(cp) : cp;
+    if (b > 0xFF) return s;                      // already real Unicode: leave it
+    bytes[n] = b;
+    n += 1;
+  }
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, n));
+  } catch {
+    return s;                                    // not UTF-8 after all
+  }
 }
 
 /**
@@ -492,6 +535,12 @@ const HEADINGS = [
     'awards & honours', 'awards and honors', 'extracurricular', 'activities',
     'grants', 'grants & awards', 'positions of responsibility']],
   ['languages', ['languages', 'language proficiency', 'languages known']],
+  // Not sections this site keeps, but they end the one above them. Without
+  // these an "Educational Qualification" block ran on through the personal
+  // details and the declaration, and both arrived as education entries. The
+  // switch in parseCV has no case for this id, so the lines are dropped.
+  ['_end', ['personal details', 'personal information', 'declaration',
+    'references', 'hobbies', 'interests', 'hobbies & interests']],
 ];
 
 const HEADING_LOOKUP = (() => {
@@ -510,6 +559,28 @@ const SQUASHED_LOOKUP = (() => {
   return map;
 })();
 
+// A heading is written in the singular about as often as the plural -
+// "Educational Qualification:" is as ordinary on a CV as "Educational
+// Qualifications" - and listing both forms of every name is exactly how the
+// singular came to be missing. Both the table and the line are reduced to a
+// common form instead.
+//
+// The [^s] guards a double s: "success" must not become "succes".
+const singular = (s) => s.split(/\s+/)
+  .map((w) => w.replace(/ies$/, 'y').replace(/([a-z]{2,}[^s])s$/, '$1'))
+  .join(' ');
+
+const SINGULAR_LOOKUP = (() => {
+  const map = new Map();
+  for (const [id, names] of HEADINGS) {
+    for (const n of names) {
+      const key = singular(n);
+      if (!map.has(key)) map.set(key, id);
+    }
+  }
+  return map;
+})();
+
 const MONTH = '\\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\\.?';
 // Each word alternative carries its own boundaries. Without them "now" matched
 // inside "knowledge" and the date splitter cut the middle out of the word - on
@@ -520,7 +591,7 @@ const DATE_TOKEN = new RegExp(
   + '|\\b(?:present|current|till\\s*date|to\\s*date|ongoing|now)\\b)',
   'gi',
 );
-const BULLET_START = /^\s*[•·▪‣◦*\-–—o→⇒➔➤►▶✓✔❖]\s+/;
+const BULLET_START = /^\s*[•·▪‣◦*\-–—o→⇒➔➤►▶✓✔❖➢➣●○■□◆◇✦✧»]\s+/;
 
 // A row of rules under a heading. Left in, it becomes the first entry of the
 // section and everything real is pushed into a second one.
@@ -569,7 +640,15 @@ function headingId(line) {
   if (HEADING_LOOKUP.has(t)) return HEADING_LOOKUP.get(t);
   // "WORK EXPERIENCE" in caps with stray punctuation
   const squashed = t.replace(/[^a-z& ]/g, '').trim();
-  return HEADING_LOOKUP.get(squashed) || null;
+  if (HEADING_LOOKUP.has(squashed)) return HEADING_LOOKUP.get(squashed);
+
+  // Last: singular and plural as the same heading - but only for names of two
+  // words or more. A one-word singular is far likelier to be a label inside an
+  // entry than a section of its own: "Project :", "Role :" and "Language :"
+  // all appear in the middle of a job, and treating "Project :" as the start of
+  // a projects section cut a two-job experience block in half.
+  if (squashed.split(/\s+/).length < 2) return null;
+  return SINGULAR_LOOKUP.get(singular(squashed)) || null;
 }
 
 function splitDates(line) {
@@ -757,20 +836,55 @@ function absorbDates(cur, t) {
   return true;
 }
 
+// A section written entirely as bullets is a list of entries, not one entry
+// with a list underneath it. "➢ Pursued B.Tech ... ➢ Pursued Higher Secondary
+// ... ➢ Pursued Secondary" is three qualifications; read the usual way - where
+// a bullet is always detail belonging to the line above - it came out as one,
+// with the other two swallowed as its details.
+//
+// Half rather than all, because each of those lines wraps onto an unbulleted
+// second line, and the wrap is a continuation rather than an entry.
+// The first line decides it. Under a job the head comes first and the bullets
+// describe it; in a list section the very first line is already a bullet, with
+// nothing above for it to belong to.
+function bulletedList(lines) {
+  const real = lines.map(clean).filter(Boolean);
+  if (!real.length || !BULLET_START.test(real[0])) return false;
+  const bullets = real.filter((l) => BULLET_START.test(l)).length;
+  return bullets >= 2 && bullets * 2 >= real.length;
+}
+
 function parseEntries(lines, build, absorb) {
   const out = [];
   let cur = null;
+  const listed = bulletedList(lines);
   for (let i = 0; i < lines.length; i += 1) {
     const t = clean(lines[i]);
     if (!t || RULE_LINE.test(t)) continue;
+
+    if (listed) {
+      const bullet = BULLET_START.test(t);
+      if (bullet || !cur) {
+        cur = build(t.replace(BULLET_START, ''));
+        out.push(cur);
+      } else {
+        // Unbulleted here means the line above wrapped.
+        cur.__bullets.push(t);
+      }
+      continue;
+    }
+    // The marker is stripped whichever branch takes the line. A section whose
+    // very first line is a bullet has no entry to attach it to, so it becomes
+    // one - and used to keep its bullet in the degree field.
+    const head = t.replace(BULLET_START, '');
     if (isEntryHead(lines[i], lines[i + 1])) {
       if (absorb && absorbDates(cur, t)) continue;
-      cur = build(lines[i]);
+      cur = build(head);
       out.push(cur);
     } else if (cur) {
-      cur.__bullets.push(t.replace(BULLET_START, ''));
+      cur.__bullets.push(head);
     } else {
-      cur = build(lines[i]);
+      cur = build(head);
       out.push(cur);
     }
   }

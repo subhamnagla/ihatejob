@@ -1,4 +1,4 @@
-import { parseCV, parseLinkedInArchive, looksLikeLinkedIn } from '../public/js/import.js';
+import { parseCV, parseLinkedInArchive, looksLikeLinkedIn, unmojibake } from '../public/js/import.js';
 import { blankData } from '../public/js/schema.js';
 
 const NL = String.fromCharCode(10);
@@ -230,6 +230,31 @@ check('a name at the top still wins', topName.fullName, 'Priya Sharma');
 const dotted = parseCV(j('C O N T A C T', 'asha.rahman@corp.com',
   'S U M M A R Y', 'Asha Rahman', 'A nurse.'), blankData()).data.basics;
 check('dotted addresses match too', dotted.fullName, 'Asha Rahman');
+
+/* --- UTF-8 read one byte at a time --------------------------------------- */
+// A content stream is bytes, so reading it as bytes is the only way to find the
+// operators in it - and a generator that writes UTF-8 into a simple font's
+// strings then hands back one character per byte.
+console.log(NL + '=== mojibake ===');
+
+// U+27A2, the arrow Word uses for bullets, is E2 9E A2 in UTF-8. Byte 0x9E
+// comes back as U+017E, which is why a plain Latin-1 reverse is not enough.
+check('a Word bullet is put back together',
+  unmojibake('âž¢ Pursued B. Tech.'), '➢ Pursued B. Tech.');
+check('and the small square bullet',
+  unmojibake('â–ª Item'), '▪ Item');
+check('an accented name survives',
+  unmojibake('JosÃ© GarcÃ­a'), 'José García');
+
+// The dangerous direction: text that is already correct must come back
+// untouched, and anything that is not valid UTF-8 must be left exactly alone.
+check('plain ASCII is untouched', unmojibake('Plain text.'), 'Plain text.');
+check('real Unicode is untouched',
+  unmojibake('भारत — India'), 'भारत — India');
+check('an accent that is not mojibake is left alone',
+  unmojibake('Café manager'), 'Café manager');
+check('a lone lead byte is not mangled',
+  unmojibake('Â alone'), 'Â alone');
 
 console.log(NL + (fails ? fails + ' FAILING' : 'all pass'));
 process.exit(fails ? 1 : 0);

@@ -226,6 +226,31 @@ const FIXTURES = [
       '• Ran a 200-truck fleet.'),
     must: { name: 'Deepa Iyer', exp: 1, summaryHas: 'supply chain' },
   },
+
+  {
+    name: 'singular heading, and a bulleted list section',
+    why: '"Educational Qualification:" is as common as the plural, and each line'
+      + ' is its own qualification rather than detail under the first.',
+    text: j(
+      'Soutrick Das',
+      'soutrick@example.com',
+      '',
+      'EXPERIENCE:',
+      'Programmer Analyst, Cognizant  Sep 2018 - Feb 2022',
+      '➢ Wrote COBOL batch jobs.',
+      '',
+      'EDUCATIONAL QUALIFICATION:',
+      '➢ Pursued B. Tech. in Electrical Engineering in 2018 from Techno India,',
+      'Saltlake, under MAKAUT.',
+      '➢ Pursued Higher Secondary from Kendriya Vidyalaya in 2014.',
+      '➢ Pursued Secondary from Kendriya Vidyalaya in 2012.',
+      '',
+      'PERSONAL DETAILS:',
+      'Date of Birth: 12 September 1996',
+      'DECLARATION:',
+      'I hereby declare that the above is true.'),
+    must: { name: 'Soutrick Das', exp: 1, edu: 3 },
+  },
 ];
 
 /* ------------------------------------------------------------- scoring */
