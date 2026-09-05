@@ -18,15 +18,25 @@ const TELL_MAP = [
   [/\bspearheaded\b/gi, () => 'led'],
   [/\bspearheading\b/gi, () => 'leading'],
   [/\borchestrated\b/gi, () => 'ran'],
-  [/\bnavigat(e|ed|ing) the complexities of\b/gi, (m) => (/ing/i.test(m) ? 'handling' : 'handled')],
   [/\bdelved? into\b/gi, () => 'looked at'],
   [/\bunderscores\b/gi, () => 'shows'],
-  [/\bmyriad of\b/gi, () => 'many'],
-  [/\bplethora of\b/gi, () => 'many'],
-  [/\bwell-versed in\b/gi, () => 'know'],
-  [/\badept at\b/gi, () => 'can'],
+  // The article has to go with it. Without that, "across a myriad of channels"
+  // came out as "across a many channels".
+  [/\b(?:a|an)\s+(?:myriad|plethora|multitude)\s+of\b/gi, () => 'many'],
+  [/\b(?:myriad|plethora|multitude)\s+of\b/gi, () => 'many'],
   [/\bmeticulous\b/gi, () => 'careful'],
 ];
+
+// Deliberately not substituted, though the checker still flags every one:
+//
+//   adept at                      "adept at handling X"  -> "can handling X"
+//   well-versed in                "I am well-versed in X" -> "I am know X"
+//   navigate the complexities of  same class
+//
+// Each needs the verb after it to change form, and the rule in this file is
+// that a fix must be mechanical. Swapping the phrase and leaving the verb alone
+// produces confident nonsense on someone's CV, which is worse than the filler
+// it replaced. These stay flagged for a person to rewrite.
 
 // Empty modifiers. Deleting one leaves the sentence intact: "a robust API"
 // becomes "an API" - grammatical, and no claim was lost.
@@ -149,21 +159,49 @@ const rx = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // a line cut to almost nothing has lost its meaning. Both revert.
 const ORPHAN_VERB = /^(?:am|is|are|was|were|be|been|being|have|has|had|will|would|do|does|did)\b/i;
 
+// The three checks above only catch a rewrite that collapsed. They passed
+// "Can handling fast-paced environments", "across a many channels" and
+// "A professional of digital marketing" without complaint, because none of
+// those is short, empty, or missing its first word - they are simply not
+// English. Every pattern here was produced by this file before it was caught.
+const BROKEN = [
+  // a modal stranded in front of a gerund: "can handling"
+  /\b(?:can|could|shall|should|will|would|may|might|must)\s+\w+ing\b/i,
+  // an auxiliary in front of a bare verb: "I am know"
+  /\b(?:am|is|are|was|were)\s+(?:know|use|can|handle|lead|run|make|take)\b/i,
+  // an article in front of a quantifier: "a many"
+  /\b(?:a|an)\s+(?:many|several|various|numerous|few)\b/i,
+  // two prepositions colliding where a clause was cut out: "with in"
+  /\b(?:with|of|in|for|to|on|at|by|from)\s+(?:with|of|in|for|on|at|by|from)\b/i,
+  // punctuation left touching itself
+  /,\s*[,.;]|\(\s*\)/,
+];
+
 function guard(before, after) {
   const w = (s) => s.trim().split(/\s+/).filter(Boolean).length;
   if (!w(after)) return before;
   if (ORPHAN_VERB.test(after.trim())) return before;
   if (w(after) < 3 && w(before) >= 6) return before;
+  // Only blame the rewrite for breakage it introduced. Someone whose original
+  // line already reads "responsible for for the team" keeps their own typo
+  // rather than losing every other fix on the line.
+  if (BROKEN.some((re) => re.test(after) && !re.test(before))) return before;
   return after;
 }
 
 // "…with a proven track record of success" has to go as one unit, preposition
 // included, or the remnant reads "…with success".
+// The tail used to be (?:of|in|for) followed by up to two words, which was
+// greedy enough to eat real content: "with a proven track record in the realm
+// of digital marketing" lost "in the realm", and the line came out as
+// "A professional of digital marketing". Only "of success" and its handful of
+// synonyms are empty enough to remove - anything after "in" or "for" is the
+// subject matter, and belongs to the person.
 const FILLER_PHRASE = new RegExp(
   '[ ,]*\\b(?:with|having|bringing)\\s+(?:a|an|the)?\\s*'
   + '(?:proven\\s+track\\s+record|track\\s+record|wealth\\s+of\\s+experience|'
   + 'demonstrated\\s+ability|passion\\s+for)'
-  + '(?:\\s+(?:of|in|for)\\s+[\\w-]+(?:\\s+[\\w-]+)?)?\\b', 'gi',
+  + '(?:\\s+of\\s+(?:success|excellence|achievement|delivery|results))?\\b', 'gi',
 );
 
 function stripFiller(line) {

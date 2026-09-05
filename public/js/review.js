@@ -36,6 +36,10 @@ const TELLS = [
   ['pivotal', 'key'], ['myriad', 'many'], ['plethora', 'many'],
   ['realm of', 'in'], ['ever-evolving', ''], ['fast-paced world', ''],
   ['navigate the complexities', 'handle'], ['navigating the complexities', 'handling'],
+  // The past tense is the form a CV actually uses, and it was the one form
+  // missing - so when the auto-fixer stopped rewriting this phrase, it became
+  // neither fixed nor reported.
+  ['navigated the complexities', 'handled'],
   ['robust', ''], ['seamless', ''], ['seamlessly', ''],
   ['adept at', 'can'], ['well-versed in', 'know'], ['meticulous', 'careful'],
   ['in today', ''],
