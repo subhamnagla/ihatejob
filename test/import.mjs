@@ -345,6 +345,18 @@ const scanned = parseCV('Resume', blankData()).report.alignment;
 check('but a document with nothing in it is',
   scanned.why.some((w) => /image|scan/i.test(w)), true);
 
+// Length alone was still too blunt once the flag moved to the top of the
+// panel: this CV is 77 dense characters, well under the bar, and its owner
+// pasted the text in by hand. Being told the pages might be pictures while
+// the text is on screen is the fastest way to lose them.
+const tiny = parseCV(j(
+  'Priya Sharma', 'priya@example.com', '',
+  'Experience', 'Engineer, Zenpay  Mar 2022 - Present', '• Did work.'),
+  blankData()).report;
+check('a very short CV with real contact details is not called a scan',
+  tiny.alignment.why.some((w) => /image|scan/i.test(w)), false);
+check('short though it is', tiny.dense < 150, true);
+
 /* --- filling a gap the parser left ------------------------------------- */
 // The commonest complaint about any CV importer: it says education is missing,
 // the education is plainly there in the PDF, and the only thing on offer is to
@@ -393,17 +405,21 @@ half.data.education.push(...rescuedEdu);
 check('after it, clean', recheck(half.data, half.report).level, 'clean');
 check('and nothing is listed as missing', recheck(half.data, half.report).missing, []);
 
-// The reason must survive the re-run: an unrecognised heading was still
-// unrecognised, whatever got pasted in afterwards.
-const odd = parseCV(j(
+// Filling one gap of two must narrow the verdict rather than clear it. A flag
+// that vanished at the first rescue would be telling someone their CV reads
+// cleanly while half of it is still missing.
+const both = parseCV(j(
   'Deepa Iyer', 'deepa@example.com', '',
-  'Employment Record', 'Head of Logistics, Maersk  2018 - 2024', '\u2022 Ran a fleet.'),
+  'Things I Have Done', 'Ran a 200-truck fleet for Maersk.', 'Rewrote the routing plan.'),
   blankData());
-if (odd.report.alignment.why.length) {
-  odd.data.education.push(...rescuedEdu);
-  check('the reason is not lost when the verdict is re-run',
-    recheck(odd.data, odd.report).level, 'clean');
-}
+check('two gaps to start with', both.report.alignment.missing,
+  ['work experience', 'education']);
+both.data.experience.push(...parseSection('experience', 'Head of Logistics, Maersk  2018 - 2024'));
+const half2 = recheck(both.data, both.report);
+check('one rescue leaves the other gap standing', half2.missing, ['education']);
+check('and drops the verdict from poor to partial', half2.level, 'partial');
+both.data.education.push(...rescuedEdu);
+check('the second clears it', recheck(both.data, both.report).level, 'clean');
 
 console.log(NL + (fails ? fails + ' FAILING' : 'all pass'));
 process.exit(fails ? 1 : 0);

@@ -1286,13 +1286,13 @@ function importBase() {
  * the four lines it could not find keeps everything it did get right.
  */
 const RESCUE_ASK = {
-  name: ['Type your name.', 'Ahmad Khan', 1],
-  contact: ['Type an email address, a phone number, or both.',
+  name: ['<b>Your name is in the CV?</b> Type it in here.', 'Ahmad Khan', 1],
+  contact: ['<b>Your email or phone is in the CV?</b> Paste it directly from the CV here.',
     'ahmad@example.com   +91 98765 43210', 1],
-  experience: ['Is it in your CV after all? Copy the work experience out and paste it here.',
+  experience: ['<b>Work experience is in your CV?</b> Paste it directly from the CV here.',
     'Product Manager&#10;Flipkart&#10;June 2021 - August 2024&#10;'
     + '&bull; Owned the returns experience.', 5],
-  education: ['Is it in your CV after all? Copy the education lines out and paste them here.',
+  education: ['<b>Education is in your CV?</b> Paste it directly from the CV here.',
     'B.Tech Computer Science, IIT Delhi   2014 - 2018&#10;CGPA 8.7', 4],
 };
 
@@ -1411,15 +1411,16 @@ function showImportReport({ data, report }) {
   // nothing about it is the part that loses them.
   const a = report.alignment || { level: 'clean', missing: [], why: [] };
   const listMissing = (m) => (m.length === 1 ? m[0]
-    : m.slice(0, -1).join(', ') + ' or ' + m[m.length - 1]);
+    : m.slice(0, -1).join(', ') + ' and ' + m[m.length - 1]);
   const alignNote = a.level === 'clean' ? '' : (
     '<div class="align-flag align-' + a.level + '">'
-    + '<b>' + (a.level === 'poor'
-      ? 'This CV did not read cleanly.'
-      : 'One part of this CV did not read cleanly.') + '</b>'
-    + '<p>A machine could not find ' + esc(listMissing(a.missing)) + ' in it. '
-    + 'That is roughly what an employer&rsquo;s software would store as empty too, '
-    + 'so it is worth knowing whichever route you take from here.</p>'
+    + '<b>Not found in this CV: ' + esc(listMissing(a.missing)) + '.</b>'
+    + '<p>Your CV is not aligned in a way a machine can follow, which is why it could not '
+    + 'read ' + (a.missing.length === 1 ? 'that part' : 'those parts') + '. '
+    + 'An employer&rsquo;s software reads a CV the same way, so it would leave the same fields '
+    + 'empty.</p>'
+    // The lead is general on purpose; these say what was actually wrong with
+    // this document, and one of them can be that the pages are pictures.
     + a.why.map((w) => '<p class="align-why">' + esc(w) + '</p>').join('')
     + (a.gaps || []).map(rescueBox).join('')
     + '<div class="align-actions">'

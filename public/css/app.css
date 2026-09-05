@@ -1711,6 +1711,8 @@ textarea.input { resize: vertical; line-height: 1.5; }
   background: var(--panel, rgba(127, 127, 127, .04));
 }
 .rescue-ask { margin: 0 0 8px !important; font-size: 13px; }
+/* .align-flag makes every b a block heading; inside the ask it is a lead-in. */
+.rescue-ask b { display: inline; margin: 0; }
 .rescue-box { font-size: 13px; }
 .rescue-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 8px; }
 .rescue-said { font-size: 13px; opacity: .82; max-width: 46ch; }

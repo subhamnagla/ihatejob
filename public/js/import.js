@@ -1428,7 +1428,14 @@ function alignmentOf(data, unknown, dense) {
   // stray metadata, not a short CV. The bar was 400 to begin with, which fired
   // on a perfectly real one-page CV and told its owner their pages might be
   // pictures. A reason that is wrong is worse than no reason at all.
-  if (Number(dense) < 150) {
+  //
+  // Length alone was still too blunt once this moved to the top of the panel:
+  // a genuinely short CV, pasted in by hand, sat just under the bar and got
+  // told its pages might be pictures while its text was on screen. So the
+  // length has to be joined by the absence of anything a person typed. An
+  // email address or a phone number came out of real text; a picture yields
+  // neither.
+  if (Number(dense) < 150 && !data.basics.email && !data.basics.phone) {
     why.push('Almost no text came out of this, which usually means the page is an image - '
       + 'a scan, or a design exported as a picture. A machine cannot read those at all.');
   }
