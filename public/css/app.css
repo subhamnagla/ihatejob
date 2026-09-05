@@ -1681,3 +1681,21 @@ textarea.input { resize: vertical; line-height: 1.5; }
   background: var(--panel-2, rgba(127,127,127,.14));
   font-size: 12.5px;
 }
+
+/* Shown when a core section could not be read out of an imported CV. Not an
+   error - the file is fine, a machine just could not follow it - so it reads
+   as a warning with a way out, rather than a failure. */
+.align-flag {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--warn, #c2683a);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 4px 0 14px;
+  background: var(--panel-2, rgba(127, 127, 127, .06));
+}
+.align-flag.align-poor { border-left-color: var(--bad, #d0503c); }
+.align-flag b { display: block; margin-bottom: 6px; }
+.align-flag p { margin: 0 0 8px; max-width: 62ch; }
+.align-why { font-size: 13px; opacity: .82; }
+.align-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
+.align-actions .hint { margin: 0; max-width: 44ch; }

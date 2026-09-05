@@ -1383,9 +1383,59 @@ export function parseCV(text, base) {
       // the section under one of these went somewhere it did not belong, and
       // saying which name was not understood is more use than a silent gap.
       unknownHeadings: unknown,
+      alignment: alignmentOf(data, unknown, text),
       name: data.basics.fullName || '',
       chars: text.length,
     },
+  };
+}
+
+/**
+ * How much of this CV a machine could actually read.
+ *
+ * There will always be a layout this cannot follow. One of the CVs it was
+ * built against draws its section headings as pictures, and no amount of work
+ * makes a picture readable. What matters is that a miss is never silent: shown
+ * "Education - not found" and nothing else, a visitor concludes the tool is
+ * broken, and they are half right, because the tool did not tell them what
+ * happened or what to do next.
+ *
+ * So this says which parts could not be found, why where the reason is
+ * evidenced rather than guessed, and lets the screen offer a way forward.
+ */
+function alignmentOf(data, unknown, text) {
+  const missing = [];
+  if (!data.basics.fullName) missing.push('your name');
+  if (!data.basics.email && !data.basics.phone) missing.push('any way to contact you');
+  if (!data.experience.length) missing.push('work experience');
+  if (!data.education.length) missing.push('education');
+
+  // Only reasons the document itself supports, and only when something is
+  // actually missing. A guess here is worse than silence: it sends someone off
+  // to fix a thing that was never wrong - and a CV that read perfectly was
+  // still being told its pages might be pictures.
+  const why = [];
+  if (!missing.length) return { level: 'clean', missing, why };
+  // A genuinely image-based PDF yields almost nothing - a hundred characters of
+  // stray metadata, not a short CV. The bar was 400 to begin with, which fired
+  // on a perfectly real one-page CV and told its owner their pages might be
+  // pictures. A reason that is wrong is worse than no reason at all.
+  const body = String(text || '');
+  if (body.replace(/\s/g, '').length < 150) {
+    why.push('Almost no text came out of this, which usually means the page is an image - '
+      + 'a scan, or a design exported as a picture. A machine cannot read those at all.');
+  }
+  if (!data.experience.length && !data.education.length) {
+    why.push('No section headings were recognised. That is what happens with a two-column '
+      + 'layout, or when the headings are drawn as graphics rather than typed as text.');
+  } else if (unknown.length) {
+    why.push('These looked like headings but were not recognised: ' + unknown.join(', ') + '.');
+  }
+
+  return {
+    level: missing.length >= 2 ? 'poor' : (missing.length ? 'partial' : 'clean'),
+    missing,
+    why,
   };
 }
 

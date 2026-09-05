@@ -297,5 +297,45 @@ const SIDEBAR_UNKNOWN = parseCV(j(
   blankData()).report.unknownHeadings;
 check('a name above a heading is not reported', SIDEBAR_UNKNOWN, []);
 
+/* --- did this CV read cleanly, and does it say so ----------------------- */
+// There will always be a layout this cannot follow - one CV it was built
+// against draws its headings as pictures. What must never happen is a silent
+// miss: shown "Education - not found" and nothing else, a visitor concludes
+// the site is broken.
+console.log(NL + '=== the alignment verdict ===');
+
+const clean2 = parseCV(j(
+  'Priya Sharma', 'priya@example.com', '',
+  'Experience', 'Engineer, Acme  Mar 2022 - Present', '• Cut load from 4.1s to 1.3s.', '',
+  'Education', 'B.Tech, IIT Delhi  2014 - 2018'), blankData()).report.alignment;
+check('a CV that reads is clean', clean2.level, 'clean');
+check('and nothing is listed as missing', clean2.missing, []);
+check('and no reason is invented', clean2.why, []);
+
+const partial = parseCV(j(
+  'Priya Sharma', 'priya@example.com', '',
+  'Experience', 'Engineer, Acme  Mar 2022 - Present', '• Did the thing.'), blankData()).report.alignment;
+check('one core section missing is partial', partial.level, 'partial');
+check('and it is named', partial.missing, ['education']);
+
+const poor = parseCV(j(
+  'NEHAUMRANI', 'BACKEND JAVA DEVELOPER', 'neha@example.com',
+  'I am a highly motivated Software Engineer eager to join a team of driven',
+  'professionals, developing and maintaining backend systems and fixing bugs.'), blankData()).report.alignment;
+check('two or more missing is poor', poor.level, 'poor');
+check('both are named', poor.missing, ['work experience', 'education']);
+check('with the reason that is actually evidenced',
+  poor.why.some((w) => /No section headings were recognised/.test(w)), true);
+
+// The bar for the scan reason was 400 characters, which fired on a real
+// one-page CV and told its owner their pages might be pictures. A reason that
+// is wrong is worse than no reason at all.
+check('a short but real CV is not accused of being a scan',
+  poor.why.some((w) => /image|scan/i.test(w)), false);
+
+const scanned = parseCV('Resume', blankData()).report.alignment;
+check('but a document with nothing in it is',
+  scanned.why.some((w) => /image|scan/i.test(w)), true);
+
 console.log(NL + (fails ? fails + ' FAILING' : 'all pass'));
 process.exit(fails ? 1 : 0);

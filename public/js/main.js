@@ -1306,7 +1306,31 @@ function showImportReport({ data, report }) {
       + 'import.</div>'
     : '';
 
+  // When a core section could not be read, say so at the top and offer a way
+  // out of it. A visitor shown "Education - not found" and nothing else decides
+  // the site is broken, and they are half right: the miss is real, and saying
+  // nothing about it is the part that loses them.
+  const a = report.alignment || { level: 'clean', missing: [], why: [] };
+  const listMissing = (m) => (m.length === 1 ? m[0]
+    : m.slice(0, -1).join(', ') + ' or ' + m[m.length - 1]);
+  const alignNote = a.level === 'clean' ? '' : (
+    '<div class="align-flag align-' + a.level + '">'
+    + '<b>' + (a.level === 'poor'
+      ? 'This CV did not read cleanly.'
+      : 'One part of this CV did not read cleanly.') + '</b>'
+    + '<p>A machine could not find ' + esc(listMissing(a.missing)) + ' in it. '
+    + 'That is roughly what an employer&rsquo;s software would store as empty too, '
+    + 'so it is worth knowing whichever route you take from here.</p>'
+    + a.why.map((w) => '<p class="align-why">' + esc(w) + '</p>').join('')
+    + '<div class="align-actions">'
+    + '<button class="btn btn-sm btn-primary" type="button" id="alignExample">'
+    + 'Start from a worked example instead</button>'
+    + '<span class="hint">Built for your profession, and it reads cleanly by construction. '
+    + 'Your file is not touched.</span>'
+    + '</div></div>');
+
   $('importReport').innerHTML = head
+    + alignNote
     + report.notes.map((n) => '<div class="report-note">' + esc(n) + '</div>').join('')
     + unknownNote
     + '<ul class="report-list">' + rows + '</ul>'
@@ -1315,6 +1339,16 @@ function showImportReport({ data, report }) {
       ? 'These came from real fields, so they should be accurate.'
       : 'Parsing a CV from formatting alone is approximate.')
     + ' Nothing is applied until you press Use this, and everything stays editable afterwards.</p>';
+
+  // Wired after the markup is in, and only when the flag is showing.
+  const escape = $('alignExample');
+  if (escape) {
+    escape.addEventListener('click', () => {
+      $('importModal').classList.remove('open');
+      pendingImport = null;
+      loadExample();
+    });
+  }
 
   $('importStep1').hidden = true;
   $('importStep2').hidden = false;
