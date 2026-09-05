@@ -1479,11 +1479,26 @@ const RESCUE_HEADING = {
   education: 'Education',
   projects: 'Projects',
   skills: 'Skills',
+  certifications: 'Certifications',
+  licences: 'Licences',
+  publications: 'Publications',
+  achievements: 'Achievements',
+  languages: 'Languages',
 };
 
 export function parseSection(id, text) {
   const body = String(text || '').trim();
-  if (!body || !RESCUE_HEADING[id]) return [];
+  if (!body) return [];
+  // A custom section has no parser to borrow - the importer never produces one,
+  // because there is no heading it could recognise as "the section this site
+  // does not have a field for". Pasted by hand it is two things: the heading
+  // on the first line, and the rest.
+  if (id === 'custom') {
+    const lines = body.split('\n').map((l) => l.trim()).filter(Boolean);
+    if (!lines.length) return [];
+    return [{ heading: lines[0], body: lines.slice(1).join('\n') }];
+  }
+  if (!RESCUE_HEADING[id]) return [];
   const { data } = parseCV(RESCUE_HEADING[id] + '\n' + body, blankData());
   return Array.isArray(data[id]) ? data[id] : [];
 }

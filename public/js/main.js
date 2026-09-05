@@ -1285,19 +1285,45 @@ function importBase() {
  * a bad trade, and it is what makes someone decide the site is broken. Pasting
  * the four lines it could not find keeps everything it did get right.
  */
+// Two fields the parser reads out of the header block rather than a section,
+// so they are asked for in their own words.
 const RESCUE_ASK = {
   name: ['<b>Your name is in the CV?</b> Type it in here.', 'Ahmad Khan', 1],
   contact: ['<b>Your email or phone is in the CV?</b> Paste it directly from the CV here.',
     'ahmad@example.com   +91 98765 43210', 1],
-  experience: ['<b>Work experience is in your CV?</b> Paste it directly from the CV here.',
-    'Product Manager&#10;Flipkart&#10;June 2021 - August 2024&#10;'
-    + '&bull; Owned the returns experience.', 5],
-  education: ['<b>Education is in your CV?</b> Paste it directly from the CV here.',
-    'B.Tech Computer Science, IIT Delhi   2014 - 2018&#10;CGPA 8.7', 4],
 };
 
-function rescueBox(gap) {
-  const ask = RESCUE_ASK[gap.id];
+// Everything else is asked for the same way, with an example of the shape that
+// reads best. Every section the importer can fill is here: a CV that lists its
+// certifications under a heading nothing recognised leaves the same kind of
+// hole as a missing education, and deserves the same way out of it.
+const RESCUE_EXAMPLE = {
+  experience: ['Product Manager&#10;Flipkart&#10;June 2021 - August 2024&#10;'
+    + '&bull; Owned the returns experience.', 5],
+  education: ['B.Tech Computer Science, IIT Delhi   2014 - 2018&#10;CGPA 8.7', 4],
+  projects: ['Ledger app, React and Node&#10;&bull; Handles multi-currency invoicing.', 4],
+  skills: ['Languages: Python, Go, SQL&#10;Tools: Docker, Kubernetes', 3],
+  certifications: ['AWS Certified Solutions Architect, Amazon   2023', 3],
+  languages: ['English - fluent&#10;Hindi - native', 3],
+  achievements: ['Won the internal hackathon, 2023', 3],
+  licences: ['Nursing registration, NMC 12345678', 3],
+  publications: ['A study of routing, Journal of Logistics, 2022', 3],
+  custom: ['Volunteering&#10;Taught weekend coding classes at a local school.', 4],
+};
+
+function rescueAsk(id) {
+  if (RESCUE_ASK[id]) return RESCUE_ASK[id];
+  const ex = RESCUE_EXAMPLE[id];
+  if (!ex) return null;
+  const title = SECTIONS[id] ? SECTIONS[id].title : id;
+  // "Certifications in your CV?" rather than "Certifications is in your CV?" -
+  // the titles are a mix of singular and plural and this form fits both.
+  return ['<b>' + esc(title) + ' in your CV?</b> Paste it directly from the CV here.',
+    ex[0], ex[1]];
+}
+
+function rescueBox(gap, hidden) {
+  const ask = rescueAsk(gap.id);
   if (!ask) return '';
   const [prompt, placeholder, rows] = ask;
   const field = rows > 1
@@ -1305,7 +1331,7 @@ function rescueBox(gap) {
       + '" placeholder="' + placeholder + '"></textarea>'
     : '<input class="input rescue-box" id="rescueBox-' + gap.id + '" type="text" placeholder="'
       + placeholder + '">';
-  return '<div class="rescue">'
+  return '<div class="rescue"' + (hidden ? ' hidden id="rescuePanel-' + gap.id + '"' : '') + '>'
     + '<p class="rescue-ask">' + prompt + '</p>'
     + field
     + '<div class="rescue-row">'
@@ -1351,17 +1377,28 @@ function runRescue(id) {
       pendingReport.notes = pendingReport.notes
         .filter((n) => !/^No work experience was found/.test(n));
     }
-    label = items.length + ' ' + (SECTIONS[id] ? SECTIONS[id].title.toLowerCase() : id)
-      + (items.length === 1 ? ' entry' : ' entries');
+    // The count is on the row two lines below; naming the section is enough,
+    // and it sidesteps "2 certifications entries".
+    label = SECTIONS[id] ? SECTIONS[id].title.toLowerCase() : id;
   }
 
-  pendingReport.rescued = (pendingReport.rescued || []).concat(label);
+  pendingReport.rescued = [...new Set((pendingReport.rescued || []).concat(label))];
   pendingReport.alignment = recheck(pendingImport, pendingReport);
   showImportReport({ data: pendingImport, report: pendingReport });
 }
 
 // One listener for a panel that is rebuilt on every rescue, so nothing stacks up.
 $('importReport').addEventListener('click', (e) => {
+  const open = e.target.closest('[data-open]');
+  if (open) {
+    const panel = $('rescuePanel-' + open.dataset.open);
+    if (panel) {
+      panel.hidden = !panel.hidden;
+      open.textContent = panel.hidden ? 'Paste it' : 'Never mind';
+      if (!panel.hidden) $('rescueBox-' + open.dataset.open).focus();
+    }
+    return;
+  }
   const rescue = e.target.closest('[data-rescue]');
   if (rescue) { runRescue(rescue.dataset.rescue); return; }
   if (e.target.closest('#alignExample')) {
@@ -1376,10 +1413,23 @@ function showImportReport({ data, report }) {
   pendingImport = data;
   pendingReport = report;
 
+  // A section already offered a box up in the flag must not be offered a second
+  // one down here; the rest get theirs on the row that says "not found".
+  const inFlag = new Set(((report.alignment || {}).gaps || []).map((g) => g.id));
   const rows = Object.entries(report.counts)
     .filter(([id]) => SECTIONS[id])
-    .map(([id, n]) => '<li class="' + (n ? '' : 'none') + '"><span>' + esc(SECTIONS[id].title)
-      + '</span><span class="n">' + (n || 'not found') + '</span></li>').join('');
+    .map(([id, n]) => {
+      const offer = !n && !inFlag.has(id) && rescueAsk(id);
+      return '<li class="' + (n ? '' : 'none') + '">'
+        + '<span>' + esc(SECTIONS[id].title) + '</span>'
+        + '<span class="row-right"><span class="n">' + (n || 'not found') + '</span>'
+        + (offer
+          ? '<button class="row-paste" type="button" data-open="' + id + '">Paste it</button>'
+          : '')
+        + '</span>'
+        + (offer ? rescueBox({ id }, true) : '')
+        + '</li>';
+    }).join('');
 
   const head = report.source === 'LinkedIn archive'
     ? '<p style="margin-bottom:10px">Read your <b>LinkedIn archive</b>'

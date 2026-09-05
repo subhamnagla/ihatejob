@@ -1272,7 +1272,9 @@ textarea.input { resize: vertical; line-height: 1.5; }
 .report-list { margin: 0 0 12px; padding: 0; list-style: none; }
 .report-list li {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
   padding: 7px 10px;
   border-radius: 8px;
@@ -1281,7 +1283,22 @@ textarea.input { resize: vertical; line-height: 1.5; }
 }
 .report-list li + li { margin-top: 5px; }
 .report-list .n { color: var(--muted); font-variant-numeric: tabular-nums; }
-.report-list .none { opacity: 0.55; }
+.row-right { display: flex; align-items: center; gap: 10px; }
+/* Dim the labels of an empty section, not the row - an open paste box inside
+   one must not be greyed out along with the words above it. */
+.report-list .none > span { opacity: 0.55; }
+.row-paste {
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--brand);
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.row-paste:hover { border-color: var(--brand); background: var(--brand-wash); }
+.report-list .rescue { flex: 0 0 100%; margin: 4px 0 2px; }
 .report-note {
   padding: 10px 12px;
   border-radius: 9px;

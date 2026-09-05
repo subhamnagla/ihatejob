@@ -384,8 +384,35 @@ check('role and employer both', [rescuedExp[0].role, rescuedExp[0].company],
 check('and the bullet comes with it', rescuedExp[0].bullets, 'Owned the returns experience.');
 
 check('nothing pasted, nothing invented', parseSection('education', '   '), []);
-check('and a section with no rescue parser stays empty',
-  parseSection('publications', 'Something'), []);
+check('and an id that is not a section stays empty',
+  parseSection('nonsense', 'Something'), []);
+
+// A CV that lists its certifications under a heading nothing recognised leaves
+// the same kind of hole as a missing education. Every section the importer can
+// fill takes a paste, not just the four the flag is about.
+console.log(NL + '--- every section, not just the core four ---');
+const EVERY = [
+  ['projects', 'Ledger app, React and Node', (o) => o.name === 'Ledger app' && o.tech === 'React and Node'],
+  ['skills', 'Languages: Python, Go, SQL', (o) => o.group === 'Languages' && o.items === 'Python, Go, SQL'],
+  ['certifications', 'AWS Certified Solutions Architect, Amazon   2023',
+    (o) => o.issuer === 'Amazon' && o.year === '2023'],
+  ['languages', 'English - fluent', (o) => o.name === 'English' && /fluent/i.test(o.level)],
+  ['achievements', 'Won the internal hackathon, 2023', (o) => /hackathon/.test(o.text)],
+  ['licences', 'Nursing registration, NMC 12345678', (o) => o.number === '12345678'],
+  ['publications', 'A study of routing, Journal of Logistics, 2022', (o) => o.year === '2022'],
+];
+for (const [id, text, ok] of EVERY) {
+  const got = parseSection(id, text);
+  check(id + ' takes a paste', got.length, 1);
+  check('  and reads its fields', got.length === 1 && ok(got[0]), true);
+}
+
+// The importer never produces a custom section - there is no heading it could
+// recognise as "the one this site has no field for" - so this is the only way
+// one arrives from an import at all.
+const custom = parseSection('custom', j('Volunteering', 'Taught weekend coding classes.'));
+check('a custom section is its heading and its body', custom,
+  [{ heading: 'Volunteering', body: 'Taught weekend coding classes.' }]);
 
 check('a typed name is read', parseIdentity('Ahmad Khan').fullName, 'Ahmad Khan');
 const contact = parseIdentity('ahmad@example.com   +91 98765 43210');
