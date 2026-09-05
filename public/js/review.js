@@ -27,6 +27,9 @@ const TELLS = [
   ['dynamic professional', ''], ['seasoned professional', ''],
   ['proven track record', ''], ['track record of success', ''],
   ['wealth of experience', ''], ['passionate about', ''],
+  // Left for a person now: cutting these strands whatever follows them,
+  // so the fixer declines and they have to be reported instead.
+  ['passion for', ''], ['demonstrated ability', ''],
   ['think outside the box', ''], ['hit the ground running', ''],
   ['wear many hats', ''], ['synergy', ''], ['synergies', ''],
   ['value-add', ''], ['best-in-class', ''], ['world-class', ''],

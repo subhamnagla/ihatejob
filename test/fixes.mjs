@@ -23,6 +23,8 @@ const check = (label, got, want) => {
   else console.log('ok    ' + label);
 };
 
+const flagged = (t) => checkPhrases(t).length > 0;
+
 function clean(line) {
   const d = blankData();
   d.basics.summary = line;
@@ -43,11 +45,18 @@ check('and with plethora too',
   'Used many tools to improve delivery.');
 
 console.log(NL + '=== the subject matter is not filler ===');
-// The tail on FILLER_PHRASE was greedy enough to eat "in the realm", and the
-// line came back as "A professional of digital marketing".
+// A filler clause is cut only where the clause ends. Here "in the realm of
+// digital marketing" hangs off it, and cutting the one strands the other - so
+// the empty adjectives go and the phrase itself stays, reported rather than
+// rewritten. Earlier this produced "A professional in the realm of digital
+// marketing", which read well until the same rule met "with a proven track
+// record of delivery across three teams" and returned "An engineer across
+// three teams".
 check('what the person actually does survives',
   clean('A results-driven professional with a proven track record in the realm of digital marketing.'),
-  'A professional in the realm of digital marketing.');
+  'A professional with a track record in the realm of digital marketing.');
+check('and the phrase is still reported',
+  checkPhrases('A professional with a track record in the realm of digital marketing.').length > 0, true);
 // "An engineer with a proven track record of success." is filler end to end,
 // and cutting the filler leaves two words. The guard reverts that rather than
 // hand someone a summary reading "An engineer." - which is the right call: the
@@ -56,10 +65,31 @@ const allFiller = 'An engineer with a proven track record of success.';
 check('a line that is filler throughout is left, not emptied', clean(allFiller), allFiller);
 check('and reported instead', checkPhrases(allFiller).length > 0, true);
 
-// With something real in it, the same phrase is cut and the rest survives.
-check('"of success" goes when there is a sentence around it',
+// With real content hanging off it, nothing is cut but the empty adjective.
+check('a clause with content after it is left whole',
   clean('An engineer with a proven track record of success across payments systems.'),
-  'An engineer across payments systems.');
+  'An engineer with a track record of success across payments systems.');
+
+console.log(NL + '=== cutting filler must not strand what follows it ===');
+// Every line here was mangled by the version that removed a filler clause
+// wherever it found one. The clause is empty; the phrase after it is the
+// subject matter, and removing the first orphans the second.
+const STRANDED = [
+  ['With a passion for full-stack development, I am an experienced Java Developer.',
+    'Full-stack development, I am an experienced Java Developer.'],
+  ['An engineer with a demonstrated ability to lead teams and ship features.',
+    'An engineer to lead teams and ship features.'],
+  ['A developer with a passion for distributed systems and clean code.',
+    'A developer distributed systems and clean code.'],
+  ['An engineer with a wealth of experience in distributed systems.',
+    'An engineer in distributed systems.'],
+  ['An engineer with a proven track record of delivery across three teams.',
+    'An engineer across three teams.'],
+];
+for (const [line, wasProduced] of STRANDED) {
+  check('never returns: ' + wasProduced.slice(0, 38), clean(line) === wasProduced, false);
+  check('  and still reports it: ' + line.slice(0, 30), flagged(line), true);
+}
 
 console.log(NL + '=== rewrites that need the verb to change are declined ===');
 for (const line of [
@@ -71,7 +101,6 @@ for (const line of [
 }
 
 console.log(NL + '=== but the checker still reports them ===');
-const flagged = (t) => checkPhrases(t).length > 0;
 check('adept at', flagged('Adept at handling fast-paced environments.'), true);
 check('well-versed in', flagged('I am well-versed in stakeholder management.'), true);
 check('navigated the complexities', flagged('Navigated the complexities of migration.'), true);

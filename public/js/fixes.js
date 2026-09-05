@@ -70,8 +70,17 @@ const tidySpace = (s) => s.replace(/[ \t]{2,}/g, ' ')
   .replace(/\(\s+/g, '(').replace(/\s+\)/g, ')')
   .replace(/^[ \t]+|[ \t]+$/gm, '');
 
-function capFirst(s) {
+// Restores the capital when a fix removed the word that used to carry it:
+// "Leveraged Docker" losing its opener should not leave a lowercase line.
+//
+// `was` is the line before the fix, and it decides. A summary that wraps
+// mid-sentence gives this function a line beginning "professionals. I am..." -
+// lowercase because it is the middle of a sentence, not the start of one - and
+// capitalising it produced "a team of driven / Professionals." on a real CV.
+// If the line did not start with a capital before, it does not gain one.
+function capFirst(s, was) {
   const t = s.replace(/^[\s,;:-]+/, '');
+  if (was !== undefined && !/^[\s,;:-]*[A-Z]/.test(was)) return t;
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
@@ -197,11 +206,28 @@ function guard(before, after) {
 // "A professional of digital marketing". Only "of success" and its handful of
 // synonyms are empty enough to remove - anything after "in" or "for" is the
 // subject matter, and belongs to the person.
+// And it only goes when nothing real is hanging off it. Every one of these was
+// produced by the version without the lookahead below:
+//
+//   with a wealth of experience in distributed systems -> "An engineer in
+//     distributed systems."
+//   with a demonstrated ability to lead teams -> "An engineer to lead teams."
+//   with a passion for distributed systems -> "A developer distributed systems."
+//   with a proven track record of delivery across three teams -> "An engineer
+//     across three teams."
+//
+// The filler is genuinely empty; what follows it is the subject matter, and
+// cutting the one strands the other. So the clause is removed only where it
+// runs to a comma or a full stop, and otherwise left for the checker to flag -
+// the same call made for "adept at", and for the same reason: a phrase left in
+// is one the person can rewrite, and a sentence broken by a tool is one they
+// may never notice.
 const FILLER_PHRASE = new RegExp(
   '[ ,]*\\b(?:with|having|bringing)\\s+(?:a|an|the)?\\s*'
   + '(?:proven\\s+track\\s+record|track\\s+record|wealth\\s+of\\s+experience|'
   + 'demonstrated\\s+ability|passion\\s+for)'
-  + '(?:\\s+of\\s+(?:success|excellence|achievement|delivery|results))?\\b', 'gi',
+  + '(?:\\s+of\\s+(?:success|excellence|achievement|delivery|results))?'
+  + '\\b(?=\\s*[.,;]|\\s*$)', 'gi',
 );
 
 function stripFiller(line) {
@@ -211,19 +237,23 @@ function stripFiller(line) {
     out = out.replace(new RegExp('\\b' + rx(phrase) + '\\b[ ,]*', 'gi'), '');
   }
   for (const phrase of TELL_NOUNS) {
-    out = out.replace(new RegExp('\\b(?:a|an|the)\\s+' + rx(phrase) + '(?:\\s+of)?\\b[ ,]*', 'gi'), '');
-    out = out.replace(new RegExp('\\b' + rx(phrase) + '(?:\\s+of)?\\b[ ,]*', 'gi'), '');
+    // The same rule as FILLER_PHRASE: only where the clause ends. Without this
+    // lookahead, "with a proven track record of delivery across three teams"
+    // lost its middle and came back as "with delivery across three teams".
+    const ends = '\\b(?=\\s*[.,;]|\\s*$)';
+    out = out.replace(new RegExp('\\b(?:a|an|the)\\s+' + rx(phrase) + ends + '[ ,]*', 'gi'), '');
+    out = out.replace(new RegExp('\\b' + rx(phrase) + ends + '[ ,]*', 'gi'), '');
   }
   // "a" left in front of a vowel, or a dangling preposition at the end
   out = tidySpace(out).replace(/\ba (?=[aeiou])/gi, 'an ').replace(/\s+(?:with|of|in|for)\s*$/i, '');
-  return guard(line, capFirst(out));
+  return guard(line, capFirst(out, line));
 }
 
 function stripVague(line) {
   if (/\d/.test(line)) return line; // a number is present, the adverb is earned
   let out = line;
   for (const w of VAGUE) out = out.replace(new RegExp('\\b' + w + '\\b[ ]*', 'gi'), '');
-  return guard(line, capFirst(tidySpace(out)));
+  return guard(line, capFirst(tidySpace(out), line));
 }
 
 function stripLinkers(line) {
@@ -231,7 +261,7 @@ function stripLinkers(line) {
   for (const w of LINKERS) {
     out = out.replace(new RegExp('^\\s*' + w + '\\b[,:]?\\s*', 'i'), '');
   }
-  return out === line ? line : capFirst(tidySpace(out));
+  return out === line ? line : capFirst(tidySpace(out), line);
 }
 
 // Verbs that cannot simply lose their subject. "I am a developer" does not
@@ -246,7 +276,7 @@ function stripFirstPerson(line) {
   if (LINKING.test(m[1])) return line;
 
   const out = line.replace(/^\s*I\s+(?:have\s+|had\s+)?/i, '');
-  return guard(line, capFirst(tidySpace(out)));
+  return guard(line, capFirst(tidySpace(out), line));
 }
 
 function fixCaps(line) {
