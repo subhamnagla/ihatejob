@@ -9,7 +9,8 @@ import {
   applyProfession, applyRegion, professionOf, PROFESSIONS,
 } from './professions.js';
 import { reviewCV, checkPhrases } from './review.js';
-import { fileToText, parseCV, parseLinkedInArchive, ImportError } from './import.js';
+import { fileToText, parseCV, parseLinkedInArchive, parseSection, parseIdentity,
+  recheck, ImportError } from './import.js';
 import { buildSample } from './samples.js';
 import { PLANETS, planetFor, starsFor, starRow, planetSVG } from './planets.js';
 import { availableFixes, applyFixes } from './fixes.js';
@@ -1157,6 +1158,7 @@ $('sampleUse').addEventListener('click', () => {
 /* -------------------------------------------------------------- import */
 
 let pendingImport = null;
+let pendingReport = null;
 
 function openImport() {
   $('importModal').classList.add('open');
@@ -1274,8 +1276,105 @@ function importBase() {
   return base;
 }
 
+/*
+ * A gap the parser left, with somewhere to put what it missed.
+ *
+ * The flag used to name the miss and then offer one thing: throw the import
+ * away and start from an example. For the commonest case by far - the CV that
+ * read fine except for education, which is plainly there in the PDF - that is
+ * a bad trade, and it is what makes someone decide the site is broken. Pasting
+ * the four lines it could not find keeps everything it did get right.
+ */
+const RESCUE_ASK = {
+  name: ['Type your name.', 'Ahmad Khan', 1],
+  contact: ['Type an email address, a phone number, or both.',
+    'ahmad@example.com   +91 98765 43210', 1],
+  experience: ['Is it in your CV after all? Copy the work experience out and paste it here.',
+    'Product Manager&#10;Flipkart&#10;June 2021 - August 2024&#10;'
+    + '&bull; Owned the returns experience.', 5],
+  education: ['Is it in your CV after all? Copy the education lines out and paste them here.',
+    'B.Tech Computer Science, IIT Delhi   2014 - 2018&#10;CGPA 8.7', 4],
+};
+
+function rescueBox(gap) {
+  const ask = RESCUE_ASK[gap.id];
+  if (!ask) return '';
+  const [prompt, placeholder, rows] = ask;
+  const field = rows > 1
+    ? '<textarea class="input rescue-box" id="rescueBox-' + gap.id + '" rows="' + rows
+      + '" placeholder="' + placeholder + '"></textarea>'
+    : '<input class="input rescue-box" id="rescueBox-' + gap.id + '" type="text" placeholder="'
+      + placeholder + '">';
+  return '<div class="rescue">'
+    + '<p class="rescue-ask">' + prompt + '</p>'
+    + field
+    + '<div class="rescue-row">'
+    + '<button class="btn btn-sm btn-primary" type="button" data-rescue="' + gap.id + '">Read this bit</button>'
+    + '<span class="rescue-said" id="rescueSaid-' + gap.id + '"></span>'
+    + '</div></div>';
+}
+
+function runRescue(id) {
+  const box = $('rescueBox-' + id);
+  if (!box || !pendingImport || !pendingReport) return;
+  const said = (msg) => { const el = $('rescueSaid-' + id); if (el) el.textContent = msg; };
+  const text = (box.value || '').trim();
+  if (!text) { said('Nothing pasted in yet.'); return; }
+
+  let label = '';
+  if (id === 'name') {
+    // Someone typing into a box marked "your name" has told us their name. The
+    // parser is a second opinion here, not a gatekeeper.
+    const typed = text.replace(/\s+/g, ' ');
+    const name = parseIdentity(typed).fullName
+      || (/^[^@\d]{2,60}$/.test(typed) ? typed : '');
+    if (!name) { said('That does not look like a name.'); return; }
+    pendingImport.basics.fullName = name;
+    pendingReport.name = name;
+    label = 'your name';
+  } else if (id === 'contact') {
+    const got = parseIdentity(text);
+    if (!got.email && !got.phone) { said('No email address or phone number in that.'); return; }
+    if (got.email) pendingImport.basics.email = got.email;
+    if (got.phone) pendingImport.basics.phone = got.phone;
+    label = [got.email && 'an email address', got.phone && 'a phone number']
+      .filter(Boolean).join(' and ');
+  } else {
+    const items = parseSection(id, text);
+    if (!items.length) {
+      said('Nothing readable came out of that. One entry per block: title, employer, dates.');
+      return;
+    }
+    pendingImport[id].push(...items);
+    pendingReport.counts[id] = pendingImport[id].length;
+    if (id === 'experience') {
+      pendingReport.notes = pendingReport.notes
+        .filter((n) => !/^No work experience was found/.test(n));
+    }
+    label = items.length + ' ' + (SECTIONS[id] ? SECTIONS[id].title.toLowerCase() : id)
+      + (items.length === 1 ? ' entry' : ' entries');
+  }
+
+  pendingReport.rescued = (pendingReport.rescued || []).concat(label);
+  pendingReport.alignment = recheck(pendingImport, pendingReport);
+  showImportReport({ data: pendingImport, report: pendingReport });
+}
+
+// One listener for a panel that is rebuilt on every rescue, so nothing stacks up.
+$('importReport').addEventListener('click', (e) => {
+  const rescue = e.target.closest('[data-rescue]');
+  if (rescue) { runRescue(rescue.dataset.rescue); return; }
+  if (e.target.closest('#alignExample')) {
+    $('importModal').classList.remove('open');
+    pendingImport = null;
+    pendingReport = null;
+    loadExample();
+  }
+});
+
 function showImportReport({ data, report }) {
   pendingImport = data;
+  pendingReport = report;
 
   const rows = Object.entries(report.counts)
     .filter(([id]) => SECTIONS[id])
@@ -1322,15 +1421,22 @@ function showImportReport({ data, report }) {
     + 'That is roughly what an employer&rsquo;s software would store as empty too, '
     + 'so it is worth knowing whichever route you take from here.</p>'
     + a.why.map((w) => '<p class="align-why">' + esc(w) + '</p>').join('')
+    + (a.gaps || []).map(rescueBox).join('')
     + '<div class="align-actions">'
-    + '<button class="btn btn-sm btn-primary" type="button" id="alignExample">'
+    + '<button class="btn btn-sm" type="button" id="alignExample">'
     + 'Start from a worked example instead</button>'
     + '<span class="hint">Built for your profession, and it reads cleanly by construction. '
     + 'Your file is not touched.</span>'
     + '</div></div>');
 
+  const rescuedNote = (report.rescued || []).length
+    ? '<div class="report-note report-rescued">Added by hand, not read from the file: <b>'
+      + esc(report.rescued.join(', ')) + '</b>.</div>'
+    : '';
+
   $('importReport').innerHTML = head
     + alignNote
+    + rescuedNote
     + report.notes.map((n) => '<div class="report-note">' + esc(n) + '</div>').join('')
     + unknownNote
     + '<ul class="report-list">' + rows + '</ul>'
@@ -1339,16 +1445,6 @@ function showImportReport({ data, report }) {
       ? 'These came from real fields, so they should be accurate.'
       : 'Parsing a CV from formatting alone is approximate.')
     + ' Nothing is applied until you press Use this, and everything stays editable afterwards.</p>';
-
-  // Wired after the markup is in, and only when the flag is showing.
-  const escape = $('alignExample');
-  if (escape) {
-    escape.addEventListener('click', () => {
-      $('importModal').classList.remove('open');
-      pendingImport = null;
-      loadExample();
-    });
-  }
 
   $('importStep1').hidden = true;
   $('importStep2').hidden = false;

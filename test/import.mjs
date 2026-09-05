@@ -1,4 +1,12 @@
-import { parseCV, parseLinkedInArchive, looksLikeLinkedIn, unmojibake } from '../public/js/import.js';
+import {
+  parseCV,
+  parseLinkedInArchive,
+  looksLikeLinkedIn,
+  unmojibake,
+  parseSection,
+  parseIdentity,
+  recheck,
+} from '../public/js/import.js';
 import { blankData } from '../public/js/schema.js';
 
 const NL = String.fromCharCode(10);
@@ -336,6 +344,66 @@ check('a short but real CV is not accused of being a scan',
 const scanned = parseCV('Resume', blankData()).report.alignment;
 check('but a document with nothing in it is',
   scanned.why.some((w) => /image|scan/i.test(w)), true);
+
+/* --- filling a gap the parser left ------------------------------------- */
+// The commonest complaint about any CV importer: it says education is missing,
+// the education is plainly there in the PDF, and the only thing on offer is to
+// throw the whole import away. So the flag takes a paste of the part it could
+// not find, runs it through the same section parser, and keeps everything it
+// already got right.
+console.log(NL + '=== filling a gap by hand ===');
+
+const rescuedEdu = parseSection('education', j(
+  'B.Tech Computer Science, IIT Delhi  2014 - 2018',
+  'CGPA: 8.7/10',
+  'Class XII, CBSE  2013',
+  '92.4%'));
+check('a pasted education block reads as entries', rescuedEdu.length, 2);
+check('with the school split out', rescuedEdu[0].school, 'IIT Delhi');
+check('and the dates', [rescuedEdu[0].start, rescuedEdu[0].end], ['2014', '2018']);
+check('and the marks in the score field, not the details', rescuedEdu[0].score, 'CGPA: 8.7/10');
+
+const rescuedExp = parseSection('experience', j(
+  'Product Manager', 'Flipkart', 'June 2021 - August 2024',
+  '\u2022 Owned the returns experience.'));
+check('a pasted role reads the same way', rescuedExp.length, 1);
+check('role and employer both', [rescuedExp[0].role, rescuedExp[0].company],
+  ['Product Manager', 'Flipkart']);
+check('and the bullet comes with it', rescuedExp[0].bullets, 'Owned the returns experience.');
+
+check('nothing pasted, nothing invented', parseSection('education', '   '), []);
+check('and a section with no rescue parser stays empty',
+  parseSection('publications', 'Something'), []);
+
+check('a typed name is read', parseIdentity('Ahmad Khan').fullName, 'Ahmad Khan');
+const contact = parseIdentity('ahmad@example.com   +91 98765 43210');
+check('and a contact line gives both',
+  [contact.email, contact.phone], ['ahmad@example.com', '+91 98765 43210']);
+
+// The verdict has to move when the gap is filled, or the flag stays up over a
+// CV that is now complete and the visitor is told a lie twice.
+const half = parseCV(j(
+  'Priya Sharma', 'priya@example.com', '',
+  'Experience', 'Engineer, Acme  Mar 2022 - Present', '\u2022 Did the thing.'),
+  blankData());
+check('before the rescue it is partial', half.report.alignment.level, 'partial');
+check('and the gap carries an id the screen can act on',
+  half.report.alignment.gaps.map((g) => g.id), ['education']);
+half.data.education.push(...rescuedEdu);
+check('after it, clean', recheck(half.data, half.report).level, 'clean');
+check('and nothing is listed as missing', recheck(half.data, half.report).missing, []);
+
+// The reason must survive the re-run: an unrecognised heading was still
+// unrecognised, whatever got pasted in afterwards.
+const odd = parseCV(j(
+  'Deepa Iyer', 'deepa@example.com', '',
+  'Employment Record', 'Head of Logistics, Maersk  2018 - 2024', '\u2022 Ran a fleet.'),
+  blankData());
+if (odd.report.alignment.why.length) {
+  odd.data.education.push(...rescuedEdu);
+  check('the reason is not lost when the verdict is re-run',
+    recheck(odd.data, odd.report).level, 'clean');
+}
 
 console.log(NL + (fails ? fails + ' FAILING' : 'all pass'));
 process.exit(fails ? 1 : 0);

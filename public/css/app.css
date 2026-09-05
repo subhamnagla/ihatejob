@@ -1699,3 +1699,19 @@ textarea.input { resize: vertical; line-height: 1.5; }
 .align-why { font-size: 13px; opacity: .82; }
 .align-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
 .align-actions .hint { margin: 0; max-width: 44ch; }
+
+/* Somewhere to paste the part the parser missed. Sits inside the flag, because
+   the offer only makes sense next to the thing it is answering: education is
+   not found, and here is the box for the education. */
+.rescue {
+  margin: 12px 0 4px;
+  padding: 12px 14px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--panel, rgba(127, 127, 127, .04));
+}
+.rescue-ask { margin: 0 0 8px !important; font-size: 13px; }
+.rescue-box { font-size: 13px; }
+.rescue-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 8px; }
+.rescue-said { font-size: 13px; opacity: .82; max-width: 46ch; }
+.report-rescued { border-left: 3px solid var(--ok, #3f8f5f); }

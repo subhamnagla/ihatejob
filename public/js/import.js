@@ -1368,6 +1368,7 @@ export function parseCV(text, base) {
     notes.push('Some roles came through without dates - check them before exporting.');
   }
 
+  const dense = text.replace(/\s/g, '').length;
   const counts = {};
   for (const id of Object.keys(SECTIONS)) {
     if (Array.isArray(data[id])) counts[id] = data[id].length;
@@ -1383,9 +1384,12 @@ export function parseCV(text, base) {
       // the section under one of these went somewhere it did not belong, and
       // saying which name was not understood is more use than a silent gap.
       unknownHeadings: unknown,
-      alignment: alignmentOf(data, unknown, text),
+      alignment: alignmentOf(data, unknown, dense),
       name: data.basics.fullName || '',
       chars: text.length,
+      // Characters with the whitespace taken out. A genuinely image-based PDF
+      // yields almost none; kept so the verdict can be re-run after a rescue.
+      dense,
     },
   };
 }
@@ -1403,25 +1407,28 @@ export function parseCV(text, base) {
  * So this says which parts could not be found, why where the reason is
  * evidenced rather than guessed, and lets the screen offer a way forward.
  */
-function alignmentOf(data, unknown, text) {
-  const missing = [];
-  if (!data.basics.fullName) missing.push('your name');
-  if (!data.basics.email && !data.basics.phone) missing.push('any way to contact you');
-  if (!data.experience.length) missing.push('work experience');
-  if (!data.education.length) missing.push('education');
+const GAPS = [
+  { id: 'name', label: 'your name', has: (d) => !!d.basics.fullName },
+  { id: 'contact', label: 'any way to contact you', has: (d) => !!(d.basics.email || d.basics.phone) },
+  { id: 'experience', label: 'work experience', has: (d) => d.experience.length > 0 },
+  { id: 'education', label: 'education', has: (d) => d.education.length > 0 },
+];
+
+function alignmentOf(data, unknown, dense) {
+  const gaps = GAPS.filter((g) => !g.has(data)).map(({ id, label }) => ({ id, label }));
+  const missing = gaps.map((g) => g.label);
 
   // Only reasons the document itself supports, and only when something is
   // actually missing. A guess here is worse than silence: it sends someone off
   // to fix a thing that was never wrong - and a CV that read perfectly was
   // still being told its pages might be pictures.
   const why = [];
-  if (!missing.length) return { level: 'clean', missing, why };
+  if (!missing.length) return { level: 'clean', missing, gaps, why };
   // A genuinely image-based PDF yields almost nothing - a hundred characters of
   // stray metadata, not a short CV. The bar was 400 to begin with, which fired
   // on a perfectly real one-page CV and told its owner their pages might be
   // pictures. A reason that is wrong is worse than no reason at all.
-  const body = String(text || '');
-  if (body.replace(/\s/g, '').length < 150) {
+  if (Number(dense) < 150) {
     why.push('Almost no text came out of this, which usually means the page is an image - '
       + 'a scan, or a design exported as a picture. A machine cannot read those at all.');
   }
@@ -1435,7 +1442,54 @@ function alignmentOf(data, unknown, text) {
   return {
     level: missing.length >= 2 ? 'poor' : (missing.length ? 'partial' : 'clean'),
     missing,
+    gaps,
     why,
+  };
+}
+
+/**
+ * Re-run the verdict after a visitor has filled a gap by hand.
+ *
+ * The reasons stay tied to the original document - a heading that was not
+ * recognised was still not recognised - so the same evidence goes back in.
+ */
+export function recheck(data, report) {
+  return alignmentOf(data, report.unknownHeadings || [], report.dense || 0);
+}
+
+/**
+ * Parse one pasted section as if it had arrived under its own heading.
+ *
+ * This is the answer to the commonest complaint about any CV importer: it says
+ * education is missing, the education is plainly there, and the only thing on
+ * offer is to throw the whole import away. Pasting the four lines it could not
+ * find takes fifteen seconds, and everything the parser already got right is
+ * kept. It runs the ordinary section parser, so a rescued block behaves exactly
+ * like one that read cleanly the first time.
+ */
+const RESCUE_HEADING = {
+  experience: 'Experience',
+  education: 'Education',
+  projects: 'Projects',
+  skills: 'Skills',
+};
+
+export function parseSection(id, text) {
+  const body = String(text || '').trim();
+  if (!body || !RESCUE_HEADING[id]) return [];
+  const { data } = parseCV(RESCUE_HEADING[id] + '\n' + body, blankData());
+  return Array.isArray(data[id]) ? data[id] : [];
+}
+
+/** The same rescue for the header block: a name, an email, a phone number. */
+export function parseIdentity(text) {
+  const body = String(text || '').trim();
+  if (!body) return { fullName: '', email: '', phone: '' };
+  const { basics } = parseCV(body, blankData()).data;
+  return {
+    fullName: basics.fullName || '',
+    email: basics.email || '',
+    phone: basics.phone || '',
   };
 }
 
