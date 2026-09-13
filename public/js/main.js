@@ -1584,8 +1584,19 @@ function convertImport() {
   showConverted(read, out.applied);
 }
 
+// Every format, offered where the conversion lands. One press converted it;
+// the next question is always what else it could look like, and sending
+// someone back to the panel to find out is the tour this was meant to avoid.
+// The CV behind the dialog re-renders on each press, so the row is a way of
+// looking through all eight rather than a setting to be committed to.
+function formatRow() {
+  return '<div class="conv-formats">' + Object.entries(TEMPLATES).map(([k, t]) => (
+    '<button type="button" class="conv-fmt' + (k === state.settings.template ? ' sel' : '')
+    + '" data-tpl="' + k + '" title="' + esc(t.blurb) + '">' + esc(t.name) + '</button>'
+  )).join('') + '</div>';
+}
+
 function showConverted(read, applied) {
-  const tpl = (TEMPLATES[state.settings.template] || {}).name || state.settings.template;
   const r = reviewCV(state, { pages: pageCount });
   const left = r.findings.length;
 
@@ -1596,8 +1607,8 @@ function showConverted(read, applied) {
         .join('') + '</ul>'
     : '<p>Nothing needed cleaning &mdash; the writing was already plain.</p>';
 
-  $('convertBody').innerHTML = '<p>Your CV is now laid out in <b>' + esc(tpl)
-    + '</b>: one column, real text, ordinary headings. It is on screen behind this.</p>'
+  $('convertBody').innerHTML = '<p id="convertWhich"></p>'
+    + formatRow()
     + (read.length
       ? '<p><b>Read from your file:</b> ' + esc(read.join(', ')) + '.</p>'
       : '')
@@ -1611,8 +1622,31 @@ function showConverted(read, applied) {
       : '.')
     + '</p>';
 
+  sayWhich();
   $('convertModal').classList.add('open');
 }
+
+function sayWhich() {
+  const t = TEMPLATES[state.settings.template] || {};
+  const el = $('convertWhich');
+  if (!el) return;
+  el.innerHTML = 'Your CV is now laid out in <b>' + esc(t.name || state.settings.template)
+    + '</b> &mdash; ' + esc(String(t.blurb || '').toLowerCase())
+    + '. It is on screen behind this. Try any of the others:';
+}
+
+// Switching format here is the same setting the panel holds, so the panel and
+// the saved file move with it - this is not a preview mode to be undone.
+$('convertBody').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-tpl]');
+  if (!btn) return;
+  state.settings.template = btn.dataset.tpl;
+  afterStructural();
+  $('convertBody').querySelectorAll('[data-tpl]').forEach((b) => {
+    b.classList.toggle('sel', b.dataset.tpl === state.settings.template);
+  });
+  sayWhich();
+});
 
 $('btnConvert').addEventListener('click', convertImport);
 

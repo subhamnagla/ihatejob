@@ -1324,6 +1324,19 @@ textarea.input { resize: vertical; line-height: 1.5; }
 }
 .conv-list li + li { margin-top: 4px; }
 .conv-list .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.conv-formats { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.conv-fmt {
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.conv-fmt:hover { border-color: var(--brand); }
+.conv-fmt.sel { border-color: var(--brand); background: var(--brand); color: var(--brand-ink); }
 .conv-honest {
   font-size: 13px;
   color: var(--dim);

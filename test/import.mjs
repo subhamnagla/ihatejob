@@ -492,5 +492,57 @@ const grouped = parseCV(j('Priya Sharma', 'priya@example.com', '', 'Skills',
   'Languages: Python, Go', 'Tools: Docker, K8s'), blankData()).data.skills;
 check('real group names are kept', grouped.map((g) => g.group), ['Languages', 'Tools']);
 
+/* --- a CV that titles itself ------------------------------------------- */
+// "Profile of Soutrick Das" printed across the top of a converted CV, with
+// "Confidential" underneath it where the job title goes. Both are things the
+// document says about itself, and on Indian CVs both are ordinary.
+console.log(NL + '=== what the document says about itself is not the person ===');
+
+const who = (lines) => {
+  const b = parseCV(j(...lines), blankData()).data.basics;
+  return [b.fullName, b.headline];
+};
+
+check('Profile of, and Confidential under it',
+  who(['Profile of Soutrick Das', 'Confidential', 'soutrickd5@example.com']),
+  ['Soutrick Das', '']);
+check('Resume of', who(['Resume of Rahul Mehta', 'rahul@example.com']), ['Rahul Mehta', '']);
+check('Bio-Data of', who(['Bio-Data of Imran Sheikh', 'imran@example.com']), ['Imran Sheikh', '']);
+check('a Name: label', who(['Name: Arjun Das', 'arjun@example.com']), ['Arjun Das', '']);
+// A banner above the name must not become the name, and the real job title
+// below it must still be found.
+check('a Curriculum Vitae banner is stepped over',
+  who(['CURRICULUM VITAE', 'Neha Gupta', 'Senior Nurse', 'neha@example.com']),
+  ['Neha Gupta', 'Senior Nurse']);
+check('an ordinary CV keeps its headline',
+  who(['Priya Sharma', 'Senior Frontend Engineer', 'priya@example.com']),
+  ['Priya Sharma', 'Senior Frontend Engineer']);
+
+/* --- a date inside a sentence belongs to the sentence -------------------- */
+// Cutting the year out of "Pursued B. Tech. in Electrical Engineering in 2018
+// from Techno India." left "...Engineering in from Techno India." on a
+// converted CV. The date is recorded either way; a sentence broken by a tool
+// is one its owner may never notice.
+console.log(NL + '=== a date in the middle of a sentence ===');
+
+const edu = parseCV(j('Soutrick Das', 's@example.com', '', 'EDUCATIONAL QUALIFICATION:',
+  '➢ Pursued B. Tech. in Electrical Engineering in 2018 from Techno India.',
+  '➢ Pursued Higher Secondary from Kendriya Vidyalaya in 2014.'),
+  blankData()).data.education;
+check('the sentence is kept whole', edu[0].degree,
+  'Pursued B. Tech. in Electrical Engineering in 2018 from Techno India.');
+check('and the year is still recorded', edu[0].start, '2018');
+check('a year at the end does not strand the preposition either', edu[1].degree,
+  'Pursued Higher Secondary from Kendriya Vidyalaya in 2014.');
+check('with its year too', edu[1].start, '2014');
+
+// And an ordinary trailing date is still removed, which is the whole point of
+// splitting them off in the first place.
+const role = parseCV(j('A B', 'a@b.com', '', 'Experience',
+  'Analyst, Deloitte Berlin  2019 - 2023', '• Did work.'), blankData()).data.experience[0];
+check('a trailing range still comes off the title', [role.role, role.company],
+  ['Analyst', 'Deloitte Berlin']);
+check('and lands in the date fields', [role.start, role.end], ['2019', '2023']);
+
 console.log(NL + (fails ? fails + ' FAILING' : 'all pass'));
 process.exit(fails ? 1 : 0);

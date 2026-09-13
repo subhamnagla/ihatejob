@@ -744,6 +744,11 @@ function headingId(line) {
   return SINGULAR_LOOKUP.get(singular(squashed)) || null;
 }
 
+// A cut that leaves one of these at the end of the line broke the grammar;
+// two prepositions side by side means the date came out of the middle.
+const HANGING = /\b(?:in|on|at|from|of|since|during|by|to|until|till|for|with)$/i;
+const DOUBLED = /\b(?:in|on|at|from|of|to|for|with)\s+(?:in|on|at|from|of|to|for|with)\b/i;
+
 function splitDates(line) {
   const matches = [...String(line).matchAll(DATE_TOKEN)];
   if (!matches.length) return { rest: clean(line), start: '', end: '', current: false };
@@ -756,7 +761,20 @@ function splitDates(line) {
 
   const from = first.index;
   const to = last.index + last[0].length;
-  const rest = clean((line.slice(0, from) + ' ' + line.slice(to)).replace(/[|,\-–—]+\s*$/, ''));
+  let rest = clean((line.slice(0, from) + ' ' + line.slice(to)).replace(/[|,\-–—]+\s*$/, ''));
+
+  // A date inside a sentence is part of the sentence. Cutting it out of
+  // "Pursued B. Tech. in Electrical Engineering in 2018 from Techno India."
+  // left "...Engineering in from Techno India." on a converted CV, and out of
+  // "...from Kendriya Vidyalaya in 2014." left a line ending on "in".
+  //
+  // This is the same call the prose fixer makes, for the same reason: the date
+  // is recorded either way, and a sentence broken by a tool is one its owner
+  // may never notice. So where the cut leaves the grammar hanging the line is
+  // kept whole, and only the date field is filled.
+  // Trailing space included: the cut leaves 'Vidyalaya in .' behind.
+  const bare = rest.replace(/[.,;:\s]+$/, '');
+  if (HANGING.test(bare) || DOUBLED.test(rest)) rest = clean(line);
 
   return {
     rest,
@@ -952,6 +970,29 @@ function parseContact(headLines, wholeText) {
     }
   }
 
+  // A CV that titles itself. "Profile of Soutrick Das" is a heading with a name
+  // inside it, not a name - and on Indian CVs it is as ordinary as putting the
+  // name on its own. Left alone it prints "Profile of Soutrick Das" across the
+  // top of the converted CV, which is the first thing anyone looks at.
+  const titled = (t) => t
+    .replace(/^(?:profile|resume|r[e\u00e9]sum[e\u00e9]|cv|c\.\s*v\.?|curriculum\s+vitae|bio[\s-]?data|biodata|personal\s+profile)\s+(?:of|for)\s+/i, '')
+    .replace(/^(?:full\s+name|candidate(?:'s)?\s+name|applicant(?:'s)?\s+name|name)\s*[:\-\u2013]\s*/i, '')
+    .trim();
+
+  // Words a document says about itself. None of them is anyone's name or job
+  // title, and "Confidential" sitting under the name was arriving as the
+  // headline and printing where the job title goes.
+  const DOC_MARKER = new RegExp('^(?:(?:strictly\\s+)?(?:private\\s*(?:&|and)\\s*)?'
+    + 'confidential|curriculum\\s+vitae|r[e\u00e9]sum[e\u00e9]|resume|bio[\\s-]?data|biodata'
+    + '|profile|personal\\s+profile|c\\.?\\s*v\\.?|page\\s+\\d+(?:\\s+of\\s+\\d+)?'
+    + '|for\\s+internal\\s+use(?:\\s+only)?)[.:]?$', 'i');
+
+  // The line the name came out of, so the headline scan knows where to start.
+  // It is not always the name itself: "Profile of Soutrick Das" yields one and
+  // is the other, and looking the name up by value found nothing - which sent
+  // the headline scan back to the top of the page and picked up the title.
+  let nameLine = '';
+
   // Name, by the strongest signal available first: a line whose letters are
   // exactly the letters of the email's local part. neha.umrani99@gmail.com and
   // "NEHAUMRANI" reduce to the same thing, and nothing else on a page does
@@ -961,11 +1002,14 @@ function parseContact(headLines, wholeText) {
   const local = String(basics.email || '').split('@')[0].replace(/[^a-z]/gi, '').toLowerCase();
   if (local.length >= 5) {
     for (const raw of String(wholeText).split('\n')) {
-      const t = clean(raw);
-      if (!t || t.length > 48 || /[@\d]/.test(t)) continue;
+      const line = clean(raw);
+      if (!line || line.length > 48 || /[@\d]/.test(line)) continue;
+      const t = titled(line);
+      if (!t || DOC_MARKER.test(t)) continue;
       if (t.split(' ').length > 5) continue;
       if (t.replace(/[^a-z]/gi, '').toLowerCase() === local) {
         basics.fullName = t;
+        nameLine = line;
         break;
       }
     }
@@ -973,13 +1017,16 @@ function parseContact(headLines, wholeText) {
 
   // Otherwise: the first line that reads like a person rather than contact data.
   if (!basics.fullName) {
-    for (const line of headLines.slice(0, 6)) {
-      const t = clean(line);
-      if (!t || t.length > 48) continue;
-      if (/[@\d]/.test(t)) continue;
+    for (const raw of headLines.slice(0, 6)) {
+      const line = clean(raw);
+      if (!line || line.length > 48) continue;
+      if (/[@\d]/.test(line)) continue;
+      const t = titled(line);
+      if (!t || DOC_MARKER.test(t)) continue;
       const w = t.split(' ');
       if (w.length < 2 || w.length > 5) continue;
       basics.fullName = t;
+      nameLine = line;
       break;
     }
   }
@@ -997,10 +1044,13 @@ function parseContact(headLines, wholeText) {
   }
 
   // Headline: a short following line that is not contact detail.
-  const nameAt = headLines.findIndex((l) => clean(l) === basics.fullName);
+  const nameAt = headLines.findIndex((l) => clean(l) === (nameLine || basics.fullName));
   for (const line of headLines.slice(nameAt + 1, nameAt + 4)) {
     const t = clean(line);
     if (!t || t.length > 70 || /[@]/.test(t) || t.replace(/\D/g, '').length > 5) continue;
+    // "Confidential", "Curriculum Vitae", "Page 1 of 2" - what the document
+    // says about itself, printed where the job title goes.
+    if (DOC_MARKER.test(t)) continue;
     // A letter-spaced section heading is short enough to pass every test above.
     // On a template whose sidebar prints first, "C O N T A C T D E T A I L S"
     // is the very first line, and it was landing in the headline field.
@@ -1078,6 +1128,29 @@ function bulletedList(lines) {
   return bullets >= 2 && bullets * 2 >= real.length;
 }
 
+// A line that is nothing but a bracketed phrase - [Kolkata], (Mumbai, India) -
+// is where a template puts the location. Read as a heading it started a whole
+// new job with "[Kolkata]" as the title, and swallowed the bullets belonging
+// to the job above it.
+const BRACKET_ONLY = /^[[(]\s*([^\][)]{2,44}?)\s*[\])]$/;
+
+// A bullet that runs onto the next line arrives as two lines, and the second
+// one is a fragment: "...for past 3+ years (40 Months) in various" then
+// "Mainframe Development and Maintenance projects in AXA." Printed as two
+// bullets the first ends mid-sentence, which looks like the site broke it.
+//
+// The tell is the line above having no end to it. Two separate bullets that
+// both happen to lack a full stop are not affected: they are both bulleted,
+// and only an unbulleted line is ever a candidate to be joined on.
+function pushWrapped(cur, text) {
+  const last = cur.__bullets.length - 1;
+  if (last >= 0 && !/[.!?:;]$/.test(cur.__bullets[last])) {
+    cur.__bullets[last] += ' ' + text;
+    return;
+  }
+  cur.__bullets.push(text);
+}
+
 function parseEntries(lines, build, absorb) {
   const out = [];
   let cur = null;
@@ -1086,6 +1159,12 @@ function parseEntries(lines, build, absorb) {
     const t = clean(lines[i]);
     if (!t || RULE_LINE.test(t)) continue;
 
+    const bracket = cur && BRACKET_ONLY.exec(t);
+    if (bracket && 'location' in cur) {
+      if (!cur.location) cur.location = bracket[1];
+      continue;
+    }
+
     if (listed) {
       const bullet = BULLET_START.test(t);
       if (bullet || !cur) {
@@ -1093,7 +1172,7 @@ function parseEntries(lines, build, absorb) {
         out.push(cur);
       } else {
         // Unbulleted here means the line above wrapped.
-        cur.__bullets.push(t);
+        pushWrapped(cur, t);
       }
       continue;
     }
@@ -1106,7 +1185,8 @@ function parseEntries(lines, build, absorb) {
       cur = build(head);
       out.push(cur);
     } else if (cur) {
-      cur.__bullets.push(head);
+      if (BULLET_START.test(t)) cur.__bullets.push(head);
+      else pushWrapped(cur, head);
     } else {
       cur = build(head);
       out.push(cur);
@@ -1201,11 +1281,18 @@ function parseLabelledExperience(lines) {
   return out.map(({ __b, ...rest }) => ({ ...rest, bullets: __b.join('\n') }));
 }
 
+// "Mainframe Developer [Cognizant Technology Solutions]" - the employer in
+// brackets after the title. Left whole it printed as one long job title with
+// the company inside it, and the employer field stayed empty, which is the
+// field a recruiter searches on.
+const ROLE_BRACKET = /^(.+?)\s*[[(]\s*([^\][)]{2,60}?)\s*[\])]\s*$/;
+
 function parseExperience(lines) {
   if (looksLabelled(lines)) return parseLabelledExperience(lines);
   return parseEntries(lines, (line) => {
     const { rest, start, end, current } = splitDates(line);
-    const [a, b] = splitPair(rest);
+    const bracketed = ROLE_BRACKET.exec(rest);
+    const [a, b] = bracketed ? [clean(bracketed[1]), clean(bracketed[2])] : splitPair(rest);
     return { role: a, company: b, location: '', start, end, current, bullets: '', __bullets: [] };
   }, true).map((e) => {
     const { __bullets, ...rest } = e;

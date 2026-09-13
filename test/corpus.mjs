@@ -228,6 +228,34 @@ const FIXTURES = [
   },
 
   {
+    name: 'a CV that titles itself, with brackets doing three jobs',
+    why: 'A Word template that writes "Profile of <name>", stamps Confidential'
+      + ' under it, puts the employer in brackets after the title, the city in'
+      + ' brackets on its own line, and wraps a long bullet onto a second line.',
+    text: j(
+      'Profile of Soutrick Das',
+      'Confidential',
+      'soutrickd5@example.com',
+      '+91 8961335778',
+      '',
+      'PROFILE',
+      'Dedicated Mainframe Developer with 5.9 years of experience.',
+      '',
+      'EXPERIENCE',
+      'Mainframe Developer [Cognizant Technology Solutions]  Sep 2018 - Feb 2022',
+      '[Kolkata]',
+      '\u2022 Joined Cognizant in Sep, 2018 as a Programmer Analyst Trainee.',
+      '\u2022 Worked as an Associate at Cognizant for past 3+ years (40 Months) in various',
+      'Mainframe Development and Maintenance projects in AXA.'),
+    must: {
+      name: 'Soutrick Das', noHeadline: true, exp: 1,
+      role: 'Mainframe Developer', company: 'Cognizant Technology Solutions',
+      location: 'Kolkata', start: 'Sep 2018', bullets: 2,
+      bulletEnds: 'projects in AXA.',
+    },
+  },
+
+  {
     name: 'singular heading, and a bulleted list section',
     why: '"Educational Qualification:" is as common as the plural, and each line'
       + ' is its own qualification rather than detail under the first.',
@@ -295,6 +323,11 @@ function measure(d) {
     cleanBullets: !/^[→✓▸•]/.test((e0.bullets || '').split('\n')[0] || ''),
     score: Boolean((d.education || []).some((x) => x.score)),
     summary: d.basics.summary || '',
+    location: e0.location || '',
+    // A document marker - Confidential, Page 1 of 2 - is not a job title.
+    noHeadline: !d.basics.headline,
+    // The last bullet, to prove a wrapped line was rejoined rather than cut.
+    bulletEnds: ((e0.bullets || '').split('\n').filter(Boolean).pop() || '').slice(-16),
   };
 }
 
