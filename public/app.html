@@ -258,8 +258,28 @@
       <div id="importReport"></div>
       <div class="modal-actions">
         <button class="btn" id="btnImportBack" type="button">Back</button>
-        <button class="btn btn-primary" id="btnImportApply" type="button">Use this</button>
+        <button class="btn" id="btnImportApply" type="button">Use this</button>
+        <button class="btn btn-primary" id="btnConvert" type="button">Convert it &rarr;</button>
       </div>
+      <p class="convert-hint"><b>Convert</b> lays it out in our format, runs the safe clean-up
+        &mdash; filler out, &ldquo;I&rdquo; dropped from the front of bullets, shouting turned
+        down &mdash; and takes you to the finished CV. Every change is listed and nothing is
+        invented. <b>Use this</b> just loads the fields and leaves the words alone.</p>
+    </div>
+  </div>
+</div>
+
+<!-- The end of the one-press route: the CV is already laid out behind this,
+     so the dialog exists to account for what changed rather than to ask
+     anything. A conversion that quietly rewrote someone's history and said
+     nothing would be the worst thing this site could do. -->
+<div class="modal-backdrop" id="convertModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="convertTitle">
+    <h2 id="convertTitle">Converted.</h2>
+    <div id="convertBody"></div>
+    <div class="modal-actions">
+      <button class="btn" data-close type="button">Edit it</button>
+      <button class="btn btn-primary" id="btnConvertPdf" type="button">Download PDF</button>
     </div>
   </div>
 </div>

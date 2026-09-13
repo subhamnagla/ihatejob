@@ -885,6 +885,33 @@ function sectionise(text) {
   return { head, sections, unknown: [...new Set(unknown)].slice(0, 4) };
 }
 
+/*
+ * Is this a website, or just something with a dot in it?
+ *
+ * Shape alone cannot tell. A CV is full of near misses, and two families of
+ * them were arriving in the website field and printing in the contact line
+ * next to the phone number:
+ *
+ *   B.Tech, M.Sc, B.Com, Ph.D   .tech, .sc, .com and .in are all real TLDs
+ *   Node.js, Vue.js, D3.js      a skills list, read as a hostname
+ *
+ * So a bare hostname has to clear both bars: a first label of at least three
+ * characters, which no qualification has, and a top-level domain someone
+ * actually registers, which .js and .sc are not. Anything carrying its scheme
+ * or a www. is taken at its word - that is a person telling us it is a link.
+ */
+const SITE_TLD = new Set(('com net org edu gov io dev me in co uk us ca au de fr nl es it '
+  + 'ai app page site xyz tech info biz online store blog live space pro cloud design '
+  + 'studio work name eu ie nz za sg my ph id jp cn ru br mx se no fi dk pl pt gr tr')
+  .split(' '));
+
+const looksLikeSite = (l) => {
+  if (/^(?:https?:\/\/|www\.)/i.test(l)) return true;
+  const host = l.split('/')[0];
+  if (!/^[a-z0-9][a-z0-9-]{2,}(\.[a-z0-9-]+)+$/i.test(host)) return false;
+  return SITE_TLD.has(host.split('.').pop().toLowerCase());
+};
+
 function parseContact(headLines, wholeText) {
   const basics = {};
   const email = wholeText.match(/[\w.+-]+@[\w-]+\.[\w.]{2,}/);
@@ -920,7 +947,7 @@ function parseContact(headLines, wholeText) {
     if (/@/.test(l)) continue;
     if (/linkedin\./i.test(l) && !basics.linkedin) basics.linkedin = l;
     else if (/github\.|gitlab\./i.test(l) && !basics.github) basics.github = l;
-    else if (!basics.website && !/\.(pdf|docx?|png|jpe?g)$/i.test(l) && /\.[a-z]{2,}$/i.test(l)) {
+    else if (!basics.website && !/\.(pdf|docx?|png|jpe?g)$/i.test(l) && looksLikeSite(l)) {
       basics.website = l;
     }
   }
@@ -1230,7 +1257,11 @@ function parseSkills(lines) {
   }
   if (loose.length) {
     const items = loose.join(', ').split(/[,;|•·]/).map(clean).filter(Boolean);
-    if (items.length) groups.push({ group: groups.length ? 'Other' : 'Skills', items: items.join(', ') });
+    // A CV with one flat list of skills has no group name in it, and inventing
+    // one prints "SKILLS" twice - the section heading, then a label reading
+    // "Skills" underneath it. Only a list that sits beside real groups needs
+    // telling apart from them.
+    if (items.length) groups.push({ group: groups.length ? 'Other' : '', items: items.join(', ') });
   }
   return groups;
 }

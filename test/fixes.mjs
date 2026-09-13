@@ -126,6 +126,31 @@ console.log(NL + '=== a line already broken keeps its own fixes ===');
 const already = clean('Leveraged the the robust system.');
 check('pre-existing oddity does not block every fix', already.includes('Used'), true);
 
+console.log(NL + '=== the guard judges a sentence, not a line ===');
+// Automatic conversion put this under load. The line below is two sentences:
+// the first is filler end to end and collapses to "A professional.", the
+// second keeps its content. The whole line was still twelve words, so every
+// line-level test passed and the fragment went out on the CV.
+const twoSentences = 'A results-driven professional with a proven track record of success.'
+  + ' I am well-versed in leveraging a plethora of tools to significantly improve delivery.';
+check('a gutted sentence is reverted even when the line survives',
+  clean(twoSentences),
+  'A results-driven professional with a proven track record of success.'
+  + ' I am well-versed in using many tools to improve delivery.');
+check('and the phrase is still reported', flagged(twoSentences), true);
+
+// capFirst only ever reached the first letter of the line, so a substitution
+// after a full stop kept its lowercase.
+check('a substitution after a full stop keeps its capital',
+  clean('Leveraged Docker to ship faster. Spearheaded the migration.'),
+  'Used Docker to ship faster. Led the migration.');
+// The rule stays conservative: a line-wrap is not a sentence start, and a
+// lowercase word after a stop that was lowercase before stays lowercase.
+check('a line-wrap is still not given a capital',
+  clean('I am a highly motivated engineer eager to join a team of driven professionals.'
+    + ' developing backend systems.'),
+  'I am an engineer eager to join a team of driven professionals. developing backend systems.');
+
 console.log(NL + '=== nothing is invented ===');
 check('an empty CV stays empty', clean(''), '');
 check('a clean line is untouched',

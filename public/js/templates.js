@@ -146,8 +146,8 @@ const BODY = {
     }
 
     return '<div class="cv-skills">' + groups.map((g) => (
-      '<div class="cv-skill">'
-      + '<span class="cv-skill-name">' + esc(g.group) + '</span>'
+      '<div class="cv-skill' + (has(g.group) ? '' : ' cv-skill-bare') + '">'
+      + (has(g.group) ? '<span class="cv-skill-name">' + esc(g.group) + '</span>' : '')
       + '<span class="cv-skill-list">' + esc(g.items) + '</span>'
       + '</div>'
     )).join('') + '</div>';

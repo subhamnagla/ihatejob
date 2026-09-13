@@ -1,9 +1,9 @@
 // App controller: state, event wiring, live preview, storage and exports.
 
-import { SECTIONS, blankData, sampleData, coverScaffold } from './schema.js';
+import { SECTIONS, SECTION_IDS, blankData, sampleData, coverScaffold } from './schema.js';
 import { buildPanel, setOpen, toggleOpen } from './form.js';
 import {
-  renderCV, renderText, renderLetterDoc, renderLetterText, esc,
+  renderCV, renderText, renderLetterDoc, renderLetterText, esc, TEMPLATES,
 } from './templates.js';
 import {
   applyProfession, applyRegion, professionOf, PROFESSIONS,
@@ -1159,6 +1159,8 @@ $('sampleUse').addEventListener('click', () => {
 
 let pendingImport = null;
 let pendingReport = null;
+// Set by /app?convert=1 - the one-press route in from the landing page.
+let convertMode = false;
 
 function openImport() {
   $('importModal').classList.add('open');
@@ -1253,7 +1255,7 @@ async function readCVFile(file) {
     // A LinkedIn archive is a set of CSVs, not prose - there is no text to show
     // in the paste box, so it goes straight to the report.
     if (out.csvs) {
-      showImportReport(parseLinkedInArchive(out.csvs, importBase()));
+      presentImport(parseLinkedInArchive(out.csvs, importBase()));
       toast('Read the LinkedIn archive.');
       return;
     }
@@ -1409,6 +1411,25 @@ $('importReport').addEventListener('click', (e) => {
   }
 });
 
+/*
+ * Show the report, and on the one-press route convert straight through.
+ *
+ * Straight through only when the CV read cleanly. A conversion that runs over
+ * a CV whose experience never came out produces a beautifully formatted
+ * document with a hole in it, handed over with a flourish - which is a worse
+ * outcome than the tour it was meant to save. Those stop at the report, where
+ * the flag and its paste boxes are.
+ *
+ * Only on the first read, too: filling a gap by hand re-renders this, and
+ * converting the instant the last core gap closed would snatch the panel away
+ * from someone still pasting their certifications in.
+ */
+function presentImport(result) {
+  showImportReport(result);
+  const level = ((result.report || {}).alignment || {}).level;
+  if (convertMode && level === 'clean') convertImport();
+}
+
 function showImportReport({ data, report }) {
   pendingImport = data;
   pendingReport = report;
@@ -1508,7 +1529,7 @@ $('btnParse').addEventListener('click', () => {
     return;
   }
   importError('');
-  showImportReport(parseCV(text, importBase()));
+  presentImport(parseCV(text, importBase()));
 });
 
 $('btnImportBack').addEventListener('click', () => {
@@ -1524,6 +1545,80 @@ $('btnImportApply').addEventListener('click', () => {
   afterStructural();
   setStagePane('review');
   showPlanet(reviewCV(state, { pages: pageCount }));
+});
+
+/*
+ * A bad CV in, ours out, in one press.
+ *
+ * Everything this does was already possible - import, run the clean-up, pick a
+ * format, look at the preview - but only by finding four controls in the right
+ * order. Someone who arrives with a CV they already dislike wants the result,
+ * not the tour, and the steps between are ours to know rather than theirs.
+ *
+ * It is deliberately the same code as the long way round. There is no separate
+ * conversion engine: the same parser, the same fixes, the same templates. The
+ * only thing added is the order, and an honest account of what changed.
+ */
+function convertImport() {
+  if (!pendingImport) return;
+  convertMode = false;
+  state = migrate(pendingImport);
+  const read = SECTION_IDS
+    .filter((id) => Array.isArray(state[id]) && state[id].length)
+    // "work experience (1)" rather than "1 work experience" - the titles are a
+    // mix of singular and plural and the count still has to be readable.
+    .map((id) => SECTIONS[id].title.toLowerCase() + ' (' + state[id].length + ')');
+  pendingImport = null;
+  pendingReport = null;
+
+  // Only the fixes that are safe to make without a person reading them, which
+  // is every fix this site offers: the ones that would need a verb changed are
+  // declined by the fixer itself and reported in the check instead.
+  const out = applyFixes(state, availableFixes(state).map((f) => f.id));
+  state = out.data;
+
+  $('importModal').classList.remove('open');
+  afterStructural();
+  setStagePane('preview');
+  setView('preview');
+  showConverted(read, out.applied);
+}
+
+function showConverted(read, applied) {
+  const tpl = (TEMPLATES[state.settings.template] || {}).name || state.settings.template;
+  const r = reviewCV(state, { pages: pageCount });
+  const left = r.findings.length;
+
+  const cleaned = applied.length
+    ? '<p><b>Cleaned ' + applied.reduce((n, f) => n + f.count, 0) + ' lines.</b></p>'
+      + '<ul class="conv-list">' + applied
+        .map((f) => '<li>' + esc(f.label) + ' <span class="n">' + f.count + '</span></li>')
+        .join('') + '</ul>'
+    : '<p>Nothing needed cleaning &mdash; the writing was already plain.</p>';
+
+  $('convertBody').innerHTML = '<p>Your CV is now laid out in <b>' + esc(tpl)
+    + '</b>: one column, real text, ordinary headings. It is on screen behind this.</p>'
+    + (read.length
+      ? '<p><b>Read from your file:</b> ' + esc(read.join(', ')) + '.</p>'
+      : '')
+    + cleaned
+    + '<p class="conv-honest">Nothing was invented and nothing was deleted &mdash; these are '
+    + 'substitutions and deletions of empty phrasing only. Anything that could only be improved '
+    + 'by changing what you said was left alone'
+    + (left
+      ? ' and is waiting in <b>Check</b>, along with ' + left + ' other '
+        + (left === 1 ? 'thing' : 'things') + ' worth a look.'
+      : '.')
+    + '</p>';
+
+  $('convertModal').classList.add('open');
+}
+
+$('btnConvert').addEventListener('click', convertImport);
+
+$('btnConvertPdf').addEventListener('click', () => {
+  $('convertModal').classList.remove('open');
+  $('btnPdf').click();
 });
 
 /* --------------------------------------------------------- layout watch */
@@ -1559,17 +1654,20 @@ scheduleSave(); // so the "Saved" pill is true even on a first visit
 
 /* ------------------------------------------------- links from the site */
 
-// The landing page deep-links in: /app?profession=law, /app?import=1
+// The landing page deep-links in: /app?profession=law, /app?import=1,
+// /app?convert=1
 (() => {
   const params = new URLSearchParams(location.search);
   const prof = params.get('profession');
-  const wantsImport = params.get('import');
+  const wantsConvert = params.get('convert');
+  const wantsImport = params.get('import') || wantsConvert;
 
   if (prof && Object.prototype.hasOwnProperty.call(PROFESSIONS, prof)) {
     applyProfession(state, prof);
     afterStructural();
   }
   if (wantsImport) openImport();
+  if (wantsConvert) convertMode = true;
 
   // Drop the query string so a refresh does not re-apply it.
   if (prof || wantsImport) {

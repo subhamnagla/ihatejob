@@ -448,5 +448,49 @@ check('and drops the verdict from poor to partial', half2.level, 'partial');
 both.data.education.push(...rescuedEdu);
 check('the second clears it', recheck(both.data, both.report).level, 'clean');
 
+/* --- a dot does not make it a website ----------------------------------- */
+// Found the moment conversion became one press: "B.Tech" was landing in the
+// website field and printing in the contact line next to the phone number.
+// .tech, .sc, .com and .in are all real top-level domains, so an Indian
+// qualification is indistinguishable from a hostname by shape. Tightening it
+// then caught "Node.js" out of a skills list, which is the same bug wearing a
+// different hat.
+console.log(NL + '=== a dot does not make it a website ===');
+
+const siteOf = (lines) => parseCV(j(...lines), blankData()).data.basics.website;
+
+for (const [label, lines] of [
+  ['a degree', ['Priya Sharma', 'priya@example.com', '', 'Education',
+    'B.Tech Computer Science, IIT Delhi  2014 - 2018']],
+  ['a masters', ['Rahul K', 'r@example.com', '', 'Education', 'M.Sc Physics, DU  2019']],
+  ['a doctorate', ['Rahul K', 'r@example.com', '', 'Education', 'Ph.D Chemistry, IISc  2021']],
+  ['a commerce degree', ['Rahul K', 'r@example.com', '', 'Education', 'B.Com, DU  2018']],
+  ['a javascript library', ['Priya Sharma', 'priya@example.com', '', 'Skills',
+    'React, Node.js, Vue.js']],
+]) {
+  check('not a website: ' + label, siteOf(lines), '');
+}
+
+// And the tightening must not cost anyone their actual site.
+check('a real personal site still reads',
+  siteOf(['Priya Sharma', 'priya@example.com', 'priya.dev', '', 'Education',
+    'B.Tech, IIT Delhi  2014']), 'priya.dev');
+check('one with a scheme is taken at its word',
+  siteOf(['Priya Sharma', 'priya@example.com', 'https://p.co/work']), 'https://p.co/work');
+check('and so is a www',
+  siteOf(['Priya Sharma', 'priya@example.com', 'www.priya.in']), 'www.priya.in');
+
+// A flat list of skills has no group name in it. Inventing one printed the
+// word "Skills" twice on the CV - once as the section heading, once as a label
+// underneath it.
+const flat = parseCV(j('Priya Sharma', 'priya@example.com', '', 'Skills',
+  'React, TypeScript, Node.js'), blankData()).data.skills;
+check('one flat list of skills takes no invented group name',
+  flat.map((g) => g.group), ['']);
+check('but its items are all there', flat[0].items, 'React, TypeScript, Node.js');
+const grouped = parseCV(j('Priya Sharma', 'priya@example.com', '', 'Skills',
+  'Languages: Python, Go', 'Tools: Docker, K8s'), blankData()).data.skills;
+check('real group names are kept', grouped.map((g) => g.group), ['Languages', 'Tools']);
+
 console.log(NL + (fails ? fails + ' FAILING' : 'all pass'));
 process.exit(fails ? 1 : 0);

@@ -1299,6 +1299,39 @@ textarea.input { resize: vertical; line-height: 1.5; }
 }
 .row-paste:hover { border-color: var(--brand); background: var(--brand-wash); }
 .report-list .rescue { flex: 0 0 100%; margin: 4px 0 2px; }
+
+/* --- the one-press conversion ------------------------------------------ */
+.convert-hint {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 66ch;
+  line-height: 1.55;
+}
+.conv-list {
+  margin: 6px 0 12px;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.conv-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--input-bg);
+}
+.conv-list li + li { margin-top: 4px; }
+.conv-list .n { color: var(--muted); font-variant-numeric: tabular-nums; }
+.conv-honest {
+  font-size: 13px;
+  color: var(--dim);
+  border-left: 3px solid var(--ok);
+  padding-left: 12px;
+  margin: 14px 0 0;
+  max-width: 62ch;
+}
 .report-note {
   padding: 10px 12px;
   border-radius: 9px;

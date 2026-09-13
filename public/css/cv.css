@@ -135,6 +135,8 @@
 .cv-skills { display: block; }
 .cv-skill { display: grid; grid-template-columns: 30mm 1fr; gap: 4mm; }
 .cv-skill + .cv-skill { margin-top: 3px; }
+/* A flat list with no group name should not leave the label column empty. */
+.cv-skill-bare { grid-template-columns: 1fr; }
 .cv-skill-name { font-weight: 700; font-size: 0.93em; }
 
 .cv-line { display: flex; justify-content: space-between; gap: 6mm; }

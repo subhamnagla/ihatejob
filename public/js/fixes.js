@@ -186,7 +186,38 @@ const BROKEN = [
   /,\s*[,.;]|\(\s*\)/,
 ];
 
+/*
+ * Revert a rewrite that reads worse than what it replaced.
+ *
+ * Sentence by sentence, because the line was the wrong unit. Automatic
+ * conversion put this under real load: given
+ *
+ *   "A results-driven professional with a proven track record of success.
+ *    I am well-versed in leveraging a plethora of tools..."
+ *
+ * the first sentence is filler end to end and collapses to "A professional.",
+ * while the second keeps its content. The line was still twelve words long, so
+ * every line-level test passed and the fragment went out on the CV. A sentence
+ * is where a rewrite reads as nonsense, so a sentence is what gets judged.
+ */
 function guard(before, after) {
+  const cut = (t) => t.match(/[^.!?]+[.!?]*\s*/g) || [t];
+  const b = cut(before);
+  const a = cut(after);
+  // Only pairwise. If a fix merged or split sentences the halves no longer
+  // correspond, and the whole line is the only honest comparison left.
+  if (b.length > 1 && b.length === a.length) {
+    // capFirst only ever reached the first letter of the line, so a
+    // substitution after a full stop kept its lowercase: "Spearheaded the
+    // migration" became "led the migration". Pairing the sentences puts the
+    // original within reach, and the rule stays the conservative one - a
+    // sentence gains a capital only where it had one.
+    return a.map((sentence, i) => guardOne(b[i], capFirst(sentence, b[i]))).join('');
+  }
+  return guardOne(before, after);
+}
+
+function guardOne(before, after) {
   const w = (s) => s.trim().split(/\s+/).filter(Boolean).length;
   if (!w(after)) return before;
   if (ORPHAN_VERB.test(after.trim())) return before;
