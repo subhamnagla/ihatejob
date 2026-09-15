@@ -1239,9 +1239,12 @@ window.addEventListener('drop', (e) => {
 });
 
 const dropzone = $('dropzone');
-dropzone.addEventListener('click', () => $('cvInput').click());
-dropzone.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('cvInput').click(); }
+// The label inside opens the picker by itself. Without this the click also
+// bubbles to the zone, which opens a second one - on a phone that reads as the
+// picker flashing and closing.
+dropzone.addEventListener('click', (e) => {
+  if (e.target.closest('label')) return;
+  $('cvInput').click();
 });
 ['dragenter', 'dragover'].forEach((ev) => dropzone.addEventListener(ev, (e) => {
   e.preventDefault();
@@ -1842,9 +1845,9 @@ async function readAdvert(file) {
 }
 
 const jdDrop = $('jdDrop');
-jdDrop.addEventListener('click', () => $('jdInput').click());
-jdDrop.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('jdInput').click(); }
+jdDrop.addEventListener('click', (e) => {
+  if (e.target.closest('label')) return;
+  $('jdInput').click();
 });
 ['dragenter', 'dragover'].forEach((ev) => jdDrop.addEventListener(ev, (e) => {
   e.preventDefault();

@@ -237,10 +237,17 @@
     <p>Everything is read in your browser. The file is never uploaded anywhere.</p>
 
     <div id="importStep1">
-      <div class="dropzone" id="dropzone" tabindex="0" role="button">
-        <b>Drop a file here</b>
-        <span>or click to choose &mdash; PDF, Word (.docx), .txt, a LinkedIn .zip, or a saved .json</span>
-        <span>You can also drop a file anywhere on the page.</span>
+      <!-- The label is the control. A phone cannot drop a file, and the tap
+           that used to stand in for it went through JavaScript to an input
+           the browser had removed from the page - which iOS declines to
+           click. A real <label for> is activated by the browser itself. -->
+      <div class="dropzone" id="dropzone">
+        <b>Choose your CV</b>
+        <input type="file" id="cvInput" class="sr-only"
+          accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,text/plain,text/markdown,application/rtf,application/json,application/zip,application/x-zip-compressed,.pdf,.docx,.doc,.rtf,.txt,.md,.json,.zip">
+        <label class="btn btn-primary dz-pick" for="cvInput">Pick a file</label>
+        <span>PDF, Word (.docx), .txt, a LinkedIn .zip, or a saved .json</span>
+        <span class="dz-drop">Or drop one here, or anywhere on the page.</span>
       </div>
 
       <!-- Most people arrive with a LinkedIn profile and no CV, so the route in
@@ -362,9 +369,12 @@
     <p>Paste the advert. Nothing is uploaded &mdash; the comparison runs in this browser,
       against the CV you have open.</p>
 
-    <div class="dropzone dropzone-sm" id="jdDrop" tabindex="0" role="button">
-      <b>Drop the advert here</b>
-      <span>or click to choose &mdash; PDF, Word (.docx) or .txt</span>
+    <div class="dropzone dropzone-sm" id="jdDrop">
+      <b>Choose the advert</b>
+      <input type="file" id="jdInput" class="sr-only"
+        accept="application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,text/plain,text/markdown,application/rtf,.pdf,.docx,.doc,.rtf,.txt,.md">
+      <label class="btn btn-sm dz-pick" for="jdInput">Pick a file</label>
+      <span>PDF, Word (.docx) or .txt<span class="dz-drop"> &mdash; or drop one here</span></span>
     </div>
     <div class="or-line"><span>or paste it</span></div>
 
@@ -385,10 +395,9 @@
 </div>
 
 <div class="toast" id="toast"></div>
-<input type="file" id="fileInput" accept="application/json,.json" hidden>
-<input type="file" id="photoInput" accept="image/*" hidden>
-<input type="file" id="jdInput" accept=".pdf,.docx,.doc,.rtf,.txt,.md,application/pdf" hidden>
-<input type="file" id="cvInput" accept=".pdf,.docx,.doc,.rtf,.txt,.md,.json,.zip,application/pdf,application/zip" hidden>
+<input type="file" id="fileInput" class="sr-only"
+  accept="application/json,.json">
+<input type="file" id="photoInput" class="sr-only" accept="image/*">
 <div class="drop-veil" id="dropVeil" hidden><div>Drop your CV to read it</div></div>
 
 <script type="module" src="/js/main.js"></script>
