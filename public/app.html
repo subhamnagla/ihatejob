@@ -214,7 +214,7 @@
 </div>
 
 <div class="modal-backdrop" id="importModal">
-  <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+  <div class="modal modal-wide modal-import" role="dialog" aria-modal="true" aria-labelledby="importTitle">
     <h2 id="importTitle">Import your current CV</h2>
     <p>Everything is read in your browser. The file is never uploaded anywhere.</p>
 
@@ -255,7 +255,15 @@
     </div>
 
     <div id="importStep2" hidden>
-      <div id="importReport"></div>
+      <!-- The report on its own asks to be taken on trust: it says education
+           was not found, and checking means opening the PDF in another window.
+           So the document sits beside it, shown out of the browser's own
+           memory - still never uploaded - and the lines that need pasting into
+           a gap can be copied from one half of the screen into the other. -->
+      <div class="import-split">
+        <div id="importReport"></div>
+        <div class="import-source" id="importSource" hidden></div>
+      </div>
       <div class="modal-actions">
         <button class="btn" id="btnImportBack" type="button">Back</button>
         <button class="btn" id="btnImportApply" type="button">Use this</button>

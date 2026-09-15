@@ -1159,10 +1159,30 @@ $('sampleUse').addEventListener('click', () => {
 
 let pendingImport = null;
 let pendingReport = null;
+
+/*
+ * The document the report is about, kept so it can be shown beside it.
+ *
+ * Told "education was not found", the only way to check was to open the PDF in
+ * another window - and the paste box that fixes it was back on this one. So
+ * the file is held here and drawn next to the report: the pages themselves
+ * where the browser can draw them, and always the text a machine actually got
+ * out of them, which is the more useful half when they disagree.
+ *
+ * url is a blob: address. It is the browser handing a file back to itself -
+ * nothing is uploaded, and the site still has no endpoint to upload it to.
+ */
+let sourceDoc = null;
+
+function setSource(next) {
+  if (sourceDoc && sourceDoc.url) URL.revokeObjectURL(sourceDoc.url);
+  sourceDoc = next;
+}
 // Set by /app?convert=1 - the one-press route in from the landing page.
 let convertMode = false;
 
 function openImport() {
+  setSource(null);
   $('importModal').classList.add('open');
   $('importStep1').hidden = false;
   $('importStep2').hidden = true;
@@ -1255,11 +1275,21 @@ async function readCVFile(file) {
     // A LinkedIn archive is a set of CSVs, not prose - there is no text to show
     // in the paste box, so it goes straight to the report.
     if (out.csvs) {
+      setSource(null);
       presentImport(parseLinkedInArchive(out.csvs, importBase()));
       toast('Read the LinkedIn archive.');
       return;
     }
     $('pasteBox').value = out.text;
+    // Only a PDF can be drawn by the browser itself. A .docx has no viewer, so
+    // for those the text is the whole of what there is to show - which is also
+    // exactly what the parser was working from.
+    setSource({
+      name: file.name,
+      how: out.how,
+      url: /\.pdf$/i.test(file.name) ? URL.createObjectURL(file) : '',
+      text: out.text,
+    });
     toast('Read the ' + out.how + '. Check the text below, then press "Read it".');
   } catch (err) {
     const msg = err instanceof ImportError
@@ -1430,6 +1460,51 @@ function presentImport(result) {
   if (convertMode && level === 'clean') convertImport();
 }
 
+// Which half of the source is on screen: the pages, or the text read out of
+// them. Kept across re-renders so a rescue does not throw the reader back to
+// the other view mid-paste.
+let sourceView = 'page';
+
+function renderSource() {
+  const box = $('importSource');
+  if (!sourceDoc) { box.hidden = true; box.innerHTML = ''; return; }
+
+  const canDraw = !!sourceDoc.url;
+  const view = canDraw && sourceView === 'page' ? 'page' : 'text';
+  const title = sourceDoc.name || 'What you pasted';
+
+  const tabs = canDraw
+    ? '<div class="src-tabs">'
+      + '<button type="button" class="src-tab' + (view === 'page' ? ' sel' : '')
+      + '" data-src="page">The pages</button>'
+      + '<button type="button" class="src-tab' + (view === 'text' ? ' sel' : '')
+      + '" data-src="text">What a machine read</button>'
+      + '</div>'
+    : '';
+
+  const body = view === 'page'
+    ? '<iframe class="src-page" src="' + sourceDoc.url + '#toolbar=0" title="Your CV"></iframe>'
+      + '<p class="src-note">If nothing appears above, your browser has no built-in PDF '
+      + 'viewer &mdash; switch to <b>What a machine read</b>, which is the half that matters '
+      + 'anyway.</p>'
+    : '<pre class="src-text">' + esc(sourceDoc.text || '') + '</pre>'
+      + '<p class="src-note">This is the text the parser was given, character for character. '
+      + 'A section missing here was never in the file as text &mdash; it is a picture, or it sits '
+      + 'in a table or a text box the extractor cannot reach.</p>';
+
+  box.innerHTML = '<div class="src-head"><b>' + esc(title) + '</b>'
+    + '<span class="src-priv">shown from your browser&rsquo;s memory &mdash; still not uploaded</span>'
+    + '</div>' + tabs + body;
+  box.hidden = false;
+}
+
+$('importSource').addEventListener('click', (e) => {
+  const tab = e.target.closest('[data-src]');
+  if (!tab) return;
+  sourceView = tab.dataset.src;
+  renderSource();
+});
+
 function showImportReport({ data, report }) {
   pendingImport = data;
   pendingReport = report;
@@ -1518,6 +1593,8 @@ function showImportReport({ data, report }) {
       : 'Parsing a CV from formatting alone is approximate.')
     + ' Nothing is applied until you press Use this, and everything stays editable afterwards.</p>';
 
+  renderSource();
+
   $('importStep1').hidden = true;
   $('importStep2').hidden = false;
 }
@@ -1529,6 +1606,12 @@ $('btnParse').addEventListener('click', () => {
     return;
   }
   importError('');
+  // A file that was read and then edited in the box is no longer the file: its
+  // pages would no longer be what was parsed, so the association is dropped
+  // and the text stands on its own.
+  if (!sourceDoc || sourceDoc.text !== text) {
+    setSource({ name: '', how: 'the text you pasted', url: '', text });
+  }
   presentImport(parseCV(text, importBase()));
 });
 
