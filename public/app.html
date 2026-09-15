@@ -149,6 +149,24 @@
         <button class="btn btn-sm" id="sampleClose" type="button">Back to mine</button>
       </div>
 
+      <!-- The conversion used to report itself in a dialog, which covered the
+           thing it had just made. The CV is the result; this is the receipt,
+           so it sits above the page rather than in front of it. -->
+      <div class="convert-bar" id="convertBar" hidden>
+        <div class="cb-top">
+          <span class="cb-tag">Converted</span>
+          <span class="cb-which" id="convertWhich"></span>
+          <span class="spacer"></span>
+          <button class="btn btn-sm btn-primary" id="btnConvertPdf" type="button">Download PDF</button>
+          <button class="btn btn-sm" id="convertClose" type="button">Done</button>
+        </div>
+        <div class="cb-formats" id="convertFormats"></div>
+        <details class="cb-what">
+          <summary id="convertSummary"></summary>
+          <div id="convertBody"></div>
+        </details>
+      </div>
+
       <div class="stage-scroll" id="stageScroll">
         <div class="page-scaler" id="pageScaler">
           <div class="page-wrap">
@@ -273,21 +291,6 @@
         &mdash; filler out, &ldquo;I&rdquo; dropped from the front of bullets, shouting turned
         down &mdash; and takes you to the finished CV. Every change is listed and nothing is
         invented. <b>Use this</b> just loads the fields and leaves the words alone.</p>
-    </div>
-  </div>
-</div>
-
-<!-- The end of the one-press route: the CV is already laid out behind this,
-     so the dialog exists to account for what changed rather than to ask
-     anything. A conversion that quietly rewrote someone's history and said
-     nothing would be the worst thing this site could do. -->
-<div class="modal-backdrop" id="convertModal">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="convertTitle">
-    <h2 id="convertTitle">Converted.</h2>
-    <div id="convertBody"></div>
-    <div class="modal-actions">
-      <button class="btn" data-close type="button">Edit it</button>
-      <button class="btn btn-primary" id="btnConvertPdf" type="button">Download PDF</button>
     </div>
   </div>
 </div>

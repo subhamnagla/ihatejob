@@ -595,6 +595,7 @@ $('fileInput').addEventListener('change', (e) => {
 });
 
 function loadExample() {
+  hideConvertBar();
   const filled = state.basics.fullName || state.experience.length;
   if (filled && !confirm('Replace what you have with the example CV?')) return;
   const keep = state.settings;
@@ -1182,6 +1183,7 @@ function setSource(next) {
 let convertMode = false;
 
 function openImport() {
+  hideConvertBar();
   setSource(null);
   $('importModal').classList.add('open');
   $('importStep1').hidden = false;
@@ -1673,59 +1675,76 @@ function convertImport() {
 // The CV behind the dialog re-renders on each press, so the row is a way of
 // looking through all eight rather than a setting to be committed to.
 function formatRow() {
-  return '<div class="conv-formats">' + Object.entries(TEMPLATES).map(([k, t]) => (
+  // No wrapper: #convertFormats is the flex row, and a second div inside it was
+  // quietly taking over the layout - which is why the pills kept wrapping into
+  // three rows on a phone however the bar was styled.
+  return Object.entries(TEMPLATES).map(([k, t]) => (
     '<button type="button" class="conv-fmt' + (k === state.settings.template ? ' sel' : '')
     + '" data-tpl="' + k + '" title="' + esc(t.blurb) + '">' + esc(t.name) + '</button>'
-  )).join('') + '</div>';
+  )).join('');
 }
 
 function showConverted(read, applied) {
   const r = reviewCV(state, { pages: pageCount });
   const left = r.findings.length;
+  const lines = applied.reduce((n, f) => n + f.count, 0);
 
-  const cleaned = applied.length
-    ? '<p><b>Cleaned ' + applied.reduce((n, f) => n + f.count, 0) + ' lines.</b></p>'
-      + '<ul class="conv-list">' + applied
-        .map((f) => '<li>' + esc(f.label) + ' <span class="n">' + f.count + '</span></li>')
-        .join('') + '</ul>'
-    : '<p>Nothing needed cleaning &mdash; the writing was already plain.</p>';
+  // The headline of the receipt, always visible. What a person needs to know
+  // without opening anything is what came out of their file, how much was
+  // touched, and that nothing was made up.
+  $('convertSummary').innerHTML = (read.length
+    ? 'Read <b>' + esc(read.join(', ')) + '</b>. '
+    : '')
+    + (lines
+      ? 'Cleaned <b>' + lines + ' line' + (lines === 1 ? '' : 's') + '</b>. '
+      : 'Nothing needed cleaning. ')
+    + 'Nothing was invented.';
 
-  $('convertBody').innerHTML = '<p id="convertWhich"></p>'
-    + formatRow()
-    + (read.length
-      ? '<p><b>Read from your file:</b> ' + esc(read.join(', ')) + '.</p>'
-      : '')
-    + cleaned
-    + '<p class="conv-honest">Nothing was invented and nothing was deleted &mdash; these are '
-    + 'substitutions and deletions of empty phrasing only. Anything that could only be improved '
-    + 'by changing what you said was left alone'
+  $('convertBody').innerHTML = (applied.length
+    ? '<ul class="conv-list">' + applied
+      .map((f) => '<li>' + esc(f.label) + ' <span class="n">' + f.count + '</span></li>')
+      .join('') + '</ul>'
+    : '<p>The writing was already plain &mdash; no substitution was worth making.</p>')
+    + '<p class="conv-honest">These are substitutions and deletions of empty phrasing only. '
+    + 'Nothing was deleted that carried meaning, and anything that could be improved only by '
+    + 'changing what you said was left alone'
     + (left
       ? ' and is waiting in <b>Check</b>, along with ' + left + ' other '
         + (left === 1 ? 'thing' : 'things') + ' worth a look.'
       : '.')
     + '</p>';
 
+  // Closed on every conversion. Left open from a previous one it would push
+  // the CV off a phone screen, which is the thing this bar exists not to do.
+  document.querySelector('.cb-what').open = false;
+  $('convertFormats').innerHTML = formatRow();
   sayWhich();
-  $('convertModal').classList.add('open');
+  $('convertBar').hidden = false;
 }
+
+function hideConvertBar() {
+  const bar = $('convertBar');
+  if (bar) bar.hidden = true;
+}
+
+$('convertClose').addEventListener('click', hideConvertBar);
 
 function sayWhich() {
   const t = TEMPLATES[state.settings.template] || {};
   const el = $('convertWhich');
   if (!el) return;
-  el.innerHTML = 'Your CV is now laid out in <b>' + esc(t.name || state.settings.template)
-    + '</b> &mdash; ' + esc(String(t.blurb || '').toLowerCase())
-    + '. It is on screen behind this. Try any of the others:';
+  el.innerHTML = 'in <b>' + esc(t.name || state.settings.template) + '</b> &mdash; '
+    + esc(String(t.blurb || '').toLowerCase()) + '. Try any of the others:';
 }
 
 // Switching format here is the same setting the panel holds, so the panel and
 // the saved file move with it - this is not a preview mode to be undone.
-$('convertBody').addEventListener('click', (e) => {
+$('convertFormats').addEventListener('click', (e) => {
   const btn = e.target.closest('[data-tpl]');
   if (!btn) return;
   state.settings.template = btn.dataset.tpl;
   afterStructural();
-  $('convertBody').querySelectorAll('[data-tpl]').forEach((b) => {
+  $('convertFormats').querySelectorAll('[data-tpl]').forEach((b) => {
     b.classList.toggle('sel', b.dataset.tpl === state.settings.template);
   });
   sayWhich();
@@ -1733,10 +1752,7 @@ $('convertBody').addEventListener('click', (e) => {
 
 $('btnConvert').addEventListener('click', convertImport);
 
-$('btnConvertPdf').addEventListener('click', () => {
-  $('convertModal').classList.remove('open');
-  $('btnPdf').click();
-});
+$('btnConvertPdf').addEventListener('click', () => $('btnPdf').click());
 
 /* --------------------------------------------------------- layout watch */
 
