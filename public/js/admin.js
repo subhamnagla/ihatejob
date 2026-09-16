@@ -82,21 +82,22 @@ function renderHealth() {
       'Optional while the repository works, but it is the only channel if GitHub is not an option for someone.',
       'Set <code>SITE.contactEmail</code>'));
 
+  // The counter strip was taken off the front page - it read "41 profession
+  // packs" and "41 worked sample CVs", the same number twice, in the second
+  // most valuable band on the site. The endpoint still feeds this panel.
   out.push(STATS.endpoint
-    ? row('ok', 'Analytics endpoint', 'Visitor numbers appear once they pass '
-      + (STATS.minVisitors || 0) + '.')
-    : row('warn', 'No analytics',
-      'The visitor counters stay off the front page. Nothing is invented in their place.',
+    ? row('ok', 'Analytics endpoint', 'Read below. Nothing is shown on the front page.')
+    : row('note', 'No analytics',
+      'Visitor numbers are not read anywhere. Nothing is invented in their place.',
       'Set <code>STATS.endpoint</code>'));
 
-  // Count what the site would actually render, not what config.js happens to hold.
+  // Reviews still arrive by email and are still stored here. What went is the
+  // shelf that displayed them, so this counts them without claiming a section.
   const liveReviews = (store.reviews.items.length ? store.reviews.items : REVIEWS)
     .filter((r) => !r.hidden && String(r.quote || '').trim()).length;
-  out.push(liveReviews >= MIN_REVIEWS
-    ? row('ok', 'Reviews', liveReviews + ' visible, so the section is live on the front page.')
-    : row('warn', 'Reviews hidden',
-      liveReviews + ' of ' + MIN_REVIEWS + ' needed. The section stays out of the page entirely until then.',
-      'See Reviews below'));
+  out.push(row('note', 'Reviews', liveReviews + ' held here. The front page has no review '
+    + 'shelf any more, so nothing is published automatically - quote them wherever they '
+    + 'are worth quoting.'));
 
   const url = String(SITE.url || '');
   out.push(/localhost|127\.0\.0\.1/.test(url)

@@ -497,11 +497,6 @@ async function runExport(act) {
     toast('Data file saved. Re-open it any time from More > Open a saved file.');
     return;
   }
-  if (act === 'html') {
-    download(baseName() + '.html', 'text/html;charset=utf-8', await standaloneHtml(false));
-    toast('Web page downloaded - one self-contained file.');
-    return;
-  }
   if (act === 'word') {
     download(baseName() + '.doc', 'application/msword', await standaloneHtml(true));
     const sidebar = ['modern', 'creative'].includes(current().settings.template);

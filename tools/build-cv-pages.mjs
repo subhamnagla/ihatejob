@@ -107,8 +107,8 @@ function faqPairs(p) {
 
   if (req.length) {
     q.push([
-      'What should a ' + lower + ' CV include?',
-      'A ' + lower + ' CV has to carry ' + andList(req) + '. '
+      'What should ' + an(lower) + lower + ' CV include?',
+      'A' + an(lower).slice(1) + lower + ' CV has to carry ' + andList(req) + '. '
       + (order.length
         ? 'The order this field expects is ' + andList(order) + '.'
         : 'Everything else is judged against those.'),
@@ -116,7 +116,7 @@ function faqPairs(p) {
   }
   if (order.length) {
     q.push([
-      'What goes first on a ' + lower + ' CV?',
+      'What goes first on ' + an(lower) + lower + ' CV?',
       // What the convention says, not what a recruiter is imagined to do.
       'The ' + order[0] + '. That is where this field'+String.fromCharCode(39)+'s convention puts it, and it is what '
       + 'the builder applies when you pick ' + short + '.',
@@ -124,11 +124,11 @@ function faqPairs(p) {
   }
   const len = lengthLine(p.pages);
   if (len) {
-    q.push(['How long should a ' + lower + ' CV be?', len
+    q.push(['How long should ' + an(lower) + lower + ' CV be?', len
       + ' Going longer does not add weight; it moves the thing being looked for further down.']);
   }
   q.push([
-    'Is a ' + lower + ' CV the same as a ' + lower + ' resume?',
+    'Is ' + an(lower) + lower + ' CV the same as ' + an(lower) + lower + ' resume?',
     'For applying to a job, yes - the same document under two names. Resume is the usual '
     + 'word in North America and CV almost everywhere else. The one real exception is the '
     + 'academic CV, which is long-form and lists publications.',
@@ -137,7 +137,7 @@ function faqPairs(p) {
     'Is there a free ' + lower + ' CV template?',
     'Yes. ihatejob builds one to this field\u2019s convention for free, with no account and '
     + 'no upload: the section order, the section names and the rating all come from the '
-    + lower + ' pack described on this page. It exports to PDF, Word, HTML and plain text.',
+    + lower + ' pack described on this page. It exports to PDF, Word and plain text.',
   ]);
 
   return q;
@@ -165,6 +165,11 @@ function faqSection(p) {
       + '<p>' + esc(a) + '</p></details>'
     )).join('') + '</div>';
 }
+
+// "a academic CV" and "a aviation CV" were on the page and in the markup.
+// Sound, not spelling, is the real rule, but every profession name here that
+// starts with a vowel letter also starts with a vowel sound.
+const an = (word) => (/^[aeiou]/i.test(String(word)) ? 'an ' : 'a ');
 
 const andList = (xs) => (xs.length < 2 ? (xs[0] || '')
   : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1]);
@@ -257,7 +262,8 @@ function page(slug, p, siblings) {
   // often as it is skimmed in a result.
   const required = req.map((k) => label(p, k).toLowerCase());
   const description = (required.length
-    ? 'A ' + short.toLowerCase() + ' CV has to carry ' + andList(required) + '. '
+    ? 'A' + an(short).slice(1) + short.toLowerCase() + ' CV has to carry '
+      + andList(required) + '. '
     : '')
     + 'What to put first, what to quantify, and what gets one rejected in this field. '
     + 'Free CV and resume builder, no account.';

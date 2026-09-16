@@ -1,9 +1,9 @@
 // The landing page. Everything it claims is derived from the app's own data,
 // so the numbers on the front page cannot drift from what the builder does.
 
-import { SITE, STATS, REVIEWS, MIN_REVIEWS } from './config.js';
+import { SITE } from './config.js';
 import { initPWA } from './pwa.js';
-import { PROFESSIONS, PROFESSION_GROUPS, REGIONS, ALIASES } from './professions.js';
+import { PROFESSIONS, PROFESSION_GROUPS, ALIASES } from './professions.js';
 import { TEMPLATES, renderCV, esc } from './templates.js';
 import { buildSample } from './samples.js';
 import { blankData } from './schema.js';
@@ -68,55 +68,6 @@ function paper(profId, accent, cls) {
 
 $('heroArt').innerHTML = paper('healthcare-clinical', '#0f766e', 'back')
   + paper('software-engineering', '#2563eb');
-
-/* ----------------------------------------------------------------- stats */
-
-const FACTS = [
-  { n: Object.keys(PROFESSIONS).length, label: 'profession packs' },
-  { n: Object.keys(REGIONS).length, label: 'regional rule sets' },
-  { n: Object.keys(TEMPLATES).length, label: 'CV formats' },
-  { n: Object.keys(PROFESSIONS).length, label: 'worked sample CVs' },
-];
-
-function statCell(value, label, pending) {
-  return '<div class="stat-cell' + (pending ? ' pending' : '') + '">'
-    + '<b>' + esc(String(value)) + '</b><span>' + esc(label) + '</span></div>';
-}
-
-async function renderStats() {
-  const grid = $('statGrid');
-  grid.innerHTML = FACTS.map((f) => statCell(f.n, f.label)).join('');
-
-  if (!STATS.endpoint) {
-    // Guidance belongs in the console and the README, never on the page.
-    console.info('[ihatejob] Visitor numbers are hidden: set STATS.endpoint in '
-      + 'js/config.js to show them. They are never invented.');
-    return;
-  }
-
-  try {
-    const res = await fetch(STATS.endpoint, { headers: { Accept: 'application/json' } });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const data = STATS.read(await res.json());
-
-    const cells = [];
-    const min = STATS.minVisitors || 0;
-    const fmt = (v) => v.toLocaleString();
-
-    if (typeof data.visitors === 'number' && data.visitors >= min) {
-      cells.push(statCell(fmt(data.visitors), 'visitors'));
-    }
-    const rated = typeof data.cvsRated === 'number' ? data.cvsRated : data.pageviews;
-    if (typeof rated === 'number' && rated >= min) {
-      cells.push(statCell(fmt(rated), 'CVs rated'));
-    }
-    // Nothing to add yet? The strip simply keeps the four facts.
-    if (cells.length) grid.insertAdjacentHTML('beforeend', cells.join(''));
-  } catch (err) {
-    console.warn('[ihatejob] Analytics endpoint unreachable, visitor numbers hidden:', err.message);
-  }
-}
-renderStats();
 
 /* --------------------------------------------------------------- formats */
 
@@ -198,119 +149,6 @@ $('planetScaleStrip').innerHTML = PLANETS.map((p) => (
   '<div class="pp-item">' + planetSVG(p, 44) + '<span>' + esc(p.name.replace('The ', '')) + '</span></div>'
 )).join('');
 
-/* --------------------------------------------------------------- reviews */
-
-// A review carries a planet rank (1-10). Stars are derived from it rather than
-// stored beside it, so the two can never drift apart - half a star per rung,
-// the same arithmetic the checker uses on a CV.
-const short = (name) => String(name).replace('The ', '');
-
-function rankOf(r) {
-  const rank = Number(r.planet);
-  if (rank >= 1 && rank <= 10) return Math.round(rank);
-  const legacy = Number(r.rating);          // entries written before the scale
-  if (legacy >= 1 && legacy <= 5) return Math.round(legacy * 2);
-  return 10;
-}
-const starsOf = (r) => Math.max(1, Math.round(rankOf(r) / 2));
-
-const planetChip = (rank) => {
-  const p = PLANETS[rank - 1];
-  if (!p) return '';
-  return '<span class="rv-planet" title="' + esc(p.name + ' - ' + p.tag) + '">'
-    + planetSVG(p, 17) + esc(short(p.name)) + '</span>';
-};
-
-const stars = (n) => {
-  let out = '<div class="rv-stars" aria-label="' + n + ' out of 5">';
-  for (let i = 1; i <= 5; i += 1) {
-    out += '<svg viewBox="0 0 24 24" width="16" height="16" class="' + (i <= n ? 'on' : 'off') + '">'
-      + '<path fill="currentColor" d="M12 2.6l2.9 5.9 6.5.95-4.7 4.58 1.11 6.47L12 17.45'
-      + 'l-5.81 3.05 1.11-6.47L2.6 9.45l6.5-.95z"/></svg>';
-  }
-  return out + '</div>';
-};
-
-const initials = (name) => String(name || '?')
-  .replace(/[^\p{L}\s]/gu, '')
-  .trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('')
-  .toUpperCase() || '?';
-
-// A stable colour per person, so the same name always gets the same avatar.
-const avatarHue = (name) => {
-  let h = 0;
-  for (let i = 0; i < String(name).length; i += 1) h = (h * 31 + name.charCodeAt(i)) % 360;
-  return h;
-};
-
-const LONG = 165;   // characters before a quote gets a "Read more"
-
-function reviewCard(r) {
-  const quote = String(r.quote || '');
-  const long = quote.length > LONG;
-  const head = long ? quote.slice(0, quote.lastIndexOf(' ', LONG)) : quote;
-
-  return '<article class="rv">'
-    + '<div class="rv-top">' + stars(starsOf(r)) + planetChip(rankOf(r)) + '</div>'
-    + '<blockquote class="rv-quote' + (long ? ' clipped' : '') + '">'
-    + '<span class="rv-head">&ldquo;' + esc(head) + (long ? '' : '&rdquo;') + '</span>'
-    + (long ? '<span class="rv-rest">' + esc(quote.slice(head.length)) + '&rdquo;</span>' : '')
-    + '</blockquote>'
-    + (long ? '<button class="rv-more" type="button">Read more'
-      + '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"'
-      + ' stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">'
-      + '<path d="M6 9l6 6 6-6"/></svg></button>' : '')
-    + '<footer class="rv-by">'
-    + '<span class="rv-avatar" style="--hue:' + avatarHue(r.name || '') + '">'
-    + esc(initials(r.name)) + '</span>'
-    + '<span class="rv-who"><b>' + esc(r.name || 'Anonymous') + '</b>'
-    + '<span>' + esc([r.role, r.place].filter(Boolean).join(' · ') || r.handle || '') + '</span>'
-    + '</span>'
-    + (r.source ? '<a class="rv-src" href="' + esc(r.source) + '" target="_blank" rel="noopener"'
-      + ' aria-label="See the original">&#8599;</a>' : '')
-    + '</footer></article>';
-}
-
-async function renderReviews() {
-  const section = $('reviews');
-  const navLinks = [$('navReviews'), $('navSheetReviews')].filter(Boolean);
-
-  let items = [];
-  try {
-    const res = await fetch('/data/reviews.json', { cache: 'no-cache' });
-    if (res.ok) items = await res.json();
-  } catch { /* falls through to the config list */ }
-  if (!Array.isArray(items) || !items.length) items = REVIEWS;
-
-  // Hidden ones never reach the page; pinned ones lead.
-  const live = items
-    .filter((r) => !r.hidden && String(r.quote || '').trim())
-    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
-
-  if (live.length < MIN_REVIEWS) {
-    section.hidden = true;
-    navLinks.forEach((a) => { a.hidden = true; });
-    console.info('[ihatejob] Reviews hidden: ' + live.length + ' of ' + MIN_REVIEWS
-      + ' needed. Add them in the admin, or to REVIEWS in js/config.js.');
-    return;
-  }
-
-  section.hidden = false;
-  navLinks.forEach((a) => { a.hidden = false; });
-  $('reviewArea').innerHTML = '<div class="rv-grid">' + live.map(reviewCard).join('') + '</div>';
-}
-renderReviews();
-
-// Expanding a quote is per-card, so one long review does not push the rest around.
-$('reviewArea').addEventListener('click', (e) => {
-  const btn = e.target.closest('.rv-more');
-  if (!btn) return;
-  const card = btn.closest('.rv');
-  const open = card.classList.toggle('open');
-  card.querySelector('.rv-quote').classList.toggle('clipped', !open);
-  btn.firstChild.textContent = open ? 'Show less' : 'Read more';
-});
-
 /* -------------------------------------------------------------- journeys */
 
 // A teaser for /stories. Shows the three most recent, or the invitation on its
@@ -355,6 +193,10 @@ renderJourneys();
 // The rating is the planet, picked here rather than typed as a number. It is
 // the one bit of this site people repeat to each other, so asking for it in
 // its own words - "Mars", not "6/10" - is the whole point.
+
+// The planet picker below drops "The " so the buttons read Mars, Jupiter,
+// the Sun. It used to borrow this from the review cards, which have gone.
+const short = (name) => String(name).replace('The ', '');
 
 let picked = 0;
 
@@ -529,21 +371,25 @@ async function sendIssue(kind, title, body, honeypot) {
 // These used to open a pre-filled GitHub issue, which meant a sign-up page for
 // anyone without an account. They now fill in the form already on this page:
 // same questions, same prompts, nowhere to be sent.
-function wireIssueLink(el, labels, title, body) {
+/*
+ * An "Open an issue" link that opens an issue.
+ *
+ * These three cards used to scroll to a form further down the same page and
+ * prefill it, which meant the label was describing something that did not
+ * happen. The questions were the valuable part, so they travel: GitHub takes
+ * a title and a body in the query string, and the reader arrives at a form
+ * that already knows what to ask them.
+ *
+ * It does cost an account, which the page form did not. The review form is
+ * still the route that needs none, and it reaches us the same way.
+ */
+function wireIssueLink(el, label, title, body) {
   if (!el) return;
-  el.href = '#suggest';
-  el.addEventListener('click', (e) => {
-    e.preventDefault();
-    document.getElementById('suggest').scrollIntoView({ behavior: 'smooth' });
-    const kind = document.getElementById('sgKind');
-    if (kind && [...kind.options].some((o) => o.value === labels)) kind.value = labels;
-    // Only prefill an empty form - never overwrite something half-written.
-    const sgTitle = document.getElementById('sgTitle');
-    const sgBody = document.getElementById('sgBody');
-    if (sgBody && !sgBody.value.trim()) sgBody.value = body;
-    if (sgTitle && !sgTitle.value.trim()) sgTitle.placeholder = title.replace(/:\s*$/, '');
-    if (sgTitle) sgTitle.focus();
-  });
+  el.href = SITE.repo + '/issues/new?labels=' + encodeURIComponent(label)
+    + '&title=' + encodeURIComponent(title)
+    + '&body=' + encodeURIComponent(body);
+  el.target = '_blank';
+  el.rel = 'noopener';
 }
 
 const Q = (...parts) => parts.join('\n');
@@ -568,37 +414,6 @@ wireIssueLink($('osTemplate'), 'template', 'New format: ', Q(
   'Single column or sidebar?', '', '',
   'Who is it for?', '', ''));
 
-$('suggestForm').addEventListener('submit', (e) => {
-  e.preventDefault();
-  if (!$('sgTitle').value.trim()) {
-    $('sgNote').textContent = 'Add a one-line summary first.';
-    return;
-  }
-  if ($('sgBody').value.trim().length < 12) {
-    $('sgNote').textContent = 'Add a little more detail so it is actionable.';
-    return;
-  }
-  $('sgNote').textContent = '';
-  const btn = $('suggestForm').querySelector('[type="submit"]');
-  btn.disabled = true;
-  sendIssue($('sgKind').value, $('sgTitle').value.trim(), $('sgBody').value.trim(),
-    $('sgWebsite').value).then((r) => {
-    btn.disabled = false;
-    if (r.ok) $('suggestForm').reset();
-    else if (r.error) $('sgNote').textContent = r.error;
-  });
-});
-
-$('sgCopy').addEventListener('click', async () => {
-  const text = 'Kind: ' + $('sgKind').value + '\nSummary: ' + $('sgTitle').value
-    + '\n\n' + $('sgBody').value;
-  try {
-    await navigator.clipboard.writeText(text);
-    toast('Copied. Paste it wherever suits you.');
-  } catch {
-    $('sgNote').textContent = 'Could not copy - select the text and copy it manually.';
-  }
-});
 
 /* ----------------------------------------------------------------- share */
 

@@ -68,7 +68,7 @@
     "Imports an existing CV from PDF, Word or a LinkedIn export",
     "Converts an existing CV into any of the 8 formats in one press",
     "Compares a CV against a job advert and lists the terms it asks for",
-    "Export to PDF, Word, HTML and plain text",
+    "Export to PDF, Word and plain text",
     "Works offline, installable as an app"
   ]
 }
@@ -122,12 +122,11 @@
 
   <nav class="nav-links">
     <a href="#formats">Formats</a>
-    <a href="#linkedin">From LinkedIn</a>
     <a href="/ats">ATS</a>
     <a href="#professions">Professions</a>
     <a href="#rating">Rating</a>
-    <a href="#reviews" id="navReviews" hidden>Reviews</a>
     <a href="/stories">Journeys</a>
+    <a href="#faq">FAQ</a>
     <a href="#opensource">Open source</a>
   </nav>
 
@@ -158,14 +157,13 @@
 
 <nav class="nav-sheet" id="navSheet" hidden aria-label="Site sections">
   <a href="#formats">Formats</a>
-  <a href="#linkedin">From LinkedIn</a>
   <a href="/ats">Will an ATS read it?</a>
   <a href="#professions">Professions</a>
   <a href="#rating">Rating</a>
-  <a href="#reviews" id="navSheetReviews" hidden>Reviews</a>
   <a href="#review">Leave a review</a>
   <a href="/stories">Journeys</a>
   <a href="/stories#share-yours">Share your journey</a>
+  <a href="#faq">Common questions</a>
   <a href="#opensource">Open source</a>
   <a href="#share">Share</a>
   <!-- Unhidden by pwa.js only when the browser can actually install it. -->
@@ -194,11 +192,6 @@
     <div class="hero-art" id="heroArt" aria-hidden="true"></div>
   </section>
 
-  <!-- ------------------------------------------------------------ stats -->
-  <section class="stats-strip" id="stats">
-    <div class="stat-grid" id="statGrid"></div>
-  </section>
-
   <!-- ------------------------------------------------------------ what -->
   <section class="site-band" id="how">
     <div class="wrap">
@@ -221,45 +214,21 @@
   <section class="site-band" id="linkedin">
     <div class="wrap">
       <h2 class="section-title">Already have a LinkedIn profile?</h2>
-      <p class="section-lede">Then you have already written most of a CV. Bring it across in a
-        minute &mdash; nothing here signs in to anything.</p>
-
-      <div class="os-grid li-routes">
-        <div class="os-card">
-          <h3>Fastest &mdash; your profile as a PDF</h3>
-          <p>About a minute. The layout is read properly rather than guessed at.</p>
-          <ol>
-            <li>Open <b>your own</b> LinkedIn profile</li>
-            <li>Press <b>Resources</b> &mdash; or <b>More</b>. LinkedIn shows one or the other
-              depending on the account, so check for both</li>
-            <li>Choose <b>Save to PDF</b></li>
-            <li>Drop the file into the builder</li>
-          </ol>
-          <p class="hint"><b>On a phone:</b> tap your photo &rarr; <b>View Profile</b> &rarr;
-            <b>&#8943;</b> &rarr; <b>Save to PDF</b>.</p>
-        </div>
-
-        <div class="os-card">
-          <h3>More complete &mdash; your data archive</h3>
-          <p>Fuller dates, descriptions and education. You wait for it, though.</p>
-          <ol>
-            <li>LinkedIn &rarr; <b>Settings &amp; Privacy</b></li>
-            <li><b>Data privacy</b> &rarr; <b>Get a copy of your data</b></li>
-            <li>Tick the profile categories, or request the whole archive</li>
-            <li>Drop the <b>.zip</b> in when the email arrives</li>
-          </ol>
-          <p class="hint">A profile-only request usually arrives in minutes. The full archive can
-            take up to 48 hours. Only the profile files inside are opened &mdash; your messages and
-            connections are never read.</p>
-        </div>
-      </div>
-
+      <p class="section-lede">Then you have already written most of a CV. Two ways across, and
+        neither signs in to anything.</p>
+      <ul class="what-list">
+        <li><b>Your profile as a PDF &mdash; about a minute.</b> Open your own profile, press
+          <b>Resources</b> (or <b>More</b>, depending on the account), choose <b>Save to PDF</b>,
+          and drop the file in. On a phone: your photo &rarr; <b>View Profile</b> &rarr;
+          <b>&#8943;</b> &rarr; <b>Save to PDF</b>.</li>
+        <li><b>Your data archive &mdash; fuller, but you wait.</b> Settings &amp; Privacy &rarr;
+          Data privacy &rarr; <b>Get a copy of your data</b>, then drop the <b>.zip</b> in. Only
+          the profile files are opened; your messages and connections are never read.</li>
+      </ul>
       <p><a class="btn btn-primary btn-lg" href="/app?import=1">Import from LinkedIn</a></p>
-
       <p class="hint li-no-api">There is no &ldquo;Connect with LinkedIn&rdquo; button here, and
         that is not an oversight: <b>no LinkedIn API hands out your own positions or education</b>.
-        Anything that claims to do it is asking for your password. Your file is read in your
-        browser and never uploaded.</p>
+        Anything that claims to do it is asking for your password.</p>
     </div>
   </section>
 
@@ -305,13 +274,6 @@
   </section>
 
   <!-- ----------------------------------------------------------- reviews -->
-  <section class="site-band" id="reviews" hidden>
-    <div class="wrap">
-      <h2 class="section-title">What people say</h2>
-      <div id="reviewArea"></div>
-    </div>
-  </section>
-
   <!-- ---------------------------------------------------------- journeys -->
   <!-- Unlike reviews, this band shows even with nothing in it: the invitation
        is the point, and an empty shelf that says so is honest. -->
@@ -408,44 +370,9 @@
         </a>
       </div>
 
-      <div class="suggest" id="suggest">
-        <h3>Report an issue or suggest a change</h3>
-        <p>Goes straight to us &mdash; no account, no sign-up. Telling us how it went for you is a
-          <a href="#review">review</a>, and has its own form above.</p>
-        <form id="suggestForm">
-          <div class="grid">
-            <div class="field s6">
-              <label for="sgKind">Kind</label>
-              <select class="select" id="sgKind">
-                <option value="profession">A profession that is missing or wrong</option>
-                <option value="region">A region's rules</option>
-                <option value="template">A new format</option>
-                <option value="checker">Something the checker should catch</option>
-                <option value="bug">Something is broken</option>
-                <option value="idea">Anything else</option>
-              </select>
-            </div>
-            <div class="field s6">
-              <label for="sgTitle">One-line summary</label>
-              <input class="input" id="sgTitle" type="text" placeholder="e.g. Merchant navy CVs need a sea-service record">
-            </div>
-            <div class="field">
-              <label for="sgBody">Details</label>
-              <textarea class="input" id="sgBody" rows="4"
-                placeholder="What is missing, and how do you know? Having worked in the field is exactly the context a reviewer cannot get elsewhere."></textarea>
-            </div>
-          </div>
-          <div class="hp" aria-hidden="true">
-            <label for="sgWebsite">Website</label>
-            <input id="sgWebsite" type="text" tabindex="-1" autocomplete="off">
-          </div>
-          <div class="suggest-actions">
-            <button class="btn btn-primary" type="submit">Send it</button>
-            <button class="btn" type="button" id="sgCopy">Copy instead</button>
-            <span class="hint" id="sgNote" style="margin:0"></span>
-          </div>
-        </form>
-      </div>
+      <p class="hint">Each of those opens a GitHub issue with the questions already in it,
+        so nothing has to be guessed at. Reporting how the site went for you is a
+        <a href="#review">review</a> instead &mdash; that form is above, and needs no account.</p>
 
       <p class="ai-cost" id="aiCost"></p>
     </div>

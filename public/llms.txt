@@ -26,7 +26,7 @@ Licence: MIT. Source: https://github.com/subhamnagla/ihatejob
 - **Compares a CV against a job advert.** It lists the terms the advert asks
   for and which are findable in the CV. No percentage score, because a number
   hides a bad reading of the advert behind a confident figure.
-- **Exports** to PDF, Word, HTML and plain text.
+- **Exports** to PDF, Word and plain text.
 - **Works offline** and installs as an app.
 
 ## What it does not do
