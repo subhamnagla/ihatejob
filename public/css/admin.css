@@ -1,13 +1,13 @@
 /* Admin dashboard. Uses the app's theme tokens; adds nothing to the public site. */
 
 .admin { padding: 34px 0 80px; }
-.admin h1 { margin: 0 0 6px; font-size: 30px; letter-spacing: -0.02em; }
-.admin-sub { margin: 0 0 26px; color: var(--muted); font-size: 14px; }
-.admin-muted { color: var(--muted); font-size: 13px; line-height: 1.6; margin: 0; }
+.admin h1 { margin: 0 0 6px; font-size: var(--fs-xxxl); letter-spacing: -0.02em; }
+.admin-sub { margin: 0 0 26px; color: var(--muted); font-size: var(--fs-base); }
+.admin-muted { color: var(--muted); font-size: var(--fs-md); line-height: 1.6; margin: 0; }
 .admin-muted code, .check code {
   background: var(--chip);
   padding: 1px 5px;
-  border-radius: 5px;
+  border-radius: var(--r-xs);
   font-size: 0.92em;
 }
 
@@ -16,26 +16,26 @@
   padding: 16px 18px;
   border: 1px solid var(--warn);
   border-left: 4px solid var(--warn);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--warn-bg);
   color: var(--warn-ink);
-  font-size: 13.5px;
+  font-size: var(--fs-md);
   line-height: 1.6;
 }
-.admin-warning b { display: block; margin-bottom: 4px; font-size: 14.5px; }
+.admin-warning b { display: block; margin-bottom: 4px; font-size: var(--fs-base); }
 .admin-warning span { display: block; margin-top: 8px; opacity: 0.85; }
 
 .admin-block {
   margin-bottom: 30px;
   padding: 22px;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--r-lg);
   background: var(--panel);
   scroll-margin-top: 78px;
 }
-.admin-block > h2 { margin: 0 0 16px; font-size: 18px; letter-spacing: -0.01em; }
+.admin-block > h2 { margin: 0 0 16px; font-size: var(--fs-xl); letter-spacing: -0.01em; }
 .admin-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
-.admin-head h2 { margin: 0 0 14px; font-size: 18px; }
+.admin-head h2 { margin: 0 0 14px; font-size: var(--fs-xl); }
 
 /* --------------------------------------------------------- what is missing */
 
@@ -43,11 +43,11 @@
 .nodata-grid > div {
   padding: 16px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--bg);
 }
-.nodata-grid b { display: block; margin-bottom: 6px; font-size: 14px; }
-.nodata-grid p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+.nodata-grid b { display: block; margin-bottom: 6px; font-size: var(--fs-base); }
+.nodata-grid p { margin: 0; font-size: var(--fs-sm); color: var(--muted); line-height: 1.6; }
 
 /* ------------------------------------------------------------- check rows */
 
@@ -71,11 +71,11 @@
 /* A plain statement of fact - neither a pass nor something to fix. */
 .check.note .dot { background: var(--muted); }
 .check > div { flex: 1; min-width: 0; }
-.check b { display: block; font-size: 14px; margin-bottom: 3px; }
-.check p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.6; }
+.check b { display: block; font-size: var(--fs-base); margin-bottom: 3px; }
+.check p { margin: 0; font-size: var(--fs-sm); color: var(--muted); line-height: 1.6; }
 .check-do {
   flex: 0 0 auto;
-  font-size: 12px;
+  font-size: var(--fs-sm);
   color: var(--muted);
   white-space: nowrap;
 }
@@ -91,21 +91,21 @@
 .admin-stat {
   padding: 14px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--bg);
   text-align: center;
 }
-.admin-stat b { display: block; font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
-.admin-stat span { display: block; margin-top: 3px; font-size: 11.5px; color: var(--muted); }
+.admin-stat b { display: block; font-size: var(--fs-xxl); font-weight: var(--fw-bold); letter-spacing: -0.02em; }
+.admin-stat span { display: block; margin-top: 3px; font-size: var(--fs-sm); color: var(--muted); }
 
 /* ----------------------------------------------------------------- inbox */
 
 #inboxFilter { margin: 0 0 16px; flex-wrap: wrap; border: 0; gap: 6px; }
 #inboxFilter button {
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   padding: 5px 12px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   background: var(--bg);
   flex: 0 0 auto;
 }
@@ -120,26 +120,26 @@
 .issue:first-child { border-top: 0; }
 .issue.closed { opacity: 0.55; }
 .issue-top { display: flex; flex-direction: column; gap: 2px; }
-.issue-title { font-size: 14.5px; font-weight: 600; color: var(--text); text-decoration: none; }
+.issue-title { font-size: var(--fs-base); font-weight: var(--fw-semi); color: var(--text); text-decoration: none; }
 .issue-title:hover { color: var(--brand); }
-.issue-meta { font-size: 12px; color: var(--muted); }
+.issue-meta { font-size: var(--fs-sm); color: var(--muted); }
 .issue-labels { display: flex; flex-wrap: wrap; gap: 5px; margin: 8px 0; }
 .lbl {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--chip);
   color: var(--dim);
 }
-.lbl.l-review { background: var(--ok); color: var(--ok-ink); font-weight: 600; }
+.lbl.l-review { background: var(--ok); color: var(--ok-ink); font-weight: var(--fw-semi); }
 .lbl.l-bug { background: var(--danger); color: var(--danger-ink); }
 .lbl.l-none { background: var(--warn-bg); color: var(--warn-ink); }
-.lbl.l-planet { background: var(--brand); color: var(--brand-ink); font-weight: 600; }
+.lbl.l-planet { background: var(--brand); color: var(--brand-ink); font-weight: var(--fw-semi); }
 /* Missing consent is not a warning, it is a stop. */
-.lbl.l-bad { background: var(--danger); color: var(--danger-ink); font-weight: 600; }
+.lbl.l-bad { background: var(--danger); color: var(--danger-ink); font-weight: var(--fw-semi); }
 .issue-body {
   margin: 0 0 8px;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   color: var(--muted);
   line-height: 1.6;
   white-space: pre-wrap;
@@ -147,11 +147,11 @@
 
 /* ----------------------------------------------------------------- table */
 
-.admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.admin-table { width: 100%; border-collapse: collapse; font-size: var(--fs-md); }
 .admin-table th {
   text-align: left;
   padding: 8px 10px;
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
@@ -168,11 +168,11 @@
 /* ------------------------------------------------------------- editors */
 
 .admin-actions { display: flex; align-items: center; gap: 8px; }
-.save-state { font-size: 12px; color: var(--muted); min-width: 92px; text-align: right; }
+.save-state { font-size: var(--fs-sm); color: var(--muted); min-width: 92px; text-align: right; }
 
 .edit {
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: var(--r-md);
   background: var(--bg);
   margin-bottom: 12px;
   overflow: hidden;
@@ -187,37 +187,37 @@
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
 }
-.edit-bar b { font-size: 13.5px; }
+.edit-bar b { font-size: var(--fs-md); }
 .edit-bar .spacer { flex: 1; }
 .edit-n {
   width: 22px;
   height: 22px;
   display: grid;
   place-items: center;
-  border-radius: 6px;
+  border-radius: var(--r-sm);
   background: var(--chip);
-  font-size: 11.5px;
+  font-size: var(--fs-sm);
   color: var(--muted);
 }
 .edit .grid { padding: 12px; margin-top: 0; }
 .edit textarea.mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12.5px;
+  font-size: var(--fs-sm);
   line-height: 1.6;
 }
 
 .tag-on, .tag-off, .tag-pin, .tag-planet {
-  font-size: 10.5px;
-  font-weight: 700;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
 }
 .tag-on { background: var(--ok); color: var(--ok-ink); }
 .tag-off { background: var(--chip); color: var(--muted); }
 .tag-pin { background: var(--brand); color: var(--brand-ink); }
-.tag-planet { background: var(--chip); color: var(--dim); font-weight: 600; }
+.tag-planet { background: var(--chip); color: var(--dim); font-weight: var(--fw-semi); }
 
 /* ------------------------------------------------------------ responsive */
 
@@ -229,7 +229,7 @@
   /* Same reason as the builder: under 16px, iOS zooms in on focus. */
   .admin .input,
   .admin .select,
-  .admin textarea.input { font-size: 16px; }
+  .admin textarea.input { font-size: var(--fs-lg); }
   .edit-bar { gap: 6px; }
   .edit-bar b { flex: 1 1 100%; }
   .admin-table { display: block; overflow-x: auto; }
