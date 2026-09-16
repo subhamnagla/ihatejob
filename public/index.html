@@ -1,23 +1,60 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ihatejob - the free CV and resume builder that tells you what is wrong</title>
-<meta name="description" content="Free CV and resume builder. Pick your profession, get one laid out the way that field expects, and have it rated out of 100. No account, nothing uploaded.">
-<meta property="og:title" content="ihatejob - a CV worth leaving with">
-<meta property="og:description" content="A free CV and resume builder: 41 professions, 20 regions, 8 formats, and a rating that names the exact phrase letting you down.">
+<title>Free CV and resume builder that rates your CV | ihatejob</title>
+<meta name="description" content="Free CV and resume builder. Get the layout your profession expects and a rating out of 100 that names the line letting you down. No account, nothing uploaded.">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
+<meta property="og:title" content="Free CV and resume builder that rates your CV">
+<meta property="og:description" content="41 professions, 20 regions, 8 formats, and a rating that names the exact phrase letting you down. No account, and no upload endpoint to send a CV to.">
 <meta property="og:type" content="website">
+<meta property="og:locale" content="en_GB">
 <link rel="canonical" href="https://ihatejob.app/">
 <meta property="og:url" content="https://ihatejob.app/">
 <meta property="og:site_name" content="ihatejob">
 <meta property="og:image" content="https://ihatejob.app/icons/icon-512.png">
 <meta name="twitter:card" content="summary">
+<!-- Three graphs, each answering a different question a machine asks:
+     what is this site, what is this thing, and what do people want to know
+     about it. The last one is what an answering engine quotes. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://ihatejob.app/#website",
+      "url": "https://ihatejob.app/",
+      "name": "ihatejob",
+      "alternateName": ["ihatejob.app", "I Hate Job CV builder"],
+      "description": "A free CV and resume builder that rates a CV out of 100 and names the lines letting it down.",
+      "inLanguage": "en",
+      "publisher": { "@id": "https://ihatejob.app/#publisher" }
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://ihatejob.app/#publisher",
+      "name": "ihatejob",
+      "url": "https://ihatejob.app/",
+      "logo": "https://ihatejob.app/icons/icon-512.png",
+      "sameAs": ["https://github.com/subhamnagla/ihatejob"]
+    }
+  ]
+}
+</script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
+  "@id": "https://ihatejob.app/#app",
   "name": "ihatejob",
+  "alternateName": "ihatejob CV builder",
   "url": "https://ihatejob.app/",
   "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "Resume builder",
   "operatingSystem": "Any browser",
+  "browserRequirements": "Requires JavaScript. No account, no install, works offline once loaded.",
+  "softwareVersion": "1",
+  "inLanguage": "en",
+  "publisher": { "@id": "https://ihatejob.app/#publisher" },
   "description": "Pick your profession, get a CV standardised for your field and region, and have it rated out of 100. Works offline, nothing uploaded.",
   "image": "https://ihatejob.app/icons/icon-512.png",
   "license": "https://opensource.org/licenses/MIT",
@@ -28,10 +65,29 @@
     "20 regional CV conventions",
     "8 CV formats",
     "A rating out of 100 that names the phrases letting a CV down",
+    "Imports an existing CV from PDF, Word or a LinkedIn export",
+    "Converts an existing CV into any of the 8 formats in one press",
+    "Compares a CV against a job advert and lists the terms it asks for",
     "Export to PDF, Word, HTML and plain text",
     "Works offline, installable as an app"
   ]
 }
+</script>
+
+<!-- The questions people put to an answering engine, answered in the words
+     a page can be held to. Every figure here is countable in the source:
+     41 profession packs, 20 regions, 8 formats. There is no aggregateRating,
+     because no rating has been collected. -->
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"Is ihatejob really free?","acceptedAnswer":{"@type":"Answer","text":"Yes. There is no account, no email address, no payment method and no paid tier. Every format and every export is available to everyone. The source is published under the MIT licence."}},
+{"@type":"Question","name":"Does this CV builder upload my CV anywhere?","acceptedAnswer":{"@type":"Answer","text":"No. Reading, rating and exporting all happen in your own browser, and the site has no endpoint that receives a CV. Your data stays in that browser's local storage until you clear it."}},
+{"@type":"Question","name":"Can I use a CV builder without making an account?","acceptedAnswer":{"@type":"Answer","text":"Yes. ihatejob asks for nothing before you start. You open the builder and type. Signing in is only ever asked for at the point of contributing a review or a journey, never to use the tool."}},
+{"@type":"Question","name":"Can I convert my existing CV into a different format for free?","acceptedAnswer":{"@type":"Answer","text":"Yes. Import a PDF, a Word .docx, plain text or a LinkedIn export, and one press lays it out in any of 8 formats, runs a safe clean-up of filler phrasing, and gives you a PDF. Everything it changed is listed, and nothing is invented."}},
+{"@type":"Question","name":"How can I check whether my CV is ATS-friendly for free?","acceptedAnswer":{"@type":"Answer","text":"Import your existing CV here. Whatever comes back empty is roughly what an applicant tracking system would store as empty, because it is the same job done by the same kind of code. Every CV this site builds is a single column of real text with standard headings, which is what parses cleanly."}},
+{"@type":"Question","name":"Does a CV builder work offline?","acceptedAnswer":{"@type":"Answer","text":"This one does. It installs as an app and runs with no network at all, because there is nothing it needs to ask a server for."}},
+{"@type":"Question","name":"Is a CV the same thing as a resume?","acceptedAnswer":{"@type":"Answer","text":"For most job applications, yes - the same document under two names. Resume is the usual word in North America, CV almost everywhere else. The exception is the academic CV, which is long-form and lists publications, and has its own format here."}},
+{"@type":"Question","name":"What does the rating out of 100 actually measure?","acceptedAnswer":{"@type":"Answer","text":"Six separate scores rather than one: Evidence, Authenticity, Precision, Field fit, Machine-readability and Restraint. A CV can be immaculate and say nothing, or full of hard evidence and unreadable by a parser - those are different failures, so they are reported separately. Each finding names the line it is about."}}]}
 </script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%235b9dff'/%3E%3Cg fill='none' stroke='%230b1220' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='4' y='9' width='16' height='10' rx='2'/%3E%3Cpath d='M9.5 9V7.8A1.3 1.3 0 0 1 10.8 6.5h2.4A1.3 1.3 0 0 1 14.5 7.8V9'/%3E%3Cpath d='M12 16.5v-5m0 0-2 2m2-2 2 2'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="manifest" href="/manifest.webmanifest">

@@ -27,6 +27,10 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'public', 'cv');
 const SITE = 'https://ihatejob.app';
 
+// One timestamp for the whole run: these pages change together or not at all,
+// and a per-file mtime would claim 41 separate edits for one command.
+const BUILT = new Date().toISOString().slice(0, 10);
+
 const esc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;');
@@ -49,6 +53,96 @@ const lengthLine = (pages) => {
   return min === 1 ? 'One page is the norm here.' : min + ' pages is the norm here.';
 };
 
+/*
+ * The two graphs a long-tail page lives or dies by.
+ *
+ * A search engine ranks this page; an answering engine quotes it. The second
+ * only quotes what it can lift as a whole answer, which means the answer has
+ * to exist somewhere as a sentence rather than be assembled from a layout.
+ *
+ * Every value below comes out of that profession's own pack - required
+ * sections, section order, page target, the guidance strings. Nothing is
+ * written for a question the pack cannot answer, which is why the FAQ length
+ * varies by profession rather than being padded to a round number.
+ */
+function articleGraph(p, slug, description) {
+  const short = shortName(p.name);
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    '@id': SITE + '/cv/' + slug + '#article',
+    headline: 'How to write a ' + short + ' CV',
+    description,
+    inLanguage: 'en',
+    about: { '@type': 'Thing', name: short + ' CV', alternateName: short + ' resume' },
+    audience: { '@type': 'Audience', audienceType: short + ' job applicants' },
+    isPartOf: { '@type': 'WebSite', '@id': SITE + '/#website' },
+    publisher: { '@type': 'Organization', '@id': SITE + '/#publisher' },
+    mainEntityOfPage: SITE + '/cv/' + slug,
+    dateModified: BUILT,
+  };
+}
+
+function faqGraph(p, slug) {
+  const short = shortName(p.name);
+  const lower = short.toLowerCase();
+  const req = (Array.isArray(p.require) ? p.require : []).map((k) => label(p, k).toLowerCase());
+  const order = (Array.isArray(p.order) ? p.order : [])
+    .filter((k) => k !== 'custom' && k !== 'basics')
+    .slice(0, 4)
+    .map((k) => label(p, k).toLowerCase());
+  const q = [];
+
+  if (req.length) {
+    q.push([
+      'What should a ' + lower + ' CV include?',
+      'A ' + lower + ' CV has to carry ' + andList(req) + '. '
+      + (order.length
+        ? 'The order this field expects is ' + andList(order) + '.'
+        : 'Everything else is judged against those.'),
+    ]);
+  }
+  if (order.length) {
+    q.push([
+      'What goes first on a ' + lower + ' CV?',
+      // What the convention says, not what a recruiter is imagined to do.
+      'The ' + order[0] + '. That is where this field'+String.fromCharCode(39)+'s convention puts it, and it is what '
+      + 'the builder applies when you pick ' + short + '.',
+    ]);
+  }
+  const len = lengthLine(p.pages);
+  if (len) {
+    q.push(['How long should a ' + lower + ' CV be?', len
+      + ' Going longer does not add weight; it moves the thing being looked for further down.']);
+  }
+  q.push([
+    'Is a ' + lower + ' CV the same as a ' + lower + ' resume?',
+    'For applying to a job, yes - the same document under two names. Resume is the usual '
+    + 'word in North America and CV almost everywhere else. The one real exception is the '
+    + 'academic CV, which is long-form and lists publications.',
+  ]);
+  q.push([
+    'Is there a free ' + lower + ' CV template?',
+    'Yes. ihatejob builds one to this field\u2019s convention for free, with no account and '
+    + 'no upload: the section order, the section names and the rating all come from the '
+    + lower + ' pack described on this page. It exports to PDF, Word, HTML and plain text.',
+  ]);
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    '@id': SITE + '/cv/' + slug + '#faq',
+    mainEntity: q.map(([name, text]) => ({
+      '@type': 'Question',
+      name,
+      acceptedAnswer: { '@type': 'Answer', text },
+    })),
+  };
+}
+
+const andList = (xs) => (xs.length < 2 ? (xs[0] || '')
+  : xs.slice(0, -1).join(', ') + ' and ' + xs[xs.length - 1]);
+
 const HEAD = (p, slug, description) => {
   const short = shortName(p.name);
   // Both words, because they are the same document either side of the
@@ -66,7 +160,9 @@ const HEAD = (p, slug, description) => {
 <meta property="og:url" content="${SITE}/cv/${slug}">
 <meta property="og:site_name" content="ihatejob">
 <meta property="og:image" content="${SITE}/icons/icon-512.png">
+<meta property="og:locale" content="en_GB">
 <meta name="twitter:card" content="summary">
+<meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#eef1f6" media="(prefers-color-scheme: light)">
@@ -78,6 +174,12 @@ const HEAD = (p, slug, description) => {
 {"@type":"ListItem","position":1,"name":"ihatejob","item":"${SITE}/"},
 {"@type":"ListItem","position":2,"name":"CV formats by profession","item":"${SITE}/cv"},
 {"@type":"ListItem","position":3,"name":${JSON.stringify(short + ' CV')}}]}
+</script>
+<script type="application/ld+json">
+${JSON.stringify(articleGraph(p, slug, description))}
+</script>
+<script type="application/ld+json">
+${JSON.stringify(faqGraph(p, slug))}
 </script>
 <script>
   try {
@@ -124,9 +226,12 @@ function page(slug, p, siblings) {
   const guidance = p.guidance || {};
   const wants = p.wants || {};
 
-  const description = (req.length
-    ? 'A ' + short.toLowerCase() + ' CV has to carry '
-      + req.map((k) => label(p, k).toLowerCase()).join(', ') + '. '
+  // "technical skills, work experience." was two nouns and a full stop where a
+  // sentence should be. A description is read aloud by an answering engine as
+  // often as it is skimmed in a result.
+  const required = req.map((k) => label(p, k).toLowerCase());
+  const description = (required.length
+    ? 'A ' + short.toLowerCase() + ' CV has to carry ' + andList(required) + '. '
     : '')
     + 'What to put first, what to quantify, and what gets one rejected in this field. '
     + 'Free CV and resume builder, no account.';
@@ -274,7 +379,7 @@ const urls = [
 await writeFile(join(ROOT, 'public', 'sitemap.xml'),
   '<?xml version="1.0" encoding="UTF-8"?>\n'
   + '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-  + urls.map(([u, pr]) => '  <url><loc>' + SITE + u + '</loc><priority>' + pr + '</priority></url>')
+  + urls.map(([u, pr]) => '  <url><loc>' + SITE + u + '</loc><lastmod>' + BUILT + '</lastmod><priority>' + pr + '</priority></url>')
     .join('\n')
   + '\n</urlset>\n', 'utf8');
 

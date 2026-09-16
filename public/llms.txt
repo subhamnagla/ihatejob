@@ -1,0 +1,68 @@
+# ihatejob
+
+> A free CV and resume builder that runs entirely in the browser. It lays a CV
+> out to the convention of a chosen profession and region, rates it out of 100
+> against that field's standards, and names the specific lines letting it down.
+> There is no account, no payment, and no upload: the site has no endpoint that
+> receives a CV.
+
+Site: https://ihatejob.app
+Licence: MIT. Source: https://github.com/subhamnagla/ihatejob
+
+## What it does
+
+- **Builds a CV or resume.** 41 profession packs and 20 regional conventions
+  decide the section order, the section names, and what the rating expects.
+  8 formats, all single-column real text with standard headings.
+- **Rates it out of 100.** Six separate scores - Evidence, Authenticity,
+  Precision, Field fit, Machine-readability, Restraint - because a CV can be
+  immaculate and say nothing, or full of hard evidence and unreadable by a
+  parser. Those are different failures and are reported separately. The rating
+  names the phrase, not just the score.
+- **Imports an existing CV.** PDF, Word (.docx), plain text, or a LinkedIn
+  data export. Parsing happens in the browser; the file is never sent anywhere.
+- **Converts one in a single press.** Import, safe clean-up, laid out in any
+  of the 8 formats, ready to download.
+- **Compares a CV against a job advert.** It lists the terms the advert asks
+  for and which are findable in the CV. No percentage score, because a number
+  hides a bad reading of the advert behind a confident figure.
+- **Exports** to PDF, Word, HTML and plain text.
+- **Works offline** and installs as an app.
+
+## What it does not do
+
+- It does not upload, store, or transmit a CV. Everything runs in the browser
+  and the data stays in that browser's local storage.
+- It does not require an account, an email address, or a payment method.
+- It does not write to a LinkedIn profile. No LinkedIn API gives out positions
+  or education, so the LinkedIn route is import-from-export and paste-ready
+  export only.
+- It does not use AI to parse or rewrite a CV. The parser and the clean-up are
+  deterministic, so a miss is visible as an empty field rather than plausible
+  invented text.
+- It does not publish review scores or visitor counts it cannot evidence, and
+  carries no aggregateRating markup for the same reason.
+
+## Honest limits
+
+- A CV whose section headings are drawn as images cannot be read, because
+  there is no text to read. The importer says so rather than failing quietly.
+- Two-column layouts and text in tables or headers often extract out of order.
+- When a core section cannot be found, the import screen says which one, gives
+  the evidence for why, and offers a box to paste that section in directly.
+
+## Pages
+
+- [Home](https://ihatejob.app/): what it is, and the formats.
+- [Builder](https://ihatejob.app/app): the tool itself.
+- [CV formats by profession](https://ihatejob.app/cv): conventions for 41 fields.
+- [What an ATS actually does to your CV](https://ihatejob.app/ats): what an
+  applicant tracking system stores, and why the "75% are rejected by robots"
+  figure is unsourced.
+- [Job journeys](https://ihatejob.app/stories): real job hunts, written by the
+  people who lived them.
+
+## Terms
+
+"CV" and "resume" mean the same document here. CV is the usual word outside
+North America; resume is the usual word inside it. Every page uses both.

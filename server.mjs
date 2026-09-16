@@ -38,6 +38,12 @@ const TYPES = {
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2',
   '.webmanifest': 'application/manifest+json',
+  // Vercel serves these correctly in production; without them here the dev
+  // server hands back octet-stream and robots.txt downloads instead of
+  // displaying - which is not what is being tested.
+  '.txt': 'text/plain; charset=utf-8',
+  '.xml': 'application/xml; charset=utf-8',
+  '.pdf': 'application/pdf',
 };
 
 createServer(async (req, res) => {

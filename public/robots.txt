@@ -1,5 +1,18 @@
+# Everything here is free to read, by people and by machines alike.
+#
+# There are no per-crawler rules below, and that is deliberate. robots.txt is
+# matched by the single most specific User-agent group, not by all of them
+# together: the moment a named group exists for GPTBot or ClaudeBot, that
+# agent stops reading the "*" group entirely - including its Disallow lines.
+# A file that lists twenty AI crawlers under "Allow: /" to look welcoming is
+# a file that has quietly opened /admin to all twenty of them.
+#
+# "*" already permits every crawler that honours this file, AI crawlers
+# included, so that is all it says.
+
 User-agent: *
 Allow: /
 Disallow: /admin
+Disallow: /api/
 
 Sitemap: https://ihatejob.app/sitemap.xml
