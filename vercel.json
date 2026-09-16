@@ -5,11 +5,6 @@
   "trailingSlash": false,
   "rewrites": [
     {
-      "_comment": "cleanUrls 308-redirects any .html request to its extensionless twin, including the one URL Google checks for site verification. A rewrite is matched before the filesystem, so this serves the file at the exact address Google asks for instead of bouncing its fetcher.",
-      "source": "/google07c6bd5ba956904e.html",
-      "destination": "/google07c6bd5ba956904e"
-    },
-    {
       "source": "/app",
       "destination": "/app.html"
     },
