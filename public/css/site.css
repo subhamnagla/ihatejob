@@ -943,3 +943,52 @@ body {
 .li-routes ol li { margin-bottom: 5px; }
 .li-routes .hint { margin: 0; font-size: 13px; }
 .li-no-api { max-width: 62ch; margin-top: 18px; }
+
+
+/* --- common questions --------------------------------------------------- */
+/* Closed by default, because eight answers opened at once is a wall rather
+   than a list of questions. <details> so it works with no JavaScript, and so
+   a browser's find-in-page can still reach the closed ones. */
+.faq {
+  max-width: 78ch;
+  margin-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.faq-item {
+  border-bottom: 1px solid var(--line);
+}
+.faq-item > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 14px 34px 14px 0;
+  position: relative;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text);
+}
+.faq-item > summary::-webkit-details-marker { display: none; }
+.faq-item > summary::after {
+  content: "+";
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--muted);
+}
+.faq-item[open] > summary::after { content: "\2212"; }
+.faq-item > summary:hover { color: var(--brand); }
+.faq-item > summary:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+.faq-item > p {
+  margin: 0 0 16px;
+  padding-right: 34px;
+  color: var(--dim);
+  font-size: 14.5px;
+  line-height: 1.65;
+}

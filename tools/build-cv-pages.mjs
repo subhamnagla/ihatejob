@@ -83,7 +83,19 @@ function articleGraph(p, slug, description) {
   };
 }
 
-function faqGraph(p, slug) {
+/*
+ * The questions, once.
+ *
+ * They were markup only to begin with, which is a thing Google explicitly
+ * asks you not to do: structured data has to describe content a visitor can
+ * actually see. Markup claiming a question the page never asks is a claim
+ * about someone else's page.
+ *
+ * So this returns the pairs and both renderings are built from it - the
+ * visible section and the JSON-LD. They cannot drift, because there is
+ * nothing for them to drift from.
+ */
+function faqPairs(p) {
   const short = shortName(p.name);
   const lower = short.toLowerCase();
   const req = (Array.isArray(p.require) ? p.require : []).map((k) => label(p, k).toLowerCase());
@@ -128,16 +140,30 @@ function faqGraph(p, slug) {
     + lower + ' pack described on this page. It exports to PDF, Word, HTML and plain text.',
   ]);
 
+  return q;
+}
+
+function faqGraph(p, slug) {
   return {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
     '@id': SITE + '/cv/' + slug + '#faq',
-    mainEntity: q.map(([name, text]) => ({
+    mainEntity: faqPairs(p).map(([name, text]) => ({
       '@type': 'Question',
       name,
       acceptedAnswer: { '@type': 'Answer', text },
     })),
   };
+}
+
+function faqSection(p) {
+  const pairs = faqPairs(p);
+  if (!pairs.length) return '';
+  return '<h2 id="faq">Common questions</h2>'
+    + '<div class="faq">' + pairs.map(([q, a]) => (
+      '<details class="faq-item"><summary>' + esc(q) + '</summary>'
+      + '<p>' + esc(a) + '</p></details>'
+    )).join('') + '</div>';
 }
 
 const andList = (xs) => (xs.length < 2 ? (xs[0] || '')
@@ -297,6 +323,8 @@ function page(slug, p, siblings) {
 
   body.push('<p class="admin-muted">Free, no account, and nothing is uploaded &mdash; the '
     + 'builder runs in your browser and the CV never leaves it.</p>');
+
+  body.push(faqSection(p));
 
   if (siblings.length) {
     body.push('<h2>Related fields</h2>'
