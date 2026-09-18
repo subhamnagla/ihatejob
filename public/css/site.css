@@ -112,28 +112,34 @@ body {
 .hero-cta { display: flex; flex-wrap: wrap; gap: 10px; }
 .hero-note { margin: 18px 0 0; font-size: var(--fs-md); color: var(--muted); max-width: 34em; }
 
+/* One document, square on, rising out of the frame and fading at the bottom
+   - a product shot rather than a still life. It was two pages at angles with
+   a coloured wash behind them, which is the visual language of a stock photo
+   about careers; this is the thing the site actually makes. */
 .hero-art {
   position: relative;
   height: 460px;
   display: grid;
-  place-items: center;
+  place-items: start center;
   overflow: hidden;
+  padding-top: 26px;
   border-radius: var(--r-lg);
-  background:
-    radial-gradient(90% 70% at 60% 20%, color-mix(in srgb, var(--brand) 16%, transparent), transparent 70%);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--brand) 7%, transparent), transparent 62%);
+  -webkit-mask-image: linear-gradient(180deg, #000 74%, transparent);
+  mask-image: linear-gradient(180deg, #000 74%, transparent);
 }
 .hero-art .paper {
-  transform: rotate(-3deg) scale(0.52);
-  transform-origin: center;
-  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.32);
+  /* zoom, not transform: a scaled transform leaves the element its full A4
+     layout width, so the grid centres a 794px box inside a 486px column and
+     the page hangs off one side. zoom changes the layout size, so centring
+     is just centring. Where it is not supported the page renders full size
+     and is cropped - smaller than ideal, never broken. */
+  zoom: 0.6;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.06);
   border-radius: var(--r-xs);
 }
-.hero-art .paper.back {
-  position: absolute;
-  transform: rotate(4deg) scale(0.5) translate(46px, 26px);
-  opacity: 0.5;
-  filter: saturate(0.7);
-}
+
 
 /* ----------------------------------------------------------------- stats */
 
@@ -1001,4 +1007,113 @@ body {
   color: var(--dim);
   font-size: var(--fs-base);
   line-height: 1.65;
+}
+
+
+/* ======================================================================
+   The landing page, rebuilt around four ideas: one claim, one button, one
+   picture, and room around all three. What follows is only the pieces the
+   new page needs; the chip walls, teaser rails and share grids that used to
+   live here went with the sections that held them.
+   ====================================================================== */
+
+/* --- hero --------------------------------------------------------------
+   The button is on its own line with nothing competing. The second route -
+   for someone who already has a CV - is a text link under it, because two
+   buttons side by side ask a visitor to choose before they have read
+   anything, and most of them have not got a CV to convert.               */
+.btn-xl {
+  height: 52px;
+  padding: 0 30px;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semi);
+  border-radius: var(--r-md);
+}
+.hero-cta { margin-top: 30px; }
+.hero-sub { margin: 16px 0 0; font-size: var(--fs-base); }
+.hero-sub a { color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--line); padding-bottom: 2px; }
+.hero-sub a:hover { color: var(--brand); border-color: var(--brand); }
+
+/* --- three benefits ----------------------------------------------------
+   No icons. An icon above a three-word heading is decoration pretending to
+   be information, and these three headings say the whole thing already.  */
+.benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.benefit {
+  padding: 26px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+}
+.benefit h3 {
+  margin: 0 0 8px;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semi);
+  letter-spacing: -0.01em;
+}
+.benefit p { margin: 0; color: var(--dim); line-height: 1.6; max-width: 34ch; }
+
+/* --- three steps -------------------------------------------------------
+   Numbered by the browser, so the number and the step can never disagree. */
+.step-list {
+  list-style: none;
+  counter-reset: step;
+  margin: 26px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+}
+.step-list li { counter-increment: step; }
+.step-list li::before {
+  content: counter(step);
+  display: grid;
+  place-items: center;
+  width: 30px; height: 30px;
+  margin-bottom: 14px;
+  border-radius: var(--r-pill);
+  background: var(--brand);
+  color: var(--brand-ink);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+}
+.step-list b { display: block; font-size: var(--fs-lg); font-weight: var(--fw-semi); margin-bottom: 6px; }
+.step-list p { margin: 0; color: var(--dim); line-height: 1.6; max-width: 32ch; }
+
+.band-more { margin: 24px 0 0; }
+.band-more a { color: var(--brand); text-decoration: none; font-weight: var(--fw-semi); }
+.band-more a:hover { text-decoration: underline; }
+
+/* --- the review form, folded away --------------------------------------
+   A site with no reviews yet should not ask for one in a full-width band.
+   Closed it is a single quiet line; open it is the form it always was.   */
+.tell-us { border-top: 1px solid var(--line); background: var(--panel); }
+.tell-us .wrap { padding-top: 22px; padding-bottom: 22px; }
+.tell > summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--dim);
+  font-size: var(--fs-base);
+}
+.tell > summary::-webkit-details-marker { display: none; }
+.tell > summary::before { content: "+  "; color: var(--muted); }
+.tell[open] > summary::before { content: "\2212  "; }
+.tell > summary:hover { color: var(--brand); }
+.tell-body { max-width: 640px; padding-top: 18px; }
+.tell-lede { margin: 0 0 14px; color: var(--muted); font-size: var(--fs-md); }
+
+.foot-end { display: grid; gap: 10px; justify-items: start; }
+
+@media (max-width: 900px) {
+  .benefit-grid { grid-template-columns: 1fr; gap: 14px; }
+  .step-list { grid-template-columns: 1fr; gap: 22px; }
+  .benefit p, .step-list p { max-width: none; }
+}
+
+@media (max-width: 620px) {
+  .btn-xl { width: 100%; justify-content: center; }
+  .hero-cta { margin-top: 24px; }
 }

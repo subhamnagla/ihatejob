@@ -162,6 +162,51 @@ for (const name of ['index.html', 'ats.html']) {
     faq ? faq.mainEntity.length : 0);
 }
 
+console.log(NL + '=== every link lands somewhere ===');
+
+// A dead fragment does not 404. "/#professions" after that section is gone
+// drops the reader silently at the top of the home page, which is the kind of
+// broken nobody reports and nobody notices for months. Four of these were
+// live across 44 pages after the home page was rebuilt, in the nav and the
+// footer of every one of them.
+const home = pages.find((p) => p.name === 'index.html');
+
+// Ids come from the markup and from the script the page loads, because some
+// sections are rendered at runtime: /stories builds its own #share-yours.
+// The id exists, just not in the file, and a test that cannot tell the
+// difference teaches people to delete working links.
+const scriptCache = new Map();
+async function scriptsFor(html) {
+  let out = '';
+  for (const m of html.matchAll(/<script[^>]+src="(\/js\/[^"]+)"/g)) {
+    const name = m[1].replace(/^\//, '');
+    if (!scriptCache.has(name)) {
+      scriptCache.set(name, await readFile(join(ROOT, name), 'utf8').catch(() => ''));
+    }
+    out += scriptCache.get(name);
+  }
+  return out;
+}
+const idsIn = (text) => new Set(
+  [...text.matchAll(/(?:^|[\s>;'"`])id="([A-Za-z0-9_-]+)"/g)].map((m) => m[1]),
+);
+for (const page of pages) page.ids = idsIn(page.html + (await scriptsFor(page.html)));
+const homeIds = home.ids;
+
+const dead = [];
+for (const page of pages) {
+  const own = page.ids;
+  for (const m of page.html.matchAll(/href="(\/?#[^"]+)"/g)) {
+    const href = m[1];
+    const frag = href.slice(href.indexOf('#') + 1);
+    if (!frag) continue;
+    const target = href.startsWith('/#') ? homeIds : own;
+    const where = href.startsWith('/#') ? 'the home page' : 'itself';
+    if (!target.has(frag)) dead.push(page.name + ' -> ' + href + ' (not on ' + where + ')');
+  }
+}
+check('no link points at a fragment that does not exist', [...new Set(dead)].slice(0, 8), []);
+
 console.log(NL + '=== nothing claims a rating nobody gave ===');
 // No review has been collected, so no page may carry an aggregateRating.
 // This is the one piece of structured data that is worth money to fake, and
