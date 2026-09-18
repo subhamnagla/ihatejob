@@ -33,7 +33,7 @@ body {
 }
 .nav-links a:hover { color: var(--text); border-bottom-color: var(--brand); }
 
-/* margin-left:auto, not a reliance on .nav-links growing - those links are
+/* margin-left: auto, not a reliance on .nav-links growing - those links are
    display:none below 900px, which left nothing pushing the controls right and
    stranded 60px of blank space past the last button. */
 .nav-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
@@ -54,7 +54,7 @@ body {
 }
 .nav-sheet a,
 .nav-sheet .sheet-install {
-  padding: 13px 6px;
+  padding: 12px 6px;
   color: var(--text);
   text-decoration: none;
   font-size: var(--fs-base);
@@ -79,7 +79,7 @@ body {
   align-items: center;
   max-width: 1120px;
   margin: 0 auto;
-  padding: 68px 24px 56px;
+  padding: 72px 24px 56px;
 }
 
 .eyebrow {
@@ -87,7 +87,7 @@ body {
   font-size: var(--fs-sm);
   letter-spacing: 0.06em;
   color: var(--muted);
-  padding: 5px 12px;
+  padding: 4px 12px;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   margin-bottom: 20px;
@@ -292,7 +292,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 13px;
+  padding: 8px 12px;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   background: var(--panel-2);
@@ -524,8 +524,10 @@ body {
   overflow: hidden;
 }
 
-.rv-consent { margin-top: 16px; align-items: flex-start; }
-.rv-consent input { margin-top: 2px; flex: 0 0 auto; }
+.rv-consent { margin-top: 16px; align-items: flex-start; min-height: 44px; }
+/* A 13px checkbox is not a target. The label is clickable either way, so the
+   box is scaled to meet the thumb rather than the row being padded around it. */
+.rv-consent input { margin-top: 2px; flex: 0 0 auto; width: 18px; height: 18px; accent-color: var(--brand); }
 .rv-fineprint { margin: 14px 0 0; font-size: var(--fs-sm); color: var(--muted); line-height: 1.6; }
 
 /* -------------------------------------------------------------------- AI */
@@ -665,7 +667,7 @@ body {
 
 .copy-row { display: flex; gap: 8px; max-width: 520px; margin: 0 auto; }
 .copy-row .input { text-align: center; font-size: var(--fs-md); }
-.copy-row .btn { gap: 7px; flex: 0 0 auto; }
+.copy-row .btn { gap: 8px; flex: 0 0 auto; }
 
 @media (max-width: 560px) {
   .share-btn span { display: none; }        /* icons only on small screens */
@@ -676,7 +678,7 @@ body {
 
 /* ------------------------------------------------------------- final CTA */
 
-.final-cta { padding: 76px 0; text-align: center; }
+.final-cta { padding: 72px 0; text-align: center; }
 .final-cta h2 { margin: 0 0 10px; font-size: var(--fs-heading); letter-spacing: -0.02em; }
 .final-cta p { margin: 0 0 26px; color: var(--dim); }
 
@@ -685,8 +687,21 @@ body {
 .site-foot { border-top: 1px solid var(--line); background: var(--panel); padding: 34px 0; }
 .foot-inner { display: grid; gap: 14px; }
 .site-foot p { margin: 6px 0 0; color: var(--muted); font-size: var(--fs-md); }
-.site-foot nav { display: flex; flex-wrap: wrap; gap: 18px; }
-.site-foot nav a { color: var(--dim); text-decoration: none; font-size: var(--fs-md); }
+/* Row gap goes to zero because the padding below supplies it; the column
+   gap stays. Without that the links sit 18px apart AND carry 12px of padding
+   each, which reads as a list with holes in it. */
+.site-foot nav { display: flex; flex-wrap: wrap; gap: 0 18px; margin: -10px 0; }
+.site-foot nav a {
+  color: var(--dim);
+  text-decoration: none;
+  font-size: var(--fs-md);
+  /* 21px of text is a 21px tap target. Padding takes the hit area past the
+     44px a thumb needs without moving the text. */
+  padding: 10px 0;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
 .site-foot nav a:hover { color: var(--brand); }
 .foot-note { font-size: var(--fs-sm) !important; }
 
@@ -709,12 +724,12 @@ body {
   .site-nav { gap: 8px; padding: 10px 12px; }
   .site-nav .brand small { display: none; }
   .nav-actions { gap: 6px; }
-  .nav-cta { padding: 0 13px; }
+  .nav-cta { padding: 0 12px; }
   .nav-cta .cta-long { display: none; }
   .nav-cta .cta-short { display: inline; }
   /* Share and Install live in the sheet at this width, not the bar. */
   .nav-actions .btn:not(.btn-primary):not(.btn-icon) { display: none; }
-  .site-band { padding: 46px 0; }
+  .site-band { padding: 48px 0; }
   .wrap { padding: 0 16px; }
 
   .hero { padding: 34px 16px 40px; gap: 22px; }
@@ -723,7 +738,7 @@ body {
   /* Two full-width buttons beat two half-width ones with wrapped labels. */
   .hero-cta { display: grid; grid-template-columns: 1fr; gap: 10px; }
   .hero-cta .btn { justify-content: center; }
-  .final-cta { padding: 52px 0; }
+  .final-cta { padding: 48px 0; }
   .final-cta .hero-cta { max-width: 340px; margin: 0 auto; }
 
   .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; padding: 22px 16px 6px; }
@@ -749,7 +764,7 @@ body {
   .os-grid { gap: 12px; margin-bottom: 26px; }
   .os-card { padding: 18px; }
   .char-grid { gap: 12px; }
-  .char-tile { padding: 15px; }
+  .char-tile { padding: 16px; }
   .rv { padding: 20px; }
   .site-foot nav { gap: 14px 18px; }
 }
@@ -804,7 +819,7 @@ body {
 .st-count {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   font-size: var(--fs-sm);
   color: var(--muted);
 }
@@ -854,7 +869,7 @@ body {
 /* ------------------------- shared article layout (journeys, and any page) */
 
 .blog-main { padding: 48px 0 80px; }
-.blog-head { max-width: 68ch; margin: 0 auto 38px; text-align: center; }
+.blog-head { max-width: 68ch; margin: 0 auto 40px; text-align: center; }
 .blog-head h1 { margin: 0 0 10px; font-size: var(--fs-title); letter-spacing: -0.025em; }
 .blog-head p { margin: 0; color: var(--dim); font-size: var(--fs-lg); }
 
@@ -884,12 +899,12 @@ body {
 .post-lede { margin: 0; font-size: var(--fs-lg); line-height: 1.6; color: var(--dim); }
 
 .post-body { font-size: var(--fs-lg); line-height: 1.75; color: var(--text); }
-.post-body h2 { margin: 38px 0 12px; font-size: var(--fs-xxl); letter-spacing: -0.015em; }
+.post-body h2 { margin: 40px 0 12px; font-size: var(--fs-xxl); letter-spacing: -0.015em; }
 .post-body h3 { margin: 30px 0 10px; font-size: var(--fs-xl); }
 .post-body h4, .post-body h5 { margin: 24px 0 8px; font-size: var(--fs-lg); }
 .post-body p { margin: 0 0 18px; }
 .post-body ul, .post-body ol { margin: 0 0 18px; padding-left: 24px; }
-.post-body li { margin-bottom: 7px; }
+.post-body li { margin-bottom: 8px; }
 .post-body a { color: var(--brand); }
 .post-body code {
   background: var(--chip);
@@ -942,7 +957,7 @@ body {
 
 /* Like and dislike. The dislike is the same thumb, turned over - one icon,
    and no second path to keep in sync with the first. */
-.st-vote { gap: 7px; }
+.st-vote { gap: 8px; }
 .st-vote-down svg { transform: rotate(180deg); }
 .st-vote[aria-pressed="true"] { border-color: currentColor; font-weight: var(--fw-semi); }
 .st-vote-up[aria-pressed="true"] { color: var(--ok, #2f9e5f); }
@@ -956,7 +971,7 @@ body {
    follows in another tab, not a list of features. */
 .li-routes .os-card h3 { margin: 0 0 6px; font-size: var(--fs-lg); }
 .li-routes ol { margin: 12px 0 10px; padding-left: 20px; }
-.li-routes ol li { margin-bottom: 5px; }
+.li-routes ol li { margin-bottom: 4px; }
 .li-routes .hint { margin: 0; font-size: var(--fs-md); }
 .li-no-api { max-width: 62ch; margin-top: 18px; }
 
@@ -1091,12 +1106,18 @@ body {
    A site with no reviews yet should not ask for one in a full-width band.
    Closed it is a single quiet line; open it is the form it always was.   */
 .tell-us { border-top: 1px solid var(--line); background: var(--panel); }
-.tell-us .wrap { padding-top: 22px; padding-bottom: 22px; }
+.tell-us .wrap { padding-top: 10px; padding-bottom: 10px; }
 .tell > summary {
   cursor: pointer;
   list-style: none;
   color: var(--dim);
   font-size: var(--fs-base);
+  /* A standalone control, not a link in a sentence: 21px of text is not a
+     tap target. The padding is vertical only, so the line sits where it did. */
+  padding: 12px 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
 }
 .tell > summary::-webkit-details-marker { display: none; }
 .tell > summary::before { content: "+  "; color: var(--muted); }
