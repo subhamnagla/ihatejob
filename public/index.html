@@ -325,6 +325,34 @@
         </form>
       </div>
     </details>
+
+    <details class="tell" id="report">
+      <summary>Something broken, or a CV it could not read?</summary>
+      <div class="tell-body">
+        <p class="tell-lede">It reaches us directly, with no account. Nothing about your CV is
+          attached &mdash; send only what you are willing to put in the box.</p>
+        <form id="reportForm">
+          <div class="field">
+            <label for="rpWhat">What happened</label>
+            <textarea class="input" id="rpWhat" rows="4"
+                      placeholder="What you did, what you expected, and what happened instead."></textarea>
+          </div>
+          <div class="field">
+            <label for="rpWhere">Where in the site <span class="opt">optional</span></label>
+            <input class="input" id="rpWhere" type="text"
+                   placeholder="Builder, rating, importing a CV, this page">
+          </div>
+          <div class="hp" aria-hidden="true">
+            <label for="rpWebsite">Website</label>
+            <input id="rpWebsite" type="text" tabindex="-1" autocomplete="off">
+          </div>
+          <div class="suggest-actions">
+            <button class="btn btn-primary" type="submit">Send the report</button>
+            <span class="hint" id="rpNote" style="margin:0"></span>
+          </div>
+        </form>
+      </div>
+    </details>
   </div>
 </section>
 
@@ -342,6 +370,9 @@
       <a href="#faq">Common questions</a>
       <a href="#review" id="footReview">Leave a review</a>
       <a href="https://github.com/subhamnagla/ihatejob" target="_blank" rel="noopener">Source on GitHub</a>
+    
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
     </nav>
     <div class="foot-end">
       <div class="share-row" id="shareRow"></div>

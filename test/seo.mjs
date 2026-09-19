@@ -207,6 +207,19 @@ for (const page of pages) {
 }
 check('no link points at a fragment that does not exist', [...new Set(dead)].slice(0, 8), []);
 
+console.log(NL + '=== no page ships with a blank left in it ===');
+// privacy.html and terms.html carry two decisions only the site owner can
+// make: where a grievance reaches a human, and which courts. They are written
+// as a loud placeholder rather than a plausible guess, because a policy that
+// states the wrong jurisdiction is worse than one that admits it is unfinished
+// - and a guess would be invisible, where this fails the build.
+const blanks = [];
+for (const page of pages) {
+  if (VERIFY.test(page.name)) continue;
+  if (page.text.includes('TO BE SET')) blanks.push(page.name);
+}
+check('no page still has a TO BE SET placeholder', blanks, []);
+
 console.log(NL + '=== nothing claims a rating nobody gave ===');
 // No review has been collected, so no page may carry an aggregateRating.
 // This is the one piece of structured data that is worth money to fake, and

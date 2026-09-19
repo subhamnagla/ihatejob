@@ -200,6 +200,50 @@ $('planetPick').addEventListener('keydown', (e) => {
   if (el) el.focus();
 });
 
+// Stamped when the page loads. api/submit rejects anything that arrives
+// impossibly soon after, which is most bots and no people.
+const OPENED_AT = Date.now();
+
+// Sends to /api/submit, which emails it. No account, no GitHub, no sign-up
+// page at the end of the effort.
+async function sendIssue(kind, title, body, honeypot) {
+  try {
+    const res = await fetch('/api/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        kind, title, body, website: honeypot || '', startedAt: OPENED_AT,
+      }),
+    });
+    // A non-JSON reply means the function is not running here at all.
+    const type = res.headers.get('content-type') || '';
+    if (type.includes('application/json')) {
+      const out = await res.json();
+      if (res.ok && out.ok) {
+        toast('Sent. Thank you - it reaches us directly, no account needed.');
+        return { ok: true };
+      }
+      if (res.status !== 503) return { ok: false, error: out.error || 'That could not be sent.' };
+    }
+  } catch { /* offline, or the endpoint is absent - fall through */ }
+
+  // Not configured here: fall back to the routes that need no server, so the
+  // words someone just wrote are never simply lost.
+  if (MAIL_READY) {
+    window.location.href = 'mailto:' + SITE.contactEmail
+      + '?subject=' + encodeURIComponent(title)
+      + '&body=' + encodeURIComponent(body);
+    return { ok: true };
+  }
+  try {
+    await navigator.clipboard.writeText([title, '', body].join('\n'));
+    toast('Copied to your clipboard. No inbox is set up here, so nothing was sent.');
+  } catch {
+    toast('Nothing was sent - no inbox is configured here.');
+  }
+  return { ok: false };
+}
+
 function reviewText() {
   const p = PLANETS[picked - 1];
   const credit = [$('rvName').value.trim(), $('rvRole').value.trim()].filter(Boolean).join(' - ');
@@ -269,6 +313,32 @@ function openReviewForm(e) {
 
 const footReview = $('footReview');
 if (footReview) footReview.addEventListener('click', openReviewForm);
+
+/* ------------------------------------------------------ report a problem */
+
+const reportForm = $('reportForm');
+if (reportForm) {
+  reportForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const what = $('rpWhat').value.trim();
+    if (!what) {
+      $('rpNote').textContent = 'Say what happened, otherwise there is nothing to look at.';
+      $('rpWhat').focus();
+      return;
+    }
+    const where = $('rpWhere').value.trim();
+    const btn = reportForm.querySelector('[type="submit"]');
+    btn.disabled = true;
+    $('rpNote').textContent = 'Sending...';
+    const body = (where ? 'Where: ' + where + '\n\n' : '') + what;
+    sendIssue('bug', where || 'Reported from the site', body, $('rpWebsite').value)
+      .then((r) => {
+        btn.disabled = false;
+        $('rpNote').textContent = r.ok ? 'Sent. Thank you.' : (r.error || '');
+        if (r.ok) reportForm.reset();
+      });
+  });
+}
 
 /* ---------------------------------------------------------------- share */
 

@@ -1,0 +1,201 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy | ihatejob</title>
+<meta name="description" content="What ihatejob stores and what it never sees. Your CV is never uploaded: it stays in your own browser. No cookies, no analytics, no third-party scripts on any page.">
+<link rel="canonical" href="https://ihatejob.app/privacy">
+<meta property="og:title" content="Privacy">
+<meta property="og:description" content="What ihatejob stores and what it never sees. Your CV is never uploaded: it stays in your own browser. No cookies, no analytics, no third-party scripts on any page.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://ihatejob.app/privacy">
+<meta property="og:site_name" content="ihatejob">
+<meta property="og:image" content="https://ihatejob.app/icons/icon-512.png">
+<meta name="twitter:card" content="summary">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0e1116" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#eef1f6" media="(prefers-color-scheme: light)">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/css/site.css">
+<script>
+  try {
+    var t = localStorage.getItem('ihatejob.theme');
+    if (!t) t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    document.documentElement.dataset.theme = t;
+  } catch (e) { document.documentElement.dataset.theme = 'dark'; }
+</script>
+
+<header class="site-nav">
+  <a class="brand" href="/"><span>ihatejob<small>a CV worth leaving with</small></span></a>
+  <nav class="nav-links">
+    <a href="/#formats">Formats</a>
+    <a href="/cv">CV formats</a>
+    <a href="/#how">How it works</a>
+    <a href="/stories">Journeys</a>
+  </nav>
+  <div class="nav-actions">
+    <a class="btn btn-primary nav-cta" href="/app">Open the builder</a>
+  </div>
+</header>
+
+<main class="blog-main"><div class="wrap"><article class="post">
+
+<header class="blog-head">
+  <h1>Privacy</h1>
+  <p class="post-lede">Your CV is never uploaded. Here is exactly what that means, and what little does reach us.</p>
+</header>
+
+<p><b>The short version.</b> Your CV is never sent anywhere. It is written to your own
+browser&rsquo;s storage and stays on the device you typed it on. There are no cookies, no
+analytics, no advertising and no third-party scripts on any page of this site. The only
+information that reaches us is what you deliberately type into a form and press send on.</p>
+
+<p>That is a strong claim, so the rest of this page says exactly what happens, in enough detail
+that you could check it against the source, which is public.</p>
+
+<h2>Your CV never leaves your browser</h2>
+
+<p>Building, rating, importing, converting and comparing a CV against a job advert all run as
+JavaScript in the page you are looking at. There is no endpoint on this site that receives a CV.
+When you import a PDF, a Word file or a LinkedIn export, that file is read in the browser and
+never uploaded. When you export, the file is generated in the browser and handed to your own
+download.</p>
+
+<p>Your work is saved to <code>localStorage</code> so that closing the tab does not lose it.
+That storage belongs to your browser on your device. We cannot read it, and clearing your
+browser data deletes it.</p>
+
+<h2>What this site stores on your device</h2>
+
+<p>Five keys, all in <code>localStorage</code>, none of them cookies:</p>
+
+<ul>
+  <li><code>ihatejob.v1</code> &mdash; the CV you are working on.</li>
+  <li><code>cvmaker.v1</code> &mdash; the same thing under the site&rsquo;s former name, read once
+    so that a rename did not lose anyone&rsquo;s work.</li>
+  <li><code>ihatejob.theme</code> &mdash; whether you chose light or dark.</li>
+  <li><code>ihatejob.install-snoozed</code> &mdash; when you last dismissed the
+    &ldquo;install this&rdquo; prompt, so it stops asking.</li>
+  <li><code>ihatejob.vote.&lt;slug&gt;</code> &mdash; which way you voted on a journey, so the page
+    can show it back to you.</li>
+</ul>
+
+<p>A service worker also caches the site&rsquo;s own files so the builder works with no signal.
+It holds pages, styles, scripts, icons and the typeface. It never caches a CV.</p>
+
+<h2>What reaches us, and only when you send it</h2>
+
+<p>Three forms on this site send something to us: leaving a review, reporting a problem, and
+sharing a journey. Each sends only the text you typed into it. Specifically:</p>
+
+<ul>
+  <li>the words you wrote, and a title;</li>
+  <li>for a review, the rating you picked, and the name and role you chose to type &mdash; both
+    optional, and blank means the review is filed as anonymous;</li>
+  <li>whether you ticked the box saying it may be published on the site;</li>
+  <li>a hidden field no human ever fills in, and the time the page loaded, which together stop
+    most automated spam.</li>
+</ul>
+
+<p>Nothing about your CV is attached to any of these. If you want us to see part of your CV in
+order to investigate a problem, you have to paste it in yourself.</p>
+
+<p>These arrive as email. They are kept for as long as they are useful &mdash; a bug report until
+the bug is fixed, a review until it is published or declined.</p>
+
+<h2>Voting on a journey</h2>
+
+<p>Voting sends the identifier of the journey and the direction of your vote. Only the totals are
+stored, not who voted. Your IP address is read from the request in order to rate-limit voting;
+it is held in memory for a few minutes and is not written to the database.</p>
+
+<h2>Server logs</h2>
+
+<p>This site is hosted on Vercel, which keeps standard request logs including IP addresses and
+browser user-agent strings, as every web server does. We do not use those logs to build any
+profile of you, and we do not combine them with anything else.</p>
+
+<h2>What this site does not do</h2>
+
+<ul>
+  <li>No cookies of any kind, first or third party.</li>
+  <li>No analytics, no tag manager, no pixels, no session recording, no heatmaps.</li>
+  <li>No advertising, no ad networks, no retargeting.</li>
+  <li>No third-party scripts or fonts loaded into any page. The typeface is served from this
+    site&rsquo;s own domain for exactly this reason.</li>
+  <li>No account, so no password to lose and no profile to build.</li>
+  <li>Nothing is sold, rented, or shared for anyone else&rsquo;s marketing.</li>
+</ul>
+
+<h2>Who else handles data on our behalf</h2>
+
+<p>Four services, each doing one job:</p>
+
+<ul>
+  <li><b>Vercel</b> &mdash; hosting and request logs.</li>
+  <li><b>Resend</b> &mdash; delivers the email when you send a review, report or journey.</li>
+  <li><b>Upstash</b> &mdash; stores vote totals.</li>
+  <li><b>GitHub</b> &mdash; holds the source code, and the published journeys.</li>
+</ul>
+
+<h2>If you are in the EU, the UK, or India</h2>
+
+<p>Where the GDPR or the UK GDPR applies, our grounds for handling the little we handle are: your
+consent, when you fill in a form and press send; and our legitimate interest in keeping the site
+up and free of spam, for server logs and rate limiting.</p>
+
+<p>You have the right to ask what we hold about you, to have it corrected or deleted, to object
+to it being handled, and to complain to your data protection authority. In practice the answer to
+the first question is usually &ldquo;a message you sent us, if you sent one&rdquo;, because your
+CV was never ours to hold.</p>
+
+<p>India&rsquo;s Digital Personal Data Protection Act 2023 and the Rules made under it give
+similar rights, including the right to ask what is held, to have it corrected or erased, and to
+nominate someone to exercise those rights for you.</p>
+
+<p>To exercise any of these, use the report form on the home page, or write to the address
+below.</p>
+
+<h2>Children</h2>
+
+<p>This site is meant for people old enough to be applying for work. It is not directed at
+children, and it does not knowingly collect anything from them. Nothing here asks for an age,
+because nothing here needs one.</p>
+
+<h2>Grievance officer</h2>
+
+<p>As required by the Information Technology (Intermediary Guidelines and Digital Media Ethics
+Code) Rules, 2021:</p>
+
+<ul>
+  <li><b>Name:</b> Subham Nagla</li>
+  <li><b>Contact:</b> TO BE SET</li>
+  <li><b>How to complain:</b> use the &ldquo;Something broken&rdquo; form on the
+    <a href="/#report">home page</a>, or write to the address above.</li>
+</ul>
+
+<p>A complaint will be acknowledged within 24 hours and resolved within 15 days.</p>
+
+<h2>Changes</h2>
+
+<p>If this changes, the date below changes with it, and the change is visible in the public
+commit history of this site.</p>
+
+<p class="admin-muted">Last updated: 20 September 2026.</p>
+
+</article></div></main>
+
+<footer class="site-foot">
+  <div class="wrap foot-inner">
+    <div><b>ihatejob</b><p>A CV builder that runs entirely in your browser. MIT licensed.</p></div>
+    <nav>
+      <a href="/app">Builder</a>
+      <a href="/cv">CV formats</a>
+      <a href="/ats">ATS</a>
+      <a href="/stories">Journeys</a>
+      <a href="/#review">Leave a review</a>
+    
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+    </nav>
+  </div>
+</footer>
