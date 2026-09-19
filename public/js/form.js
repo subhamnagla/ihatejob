@@ -19,7 +19,12 @@ export function setOpen(key, on) {
   if (on) open.add(key); else open.delete(key);
 }
 
-const ACCENTS = ['#2563eb', '#0f766e', '#b91c1c', '#7c3aed', '#c2410c', '#0e7490', '#4d7c0f', '#111827'];
+/* Chroma-matched, not hue-matched. The old set ran from 0.086 (teal) to
+   0.247 (violet), so picking violet shouted and picking teal whispered on
+   the same CV. Every hue that could reach 0.17 was pulled down to it and
+   the two that physically cannot in sRGB - teal and cyan - were pushed to
+   their ceiling. Ink is neutral and stays. */
+const ACCENTS = ['#3465cc', '#057d74', '#ba362e', '#7252c3', '#b83b07', '#037795', '#497c00', '#111827'];
 
 const FONTS = [
   ['sans', 'Sans'],

@@ -855,15 +855,16 @@ textarea.input { resize: vertical; line-height: 1.5; }
 }
 .finding {
   border: 1px solid var(--line);
-  border-left: 3px solid var(--muted);
   border-radius: var(--r-sm);
   background: var(--panel-2);
   padding: 12px 16px;
 }
 .finding + .finding { margin-top: 8px; }
-.finding.blocker { border-left-color: var(--danger); }
-.finding.warn { border-left-color: var(--warn); }
-.finding.tip { border-left-color: var(--brand); }
+/* Severity rides the whole border rather than a stripe down one side:
+   the same signal, without the accent tab every generated dashboard wears. */
+.finding.blocker { border-color: var(--danger); }
+.finding.warn { border-color: var(--warn); }
+.finding.tip { border-color: var(--brand); }
 .finding h5 { margin: 0 0 4px; font-size: var(--fs-base); font-weight: var(--fw-semi); }
 .finding p { margin: 0 0 8px; font-size: var(--fs-md); color: var(--dim); line-height: 1.55; }
 .finding .fix { color: var(--text); }
@@ -951,7 +952,7 @@ textarea.input { resize: vertical; line-height: 1.5; }
 }
 .fix-row + .fix-row { margin-top: 8px; }
 .fix-row:hover { border-color: var(--border-hover); }
-.fix-row.destructive { border-left: 3px solid var(--warn); }
+.fix-row.destructive { border-color: var(--warn); }
 .fix-row input { margin-top: 3px; width: 15px; height: 15px; accent-color: var(--brand); flex: 0 0 auto; }
 .fix-body { display: block; min-width: 0; }
 .fix-body b { font-size: var(--fs-md); }
@@ -1085,7 +1086,7 @@ textarea.input { resize: vertical; line-height: 1.5; }
 .planet-stars { color: #f5c14b; display: flex; justify-content: center; }
 .stars { display: inline-flex; gap: 4px; }
 .star { opacity: 0; transform: scale(0.4) rotate(-25deg); }
-.star.lit { animation: star-pop 0.42s cubic-bezier(0.22, 1.6, 0.4, 1) forwards; }
+.star.lit { animation: star-pop 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 @keyframes star-pop {
   to { opacity: 1; transform: none; }
 }
@@ -1193,45 +1194,6 @@ textarea.input { resize: vertical; line-height: 1.5; }
   .verdict-card .modal-actions .btn { flex: 1 1 auto; justify-content: center; }
 }
 
-/* ---------------------------------------------------------- clean-up UI */
-
-.score-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-
-.fix-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-sm);
-  background: var(--card);
-  cursor: pointer;
-}
-.fix-row + .fix-row { margin-top: 8px; }
-.fix-row:hover { border-color: var(--border-hover); }
-.fix-row.destructive { border-left: 3px solid var(--warn); }
-.fix-row input { margin-top: 3px; width: 15px; height: 15px; accent-color: var(--brand); flex: 0 0 auto; }
-.fix-body { display: block; min-width: 0; }
-.fix-body b { font-size: var(--fs-md); }
-.fix-count {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 1px 8px;
-  border-radius: var(--r-lg);
-  background: var(--chip);
-  color: var(--muted);
-  font-size: var(--fs-xs);
-}
-.fix-detail { display: block; margin-top: 4px; color: var(--muted); font-size: var(--fs-sm); line-height: 1.5; }
-.fix-caveat {
-  margin: 14px 0 0 !important;
-  padding: 10px 12px;
-  border-radius: var(--r-sm);
-  background: var(--input-bg);
-  font-size: var(--fs-sm) !important;
-  line-height: 1.5;
-}
-
 /* ------------------------------------------------------- planet result */
 
 .modal-planet { width: min(460px, 100%); text-align: center; }
@@ -1300,7 +1262,6 @@ textarea.input { resize: vertical; line-height: 1.5; }
   margin-top: 12px;
   padding: 10px 12px;
   border: 1px solid var(--danger-border);
-  border-left: 3px solid var(--danger);
   border-radius: var(--r-sm);
   background: var(--card);
   color: var(--dim);
@@ -1513,7 +1474,7 @@ textarea.input { resize: vertical; line-height: 1.5; }
 .conv-honest {
   font-size: var(--fs-sm);
   color: var(--dim);
-  border-left: 3px solid var(--ok);
+  border-left: 1px solid var(--ok);
   padding-left: 12px;
   margin: 14px 0 0;
   max-width: 62ch;
@@ -1916,7 +1877,7 @@ textarea.input { resize: vertical; line-height: 1.5; }
 
 /* Headings the importer did not recognise. Warmer than an error - nothing has
    gone wrong, it just could not tell what the section was. */
-.report-unknown { border-left: 3px solid var(--warn, #c2683a); }
+.report-unknown { border-left: 1px solid var(--warn, #c2683a); }
 .report-unknown code {
   padding: 1px 4px;
   border-radius: var(--r-xs);
@@ -1928,14 +1889,13 @@ textarea.input { resize: vertical; line-height: 1.5; }
    error - the file is fine, a machine just could not follow it - so it reads
    as a warning with a way out, rather than a failure. */
 .align-flag {
-  border: 1px solid var(--line);
-  border-left: 3px solid var(--warn, #c2683a);
+  border: 1px solid var(--warn, #c2683a);
   border-radius: var(--r-sm);
   padding: 14px 16px;
   margin: 4px 0 14px;
   background: var(--panel-2, rgba(127, 127, 127, .06));
 }
-.align-flag.align-poor { border-left-color: var(--bad, #d0503c); }
+.align-flag.align-poor { border-color: var(--bad, #d0503c); }
 .align-flag b { display: block; margin-bottom: 6px; }
 .align-flag p { margin: 0 0 8px; max-width: 62ch; }
 .align-why { font-size: var(--fs-md); opacity: .82; }
@@ -1958,4 +1918,4 @@ textarea.input { resize: vertical; line-height: 1.5; }
 .rescue-box { font-size: var(--fs-md); }
 .rescue-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 8px; }
 .rescue-said { font-size: var(--fs-md); opacity: .82; max-width: 46ch; }
-.report-rescued { border-left: 3px solid var(--ok, #3f8f5f); }
+.report-rescued { border-left: 1px solid var(--ok, #3f8f5f); }

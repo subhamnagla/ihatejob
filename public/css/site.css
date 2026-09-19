@@ -82,17 +82,6 @@ body {
   padding: 72px 24px 56px;
 }
 
-.eyebrow {
-  display: inline-block;
-  font-size: var(--fs-sm);
-  letter-spacing: 0.06em;
-  color: var(--muted);
-  padding: 4px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  margin-bottom: 20px;
-}
-
 .hero h1 {
   margin: 0 0 18px;
   font-size: var(--fs-display);
@@ -100,17 +89,18 @@ body {
   letter-spacing: -0.025em;
   font-weight: var(--fw-bold);
 }
-.hero h1 em {
-  font-style: normal;
-  background: linear-gradient(96deg, var(--brand), #9b7bff);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
 .lede { font-size: var(--fs-lg); line-height: 1.65; color: var(--dim); max-width: 34em; margin: 0 0 26px; }
 .hero-cta { display: flex; flex-wrap: wrap; gap: 10px; }
-.hero-note { margin: 18px 0 0; font-size: var(--fs-md); color: var(--muted); max-width: 34em; }
+/* Above the headline, not under the button: the three things a visitor
+   wants to know before they read anything else are that it costs nothing,
+   asks for nothing, and sends nothing anywhere. */
+.hero-note {
+  margin: 0 0 14px;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semi);
+  color: var(--dim);
+  max-width: 34em;
+}
 
 /* One document, square on, rising out of the frame and fading at the bottom
    - a product shot rather than a still life. It was two pages at angles with
@@ -671,7 +661,9 @@ body {
 
 @media (max-width: 560px) {
   .share-btn span { display: none; }        /* icons only on small screens */
-  .share-btn { width: 44px; padding: 0; justify-content: center; }
+  /* 44 square, not 44x40: the label is gone, so the icon is the whole target
+     and a thumb needs both dimensions. Same fix the icon buttons got. */
+  .share-btn { width: 44px; height: 44px; padding: 0; justify-content: center; }
   .share-btn.native { width: auto; padding: 0 16px; }
   .share-btn.native span { display: inline; }
 }
@@ -718,6 +710,17 @@ body {
   .nav-toggle { display: inline-flex; }
   .planet-promo { grid-template-columns: 1fr; padding: 22px; }
   .format-frame { height: 220px; }
+}
+
+/* A4 is 794px across; at zoom 0.6 the page is 476px and the frame is the
+   viewport less 32px of gutter, so below roughly 510px the paper is sliced
+   down its right edge mid-word. That reads as broken, unlike the fade at the
+   bottom, which is deliberate. Two steps keep it whole down to 320px. */
+@media (max-width: 520px) {
+  .hero-art .paper { zoom: 0.42; }
+}
+@media (max-width: 380px) {
+  .hero-art .paper { zoom: 0.34; }
 }
 
 @media (max-width: 620px) {
@@ -1127,6 +1130,9 @@ body {
 .tell-lede { margin: 0 0 14px; color: var(--muted); font-size: var(--fs-md); }
 
 .foot-end { display: grid; gap: 10px; justify-items: start; }
+/* .share-row was written for a centred band of its own. In the footer it
+   lines up with everything else instead. */
+.foot-end .share-row { justify-content: flex-start; margin-bottom: 0; }
 
 @media (max-width: 900px) {
   .benefit-grid { grid-template-columns: 1fr; gap: 14px; }

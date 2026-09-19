@@ -15,7 +15,6 @@
   margin: 22px 0 28px;
   padding: 16px 18px;
   border: 1px solid var(--warn);
-  border-left: 4px solid var(--warn);
   border-radius: var(--r-md);
   background: var(--warn-bg);
   color: var(--warn-ink);
