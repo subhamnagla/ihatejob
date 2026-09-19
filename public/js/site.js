@@ -79,6 +79,19 @@ function paper(profId, accent, name) {
 // chrome. It is also a nurse's CV, and teal is that world's colour.
 $('heroArt').innerHTML = paper('software-engineering', '#057d74', 'Subham Nagla');
 
+// A4 is 794px wide, and the frame is whatever the phone left after its
+// gutters. Stepped breakpoints got this nearly right at three widths and
+// wrong between them; dividing by the measured width is right at all of
+// them. Capped at 0.6 so the desktop does not blow the page up.
+function fitPaper() {
+  const art = $('heroArt');
+  const sheet = art && art.querySelector('.paper');
+  if (!sheet) return;
+  sheet.style.zoom = Math.min(0.6, (art.clientWidth - 2) / 794);
+}
+fitPaper();
+addEventListener('resize', fitPaper);
+
 /* --------------------------------------------------- what it actually does */
 
 // Six things the builder does, one at a time. The list is in the markup; this

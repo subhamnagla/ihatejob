@@ -712,17 +712,6 @@ body {
   .format-frame { height: 220px; }
 }
 
-/* A4 is 794px across; at zoom 0.6 the page is 476px and the frame is the
-   viewport less 32px of gutter, so below roughly 510px the paper is sliced
-   down its right edge mid-word. That reads as broken, unlike the fade at the
-   bottom, which is deliberate. Two steps keep it whole down to 320px. */
-@media (max-width: 520px) {
-  .hero-art .paper { zoom: 0.42; }
-}
-@media (max-width: 380px) {
-  .hero-art .paper { zoom: 0.34; }
-}
-
 @media (max-width: 620px) {
   .site-nav { gap: 8px; padding: 10px 12px; }
   .site-nav .brand small { display: none; }
@@ -736,7 +725,12 @@ body {
   .wrap { padding: 0 16px; }
 
   .hero { padding: 34px 16px 40px; gap: 22px; }
-  .hero-art { height: 260px; border-radius: var(--r-md); }
+  /* A whole A4 page at 358px renders its body text at about 6px, which is
+     texture rather than type - no scale fixes that, because the page is the
+     wrong thing to show on a phone. Shorter frame, so it reads as the top of
+     a document rather than a whole one that got small: the name and headline
+     are legible, and the mask fades the rest out on purpose. */
+  .hero-art { height: 200px; border-radius: var(--r-md); padding-top: 18px; }
   .lede { font-size: var(--fs-lg); }
   /* Two full-width buttons beat two half-width ones with wrapped labels. */
   .hero-cta { display: grid; grid-template-columns: 1fr; gap: 10px; }
@@ -1057,20 +1051,19 @@ body {
    absolutely, so the box is exactly as tall as the longest of them and
    nothing jumps when the text changes length. */
 .hero-feats {
-  display: grid;
   list-style: none;
   margin: 26px 0 0;
-  padding: 2px 0 2px 16px;
-  border-left: 2px solid var(--brand);
-  max-width: 34em;
+  padding: 0;
+  max-width: 36em;
 }
 .hero-feats li {
-  grid-area: 1 / 1;
-  opacity: 0;
-  transition: opacity 0.45s ease;
-  pointer-events: none;
+  padding: 7px 0 7px 16px;
+  border-left: 2px solid var(--line);
+  transition: border-color 0.4s ease, opacity 0.4s ease;
+  opacity: 0.55;
 }
-.hero-feats li.on { opacity: 1; }
+/* The rotation moves this, not the visibility of anything. */
+.hero-feats li.on { opacity: 1; border-left-color: var(--brand); }
 .hero-feats b {
   display: block;
   font-size: var(--fs-base);
@@ -1079,17 +1072,16 @@ body {
 }
 .hero-feats span {
   display: block;
-  margin-top: 2px;
+  margin-top: 1px;
   font-size: var(--fs-md);
   color: var(--muted);
-  line-height: 1.55;
+  line-height: 1.5;
 }
 
 /* Asked not to be moved at: every feature listed, nothing rotating. */
+/* Asked not to be moved at: every line at full strength, nothing cycling. */
 @media (prefers-reduced-motion: reduce) {
-  .hero-feats { display: block; }
   .hero-feats li { opacity: 1; transition: none; }
-  .hero-feats li + li { margin-top: 10px; }
 }
 
 /* --- three benefits ----------------------------------------------------
@@ -1202,4 +1194,12 @@ body {
   }
   .benefit:first-child { border-top: 0; padding-top: 0; }
   .benefit p { max-width: none; }
+
+  /* Six labels on a phone; the sentences under them are desktop's job.
+     Down here for the same reason the .benefit rules are: .hero-feats is
+     declared below the first max-width:620px block, so anything written up
+     there loses on source order while looking completely correct. */
+  .hero-feats { margin-top: 20px; }
+  .hero-feats li { padding: 5px 0 5px 14px; }
+  .hero-feats span { display: none; }
 }

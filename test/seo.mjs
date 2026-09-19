@@ -207,6 +207,71 @@ for (const page of pages) {
 }
 check('no link points at a fragment that does not exist', [...new Set(dead)].slice(0, 8), []);
 
+console.log(NL + '=== no responsive rule is shadowed by a later base rule ===');
+
+// site.css has bitten twice the same way: a @media (max-width: ...) block
+// sits ABOVE the plain rule it means to override, so it has equal specificity
+// and loses on source order. Nothing looks wrong - the selector is right, the
+// query matches, the rule is simply never applied - which is the hardest kind
+// of dead code to notice. Both times it was found by measuring the rendered
+// page, not by reading the file.
+const cssText = await readFile(join(ROOT, 'css', 'site.css'), 'utf8');
+
+// Every top-level (unnested) rule's class selectors, with where it starts.
+const topLevel = [];
+let depth = 0;
+let at = 0;
+let selStart = 0;
+while (at < cssText.length) {
+  const ch = cssText[at];
+  if (ch === '{') {
+    if (depth === 0) {
+      const sel = cssText.slice(selStart, at);
+      if (!sel.includes('@')) topLevel.push({ sel, from: selStart });
+    }
+    depth += 1;
+  } else if (ch === '}') {
+    depth -= 1;
+    if (depth <= 0) { depth = 0; selStart = at + 1; }
+  }
+  at += 1;
+}
+const classesOf = (sel) => [...sel.matchAll(/\.([A-Za-z][A-Za-z0-9_-]*)/g)].map((m) => m[1]);
+
+// The first place each class is declared outside a media query.
+const declaredAt = new Map();
+for (const r of topLevel) {
+  for (const c of classesOf(r.sel)) {
+    if (!declaredAt.has(c)) declaredAt.set(c, r.from);
+  }
+}
+
+const shadowed = [];
+for (const m of cssText.matchAll(/@media[^{]*\{/g)) {
+  const start = m.index;
+  // the selectors inside this block, shallowly
+  let d = 1;
+  let i = start + m[0].length;
+  let s0 = i;
+  while (i < cssText.length && d > 0) {
+    if (cssText[i] === '{') {
+      if (d === 1) {
+        for (const c of classesOf(cssText.slice(s0, i))) {
+          const base = declaredAt.get(c);
+          if (base !== undefined && base > start) shadowed.push('.' + c);
+        }
+      }
+      d += 1;
+    } else if (cssText[i] === '}') {
+      d -= 1;
+      if (d === 1) s0 = i + 1;
+    }
+    i += 1;
+  }
+}
+check('no media rule sits above the base rule it overrides',
+  [...new Set(shadowed)].sort(), []);
+
 console.log(NL + '=== no page ships with a blank left in it ===');
 // privacy.html and terms.html carry two decisions only the site owner can
 // make: where a grievance reaches a human, and which courts. They are written
