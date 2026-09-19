@@ -55,13 +55,21 @@ function toast(msg) {
 
 /* ------------------------------------------------------------------ hero */
 
-function paper(profId, accent, cls) {
+function paper(profId, accent, name) {
   const d = buildSample(profId);
   if (!d) return '';
   d.settings.accent = accent;
+  if (name) {
+    d.basics.fullName = name;
+    // buildSample derives the address from the sample's own name, so it has
+    // to be rebuilt too - otherwise the header shows one person over another
+    // person's email. example.com either way: this is a specimen, and a real
+    // address on a public page is an invitation to scrape it.
+    const h = name.toLowerCase().replace(/[^a-z ]/g, '').split(' ').filter(Boolean);
+    d.basics.email = (h[0] || 'name') + '.' + (h[h.length - 1] || 'surname') + '@example.com';
+  }
   const { html, classes } = renderCV(d);
-  return '<div class="' + classes + ' paper ' + (cls || '') + '" style="--accent:' + accent + '">'
-    + html + '</div>';
+  return '<div class="' + classes + ' paper" style="--accent:' + accent + '">' + html + '</div>';
 }
 
 // One document, not a pile. Two overlapping papers read as a stock image of
@@ -69,7 +77,40 @@ function paper(profId, accent, cls) {
 // Teal, not the brand blue. The accent was the same #2563eb as the buttons
 // and links around it, so the one object the page is selling read as more
 // chrome. It is also a nurse's CV, and teal is that world's colour.
-$('heroArt').innerHTML = paper('healthcare-clinical', '#057d74');
+$('heroArt').innerHTML = paper('software-engineering', '#057d74', 'Subham Nagla');
+
+/* --------------------------------------------------- what it actually does */
+
+// Six things the builder does, one at a time. The list is in the markup; this
+// only moves the highlight. It stops while the pointer is on it, while the tab
+// is in the background, and entirely if the visitor asked not to be moved at.
+const feats = $('heroFeats');
+if (feats) {
+  const items = [...feats.children];
+  const still = matchMedia('(prefers-reduced-motion: reduce)');
+  let at = 0;
+  let timer = null;
+
+  const light = (n) => {
+    items[at].classList.remove('on');
+    at = (n + items.length) % items.length;
+    items[at].classList.add('on');
+  };
+  const stop = () => { clearInterval(timer); timer = null; };
+  const start = () => {
+    stop();
+    if (still.matches || document.hidden) return;
+    timer = setInterval(() => light(at + 1), 3600);
+  };
+
+  items[0].classList.add('on');
+  start();
+
+  feats.addEventListener('pointerenter', stop);
+  feats.addEventListener('pointerleave', start);
+  document.addEventListener('visibilitychange', start);
+  still.addEventListener('change', start);
+}
 
 /* --------------------------------------------------------------- formats */
 

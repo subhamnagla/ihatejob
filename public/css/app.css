@@ -54,6 +54,7 @@
   --brand-hover: #7fb0ff;
   --brand-ring: rgba(91, 157, 255, 0.16);
   --brand-wash: rgba(91, 157, 255, 0.05);
+  --btn-lift: rgba(0, 0, 0, 0.55);
 
   --danger: #f2707a;
   --danger-ink: #2a0d10;
@@ -112,6 +113,7 @@
   --brand-hover: #1d4ed8;
   --brand-ring: rgba(37, 99, 235, 0.18);
   --brand-wash: rgba(37, 99, 235, 0.06);
+  --btn-lift: rgba(37, 99, 235, 0.26);
 
   --danger: #c62b38;
   --danger-ink: #ffffff;
@@ -287,7 +289,7 @@ a.brand:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; bo
   /* Several .btn are anchors, and the UA underline was showing through on
      them - a button with underlined text reads as broken. */
   text-decoration: none;
-  transition: background 0.14s, border-color 0.14s, transform 0.08s;
+  transition: background 0.14s, border-color 0.14s, box-shadow 0.14s, transform 0.12s;
 }
 .btn:hover { background: var(--hover); border-color: var(--border-hover); }
 .btn:active { transform: translateY(1px); }
@@ -309,8 +311,20 @@ a.brand:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; bo
   border-color: var(--brand);
   color: var(--brand-ink);
   font-weight: var(--fw-semi);
+  /* Offset and blur, tinted from the button's own hue rather than grey, so it
+     sits on the page instead of being pasted onto it. Not a halo - a glow at
+     zero offset is decoration, this is weight. Only the primary gets it: if
+     every button is raised, none of them is. */
+  box-shadow: 0 1px 1px var(--btn-lift), 0 6px 14px -5px var(--btn-lift);
 }
-.btn-primary:hover { background: var(--brand-hover); border-color: var(--brand-hover); }
+.btn-primary:hover {
+  background: var(--brand-hover);
+  border-color: var(--brand-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 3px var(--btn-lift), 0 12px 22px -7px var(--btn-lift);
+}
+/* Pressing it puts it back on the page, which is what pressing a thing does. */
+.btn-primary:active { transform: translateY(0); box-shadow: 0 1px 1px var(--btn-lift); }
 .btn-ghost { background: transparent; }
 .btn-sm { height: 28px; padding: 0 8px; font-size: var(--fs-sm); border-radius: var(--r-sm); }
 .btn-icon { width: 28px; padding: 0; justify-content: center; }

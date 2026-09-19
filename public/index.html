@@ -177,6 +177,16 @@
         <a class="btn btn-primary btn-xl" href="/app">Build my CV</a>
       </div>
       <p class="hero-sub"><a href="/app?convert=1">I already have a CV &rarr;</a></p>
+      <!-- All six are in the markup and only one is lit at a time, so the
+           page still says everything with scripting off or to a crawler. -->
+      <ul class="hero-feats" id="heroFeats">
+        <li><b>Drop in the CV you already have</b><span>PDF, Word, or a LinkedIn export &mdash; read in the browser.</span></li>
+        <li><b>Rated out of 100</b><span>Six grades, each quoting the exact line it is about.</span></li>
+        <li><b>Check it against a job advert</b><span>What the advert asks for, and what your CV is missing.</span></li>
+        <li><b>Fix your LinkedIn</b><span>Your text, cut to LinkedIn&rsquo;s field limits, ready to paste.</span></li>
+        <li><b>Eight formats, one press</b><span>Convert what you have into any of them, facts unchanged.</span></li>
+        <li><b>Export PDF, Word or plain text</b><span>Whatever the portal asks for. Nothing is uploaded.</span></li>
+      </ul>
     </div>
     <div class="hero-art" id="heroArt" aria-hidden="true"></div>
   </section>
@@ -234,7 +244,7 @@
 
   <section class="site-band alt" id="faq">
     <div class="wrap">
-      <h2>Common questions</h2>
+      <h2 class="section-title">Common questions</h2>
       <div class="faq">
         <details class="faq-item"><summary>Is ihatejob really free?</summary>
           <p>Yes. There is no account, no email address, no payment method and no paid tier. Every format and every export is available to everyone. The source is published under the MIT licence.</p></details>

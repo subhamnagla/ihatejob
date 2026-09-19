@@ -1052,6 +1052,46 @@ body {
 .hero-sub a { color: var(--dim); text-decoration: none; border-bottom: 1px solid var(--line); padding-bottom: 2px; }
 .hero-sub a:hover { color: var(--brand); border-color: var(--brand); }
 
+/* One line at a time, on a rule, like a marker working down a margin.
+   The six are stacked in a single grid cell rather than positioned
+   absolutely, so the box is exactly as tall as the longest of them and
+   nothing jumps when the text changes length. */
+.hero-feats {
+  display: grid;
+  list-style: none;
+  margin: 26px 0 0;
+  padding: 2px 0 2px 16px;
+  border-left: 2px solid var(--brand);
+  max-width: 34em;
+}
+.hero-feats li {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transition: opacity 0.45s ease;
+  pointer-events: none;
+}
+.hero-feats li.on { opacity: 1; }
+.hero-feats b {
+  display: block;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semi);
+  color: var(--text);
+}
+.hero-feats span {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-md);
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+/* Asked not to be moved at: every feature listed, nothing rotating. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-feats { display: block; }
+  .hero-feats li { opacity: 1; transition: none; }
+  .hero-feats li + li { margin-top: 10px; }
+}
+
 /* --- three benefits ----------------------------------------------------
    No icons. An icon above a three-word heading is decoration pretending to
    be information, and these three headings say the whole thing already.  */
@@ -1143,4 +1183,23 @@ body {
 @media (max-width: 620px) {
   .btn-xl { width: 100%; justify-content: center; }
   .hero-cta { margin-top: 24px; }
+
+  /* Three identical cards stacked is three paragraphs in costume, and the
+     24px of card padding pushed their text 25px to the right of every heading
+     on the page - the one place on a phone where nothing lined up. A rule
+     between them separates the three just as well and costs no indent.
+     This has to live below the .benefit rules it overrides: the earlier
+     max-width:620px block sits above them in the file, so anything put there
+     loses on source order without losing on specificity, which is the kind of
+     dead rule nobody notices. */
+  .benefit-grid { gap: 0; }
+  .benefit {
+    padding: 20px 0;
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    background: none;
+  }
+  .benefit:first-child { border-top: 0; padding-top: 0; }
+  .benefit p { max-width: none; }
 }
