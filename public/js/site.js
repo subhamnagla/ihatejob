@@ -6,8 +6,6 @@ import { initPWA } from './pwa.js';
 import { PROFESSIONS, PROFESSION_GROUPS, ALIASES } from './professions.js';
 import { TEMPLATES, renderCV, esc } from './templates.js';
 import { buildSample } from './samples.js';
-import { blankData } from './schema.js';
-import { reviewCV } from './review.js';
 import { PLANETS, planetSVG, starsFor, starRow } from './planets.js';
 
 const $ = (id) => document.getElementById(id);
@@ -68,13 +66,16 @@ function paper(profId, accent, cls) {
 
 // One document, not a pile. Two overlapping papers read as a stock image of
 // "some CVs"; one legible page reads as the thing the site makes.
-$('heroArt').innerHTML = paper('healthcare-clinical', '#2563eb');
+// Teal, not the brand blue. The accent was the same #2563eb as the buttons
+// and links around it, so the one object the page is selling read as more
+// chrome. It is also a nurse's CV, and teal is that world's colour.
+$('heroArt').innerHTML = paper('healthcare-clinical', '#057d74');
 
 /* --------------------------------------------------------------- formats */
 
 const FORMAT_ACCENT = {
-  classic: '#2563eb', minimal: '#334155', ats: '#111827', executive: '#0f766e',
-  modern: '#2563eb', creative: '#7c3aed', academic: '#334155', federal: '#0f766e',
+  classic: '#3465cc', minimal: '#334155', ats: '#111827', executive: '#057d74',
+  modern: '#3465cc', creative: '#7252c3', academic: '#334155', federal: '#057d74',
 };
 
 // Four on the landing page. Eight thumbnails is a catalogue; the builder is
@@ -86,7 +87,7 @@ $('formatRail').innerHTML = Object.entries(TEMPLATES)
   .map(([key, t]) => {
   const d = buildSample('software-engineering');
   d.settings.template = key;
-  d.settings.accent = FORMAT_ACCENT[key] || '#2563eb';
+  d.settings.accent = FORMAT_ACCENT[key] || '#3465cc';
   if (key === 'academic') d.settings.font = 'book';
   const { html, classes } = renderCV(d);
   // Not an <a>: the rendered CV contains its own project links, and nesting

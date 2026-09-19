@@ -4,7 +4,7 @@
 // this only has to hold the shell. There is nothing user-specific in the cache
 // - CVs live in localStorage and are never fetched - so a shared cache is safe.
 
-const VERSION = 'ihatejob-v13';
+const VERSION = 'ihatejob-v14';
 
 const SHELL = [
   '/',
@@ -26,6 +26,7 @@ const SHELL = [
   '/js/import.js',
   '/js/planets.js',
   '/js/pwa.js',
+  '/fonts/public-sans.woff2',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
@@ -73,8 +74,10 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Icons never change without changing name, so serve them from cache.
-  if (url.pathname.startsWith('/icons/')) {
+  // Icons and the font never change without changing name, so serve them
+  // from cache. Putting the font on the network-first path below would make
+  // every load wait on a request whose answer cannot have changed.
+  if (url.pathname.startsWith('/icons/') || url.pathname.startsWith('/fonts/')) {
     event.respondWith((async () => {
       const cached = await caches.match(request);
       if (cached) return cached;

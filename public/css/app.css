@@ -170,10 +170,30 @@ html, body {
   margin: 0;
 }
 
+/* Public Sans, self-hosted.
+   The site had no typeface: the stack was ui-sans-serif, which is Segoe UI
+   here, SF on a Mac and Roboto on Android - a different-looking product on
+   every device a visitor owns, on a site whose whole claim is judgement about
+   how a document looks. Public Sans is the face of US federal forms, which is
+   the right vernacular for a tool that fills one in.
+   One variable file covers 400 to 700 in 26KB, which is less than two static
+   weights would cost. Self-hosted rather than pulled from a font CDN, because
+   the footer promises no third-party requests and that has to stay true.
+   The CV itself is deliberately NOT set in it: .page carries its own --family
+   in cv.css, because a CV has to render in faces the recruiter's machine and
+   the PDF export both already have. */
+@font-face {
+  font-family: 'Public Sans';
+  src: url('/fonts/public-sans.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 body {
   background: var(--bg);
   color: var(--text);
-  font: 14px/1.5 ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
+  font: 400 14px/1.5 'Public Sans', ui-sans-serif, system-ui, "Segoe UI", Roboto, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
