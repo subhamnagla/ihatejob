@@ -121,7 +121,8 @@ profile of you, and we do not combine them with anything else.</p>
   <li>No analytics, no tag manager, no pixels, no session recording, no heatmaps.</li>
   <li>No advertising, no ad networks, no retargeting.</li>
   <li>No third-party scripts or fonts loaded into any page. The typeface is served from this
-    site&rsquo;s own domain for exactly this reason.</li>
+    site&rsquo;s own domain for exactly this reason. The journeys page makes one direct request
+    to GitHub for comment counts, which is described below; it loads no code from there.</li>
   <li>No account, so no password to lose and no profile to build.</li>
   <li>Nothing is sold, rented, or shared for anyone else&rsquo;s marketing.</li>
 </ul>
@@ -134,7 +135,11 @@ profile of you, and we do not combine them with anything else.</p>
   <li><b>Vercel</b> &mdash; hosting and request logs.</li>
   <li><b>Resend</b> &mdash; delivers the email when you send a review, report or journey.</li>
   <li><b>Upstash</b> &mdash; stores vote totals.</li>
-  <li><b>GitHub</b> &mdash; holds the source code, and the published journeys.</li>
+  <li><b>GitHub</b> &mdash; stores the journeys that are published on this site. On the
+    <a href="/stories">journeys page only</a>, your browser also asks GitHub directly for the
+    reaction and comment counts, which means GitHub sees your IP address on that page in the way
+    any site you visit does. No other page on this site contacts it, and nothing about you or
+    your CV is sent with the request.</li>
 </ul>
 
 <h2>If you are in the EU, the UK, or India</h2>
@@ -168,9 +173,10 @@ Code) Rules, 2021:</p>
 
 <ul>
   <li><b>Name:</b> Subham Nagla</li>
-  <li><b>Contact:</b> TO BE SET</li>
+  <li><b>Contact:</b> <a href="mailto:subhamnagla9819@gmail.com">subhamnagla9819@gmail.com</a></li>
   <li><b>How to complain:</b> use the &ldquo;Something broken&rdquo; form on the
-    <a href="/#report">home page</a>, or write to the address above.</li>
+    <a href="/#report">home page</a>, which reaches us directly, or write to the address
+    above.</li>
 </ul>
 
 <p>A complaint will be acknowledged within 24 hours and resolved within 15 days.</p>
@@ -186,7 +192,7 @@ commit history of this site.</p>
 
 <footer class="site-foot">
   <div class="wrap foot-inner">
-    <div><b>ihatejob</b><p>A CV builder that runs entirely in your browser. MIT licensed.</p></div>
+    <div><b>ihatejob</b><p>A CV builder that runs entirely in your browser. Nothing is uploaded.</p></div>
     <nav>
       <a href="/app">Builder</a>
       <a href="/cv">CV formats</a>

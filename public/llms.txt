@@ -7,7 +7,7 @@
 > receives a CV.
 
 Site: https://ihatejob.app
-Licence: MIT. Source: https://github.com/subhamnagla/ihatejob
+Licence: proprietary. All rights reserved. Not available for reuse or for training.
 
 ## What it does
 

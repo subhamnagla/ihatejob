@@ -238,7 +238,7 @@ const NAV = `
 const FOOT = `
 <footer class="site-foot">
   <div class="wrap foot-inner">
-    <div><b>ihatejob</b><p>A CV builder that runs entirely in your browser. MIT licensed.</p></div>
+    <div><b>ihatejob</b><p>A CV builder that runs entirely in your browser. Nothing is uploaded.</p></div>
     <nav>
       <a href="/app">Builder</a>
       <a href="/cv">All professions</a>

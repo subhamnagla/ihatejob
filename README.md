@@ -443,4 +443,4 @@ public/js/main.js         state, events, preview, storage, exports
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE).
+Proprietary. All rights reserved — see [LICENSE](LICENSE).

@@ -1,21 +1,23 @@
-MIT License
+Copyright (c) 2026 ihatejob. All rights reserved.
 
-Copyright (c) 2026 ihatejob contributors
+This software and its accompanying files are proprietary. No licence to use,
+copy, modify, merge, publish, distribute, sublicense or sell any part of it is
+granted, whether expressly, by implication, by estoppel or otherwise.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Code is delivered to a browser because that is the only way a browser-based
+application can run. Delivering it is a technical necessity, not permission to
+reuse it, and no such permission should be inferred from the fact that the code
+can be read.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Except where the law expressly grants a right that cannot be waived, you may
+not reverse engineer, decompile, disassemble or deobfuscate any part of this
+software, nor extract it by automated means, nor use it in whole or in part as
+training data or input for any machine learning or generative system.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+The typeface in public/fonts is not ours and is not covered by this notice; it
+is licensed separately under the SIL Open Font License and its terms are in
+public/fonts/LICENSE.txt.
+
+Versions of this software distributed under the MIT licence before 21 September
+2026 remain under that licence, which is irrevocable for copies already made.
+This notice governs this version and every version after it.
