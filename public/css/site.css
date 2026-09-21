@@ -1036,10 +1036,12 @@ body {
    anything, and most of them have not got a CV to convert.               */
 .btn-xl {
   height: 52px;
-  padding: 0 30px;
+  padding: 0 34px;
   font-size: var(--fs-lg);
   font-weight: var(--fw-semi);
-  border-radius: var(--r-md);
+  /* Fully round at this size. A 12px corner on a 52px button reads as a
+     rectangle that has been softened; a pill reads as a decision. */
+  border-radius: var(--r-pill);
 }
 .hero-cta { margin-top: 30px; }
 .hero-sub { margin: 16px 0 0; font-size: var(--fs-base); }
@@ -1057,11 +1059,18 @@ body {
   max-width: 36em;
 }
 .hero-feats li {
-  padding: 7px 0 7px 16px;
   border-left: 2px solid var(--line);
   transition: border-color 0.4s ease, opacity 0.4s ease;
   opacity: 0.55;
 }
+.hero-feats a {
+  display: block;
+  padding: 7px 0 7px 16px;
+  text-decoration: none;
+  color: inherit;
+}
+.hero-feats a:hover b { color: var(--brand); }
+.hero-feats li:hover { opacity: 1; border-left-color: var(--brand); }
 /* The rotation moves this, not the visibility of anything. */
 .hero-feats li.on { opacity: 1; border-left-color: var(--brand); }
 .hero-feats b {
@@ -1200,6 +1209,13 @@ body {
      declared below the first max-width:620px block, so anything written up
      there loses on source order while looking completely correct. */
   .hero-feats { margin-top: 20px; }
-  .hero-feats li { padding: 5px 0 5px 14px; }
   .hero-feats span { display: none; }
+  /* The label alone is about 18px of text. These are links now, so the row
+     has to be a target a thumb can actually hit. */
+  .hero-feats a {
+    padding: 0 0 0 14px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
 }

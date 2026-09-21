@@ -1786,12 +1786,14 @@ scheduleSave(); // so the "Saved" pill is true even on a first visit
 /* ------------------------------------------------- links from the site */
 
 // The landing page deep-links in: /app?profession=law, /app?import=1,
-// /app?convert=1
+// /app?convert=1, /app?jd=1, /app?linkedin=1
 (() => {
   const params = new URLSearchParams(location.search);
   const prof = params.get('profession');
   const wantsConvert = params.get('convert');
   const wantsImport = params.get('import') || wantsConvert;
+  const wantsJd = params.get('jd');
+  const wantsLinkedIn = params.get('linkedin');
 
   if (prof && Object.prototype.hasOwnProperty.call(PROFESSIONS, prof)) {
     applyProfession(state, prof);
@@ -1799,9 +1801,13 @@ scheduleSave(); // so the "Saved" pill is true even on a first visit
   }
   if (wantsImport) openImport();
   if (wantsConvert) convertMode = true;
+  // Landing straight on the panel the link named, rather than on the builder
+  // with a menu the visitor now has to go and find.
+  if (wantsJd) runExport('jd');
+  if (wantsLinkedIn) openLinkedIn();
 
   // Drop the query string so a refresh does not re-apply it.
-  if (prof || wantsImport) {
+  if (prof || wantsImport || wantsJd || wantsLinkedIn) {
     history.replaceState(null, '', location.pathname);
   }
 })();

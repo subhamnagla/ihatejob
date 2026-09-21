@@ -279,9 +279,9 @@ a.brand:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; bo
   align-items: center;
   gap: 8px;
   height: 34px;
-  padding: 0 12px;
+  padding: 0 14px;
   border: 1px solid var(--line);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-md);
   background: var(--panel-2);
   color: var(--text);
   cursor: pointer;
@@ -292,7 +292,7 @@ a.brand:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; bo
   transition: background 0.14s, border-color 0.14s, box-shadow 0.14s, transform 0.12s;
 }
 .btn:hover { background: var(--hover); border-color: var(--border-hover); }
-.btn:active { transform: translateY(1px); }
+.btn:active { transform: translateY(1px) scale(0.985); }
 .btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
 /* Every interactive thing, not the seven that happened to get a rule.
@@ -307,7 +307,17 @@ a.brand:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; bo
 /* The CV itself is a document being previewed, not a control surface. */
 .page :focus-visible, .paper :focus-visible { outline: none; }
 .btn-primary {
-  background: var(--brand);
+  /* Two stops of one hue, not two different colours: the top edge catches a
+     little light and the bottom falls away, so the eye reads a surface rather
+     than a painted rectangle. A gradient between hues would be decoration;
+     this is shading.
+     The amounts are set by contrast, not by taste. 15% white on the top stop
+     looked right and put the label at 3.97:1, under the 4.5 that 16px
+     semibold needs. 5% up and 10% down spans more range than that did and the
+     worst point on it measures 4.74, in both themes and both states. */
+  background: linear-gradient(180deg,
+    color-mix(in srgb, #fff 5%, var(--brand)),
+    color-mix(in srgb, #000 10%, var(--brand)));
   border-color: var(--brand);
   color: var(--brand-ink);
   font-weight: var(--fw-semi);
@@ -318,15 +328,23 @@ a.brand:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; bo
   box-shadow: 0 1px 1px var(--btn-lift), 0 6px 14px -5px var(--btn-lift);
 }
 .btn-primary:hover {
-  background: var(--brand-hover);
+  background: linear-gradient(180deg,
+    color-mix(in srgb, #fff 5%, var(--brand-hover)),
+    color-mix(in srgb, #000 10%, var(--brand-hover)));
   border-color: var(--brand-hover);
-  transform: translateY(-1px);
+  transform: translateY(-1px) scale(1.015);
   box-shadow: 0 2px 3px var(--btn-lift), 0 12px 22px -7px var(--btn-lift);
 }
-/* Pressing it puts it back on the page, which is what pressing a thing does. */
-.btn-primary:active { transform: translateY(0); box-shadow: 0 1px 1px var(--btn-lift); }
+/* The pop. Pressing squeezes it quickly and letting go springs it back on the
+   slower transition above, so the button answers the finger instead of just
+   changing colour under it. */
+.btn-primary:active {
+  transform: translateY(0) scale(0.96);
+  transition-duration: 0.07s;
+  box-shadow: 0 1px 1px var(--btn-lift);
+}
 .btn-ghost { background: transparent; }
-.btn-sm { height: 28px; padding: 0 8px; font-size: var(--fs-sm); border-radius: var(--r-sm); }
+.btn-sm { height: 28px; padding: 0 10px; font-size: var(--fs-sm); border-radius: var(--r-md); }
 .btn-icon { width: 28px; padding: 0; justify-content: center; }
 .btn-danger:hover { color: var(--danger); border-color: var(--danger-border); }
 
