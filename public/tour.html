@@ -1,0 +1,310 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>ihatejob feature tour</title>
+
+<!-- The long reel: about a minute, walking every feature rather than making a
+     single claim. promo.html is the short one and is deliberately left alone;
+     this is a separate file so the two can be edited without disturbing each
+     other.
+
+     As with the short reel, nothing here is a mockup. The CV is renderCV(),
+     the score and findings are reviewCV(), the job-advert panel is matchJD()
+     run live against a real advert, and the profession and region counts are
+     read from the packs themselves - so if a pack is added tomorrow, the reel
+     says the new number without anyone editing it. -->
+
+<link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/css/cv.css">
+
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #05070a; overflow: hidden;
+               font-family: 'Public Sans', ui-sans-serif, system-ui, sans-serif; }
+
+  #fit { position: fixed; inset: 0; overflow: hidden; }
+  #stage {
+    width: 1080px; height: 1920px; position: absolute; left: 50%; top: 50%;
+    transform-origin: 50% 50%; overflow: hidden;
+    background: radial-gradient(120% 55% at 50% 0%, #142033 0%, transparent 58%),
+                linear-gradient(180deg, #0a0f18, #05070a);
+    color: #e7edf5;
+  }
+
+  .scene { position: absolute; inset: 0; padding: 104px 78px;
+           display: flex; flex-direction: column;
+           opacity: 0; visibility: hidden; transition: opacity .45s ease, visibility .45s; }
+  .scene.on { opacity: 1; visibility: visible; }
+
+  .step { font-size: 30px; font-weight: 700; color: #7fb0ff; letter-spacing: .06em; }
+  h2 { font-size: 74px; line-height: 1.08; margin: 20px 0 0; font-weight: 700; letter-spacing: -.028em; }
+  h2 .q { color: #7fb0ff; }
+  .note { font-size: 36px; line-height: 1.45; color: #9fb0c4; margin: 26px 0 0; max-width: 21em; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 40px; }
+  .chip { font-size: 28px; padding: 12px 20px; border-radius: 999px;
+          background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.10); }
+  .chip.yes { background: rgba(111,224,166,.12); border-color: rgba(111,224,166,.35); color: #a9f0cb; }
+  .chip.no  { background: rgba(255,138,138,.10); border-color: rgba(255,138,138,.32); color: #ffc0c0; }
+
+  .sheet { margin: 48px auto 0; width: 760px; border-radius: 10px; overflow: hidden;
+           box-shadow: 0 46px 110px rgba(0,0,0,.66); background: #fff; }
+  .sheet .page { zoom: .957; }
+
+  .card { margin-top: 44px; border-radius: 26px; padding: 44px 46px;
+          background: linear-gradient(180deg, rgba(127,176,255,.10), rgba(127,176,255,.03));
+          border: 1px solid rgba(127,176,255,.22); }
+  .score { display: flex; align-items: baseline; gap: 20px; }
+  .score b { font-size: 128px; line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .score i { font-style: normal; font-size: 38px; color: #9fb0c4; }
+  .score .g { margin-left: auto; font-size: 40px; font-weight: 600; }
+
+  .bands { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+           gap: 16px; margin-top: 34px; }
+  .band { border-radius: 14px; padding: 18px 20px; background: rgba(255,255,255,.05); }
+  .band span { display: block; font-size: 23px; color: #9fb0c4; }
+  .band b { font-size: 38px; font-weight: 700; }
+  .band.low b { color: #ff8a8a; } .band.good b { color: #6fe0a6; }
+
+  .quote { margin-top: 34px; border-radius: 18px; padding: 30px 34px;
+           background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.10); }
+  .quote b { display: block; font-size: 32px; margin-bottom: 12px; }
+  .quote q { display: block; font-size: 31px; line-height: 1.5; color: #ffd9d9; font-style: italic; }
+
+  .rail { display: flex; gap: 26px; margin-top: 52px; }
+  .rail .frame { flex: 1; border-radius: 12px; overflow: hidden; background: #fff;
+                 box-shadow: 0 26px 60px rgba(0,0,0,.6); height: 390px; }
+  .rail .page { zoom: .348; }
+  .rail em { display: block; font-style: normal; font-size: 24px; color: #9fb0c4;
+             margin-top: 14px; text-align: center; }
+
+  .list { margin: 40px 0 0; padding: 0; display: grid; gap: 20px; }
+  .list li { list-style: none; font-size: 35px; line-height: 1.32;
+             padding-left: 26px; border-left: 4px solid #7fb0ff; }
+  .list li small { display: block; font-size: 27px; color: #9fb0c4; margin-top: 6px; }
+
+  .mark { margin-top: auto; }
+  .mark b { display: block; font-size: 82px; font-weight: 700; letter-spacing: -.02em; }
+  .mark span { display: block; margin-top: 16px; font-size: 34px; color: #9fb0c4; }
+  .foot { position: absolute; left: 78px; right: 78px; bottom: 80px;
+          font-size: 30px; color: #7d8fa4; }
+
+  #go { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center;
+        background: rgba(5,7,10,.88); border: 0; color: #e7edf5; cursor: pointer;
+        font: 600 22px/1.55 'Public Sans', system-ui, sans-serif; }
+  #go div { text-align: center; max-width: 30em; padding: 0 24px; }
+  #go small { display: block; margin-top: 12px; color: #9fb0c4; font-weight: 400; }
+  #go[hidden] { display: none; }
+
+  @media (prefers-reduced-motion: reduce) { .scene { transition: none; } }
+</style>
+
+<div id="fit"><div id="stage"></div></div>
+
+<button id="go" type="button"><div>
+  Press to play the tour
+  <small>About a minute, 9:16. Start your screen recorder first, then press this &mdash;
+  it goes fullscreen so the address bar stays out of the shot.
+  Add ?auto=1 to play inline.</small>
+</div></button>
+
+<script type="module">
+import { buildSample } from '/js/samples.js';
+import { renderCV, renderText } from '/js/templates.js';
+import { reviewCV } from '/js/review.js';
+import { matchJD } from '/js/jdmatch.js';
+import { PROFESSIONS, REGIONS, PROFESSION_GROUPS } from '/js/professions.js';
+import { TEMPLATES } from '/js/templates.js';
+
+/* ---------------------------------------------------------------- data */
+
+const nProf = Object.keys(PROFESSIONS).length;
+const nRegion = Object.keys(REGIONS).length;
+const nGroup = Object.keys(PROFESSION_GROUPS).length;
+const nTpl = Object.keys(TEMPLATES).length;
+
+const good = buildSample('software-engineering');
+good.basics.fullName = 'Subham Nagla';
+good.basics.email = 'subham.nagla@example.com';
+good.settings.accent = '#057d74';
+
+// The same CV as most first drafts actually read: duties, no numbers.
+const weak = structuredClone(good);
+weak.basics.summary = 'Hardworking and passionate engineer, responsible for delivering high '
+  + 'quality solutions in a fast paced environment. Team player with excellent communication.';
+weak.basics.website = ''; weak.basics.linkedin = ''; weak.projects = [];
+weak.experience[0].bullets = ['Responsible for the checkout flow.',
+  'Worked on a component library.', 'Helped with testing.'];
+weak.experience[1].bullets = ['Assisted with the merchant dashboard.', 'Involved in build tooling.'];
+
+const rWeak = reviewCV(weak);
+const rGood = reviewCV(good);
+
+const ADVERT = 'Senior Frontend Engineer. Strong React and TypeScript, design systems, web '
+  + 'performance and accessibility. Testing experience essential (Playwright). '
+  + 'AWS and Docker a plus. GraphQL nice to have.';
+const jd = matchJD(ADVERT, renderText(good));
+
+const paper = (d) => { const { html, classes } = renderCV(d);
+  return '<div class="' + classes + '" style="--accent:' + d.settings.accent + '">' + html + '</div>'; };
+const fmt = (d, tpl, accent) => { const c = structuredClone(d);
+  c.settings.template = tpl; c.settings.accent = accent; return paper(c); };
+
+const band = (b) => '<div class="band ' + (b.letter[0] === 'E' || b.letter[0] === 'D' ? 'low'
+  : b.letter[0] === 'A' ? 'good' : '') + '"><span>' + b.name + '</span><b>' + b.letter + '</b></div>';
+const chip = (t, cls) => '<span class="chip ' + cls + '">' + t + '</span>';
+
+const someProf = ['Software engineering', 'Healthcare / nursing', 'Teaching', 'Law',
+  'Banking / BFSI', 'Skilled trades', 'Defence veteran', 'Pharmacy'];
+const someRegion = Object.values(REGIONS).slice(0, 10).map((r) => r.name);
+
+/* -------------------------------------------------------------- scenes */
+
+const SCENES = [
+  { ms: 4300, html: '<p class="step">THE WHOLE THING</p>'
+    + '<h2>Build it, rate it,<br>aim it at the job,<br><span class="q">then send it.</span></h2>'
+    + '<p class="note">Twelve things this does, in about a minute. The last one is the one most '
+    + 'people do not believe until they check it.</p>' },
+
+  { ms: 5000, html: '<p class="step">01 &mdash; START WHERE YOU ARE</p>'
+    + '<h2>' + nProf + ' professions,<br>in ' + nGroup + ' families.</h2>'
+    + '<p class="note">The pack decides your section order, what is compulsory, and what has to '
+    + 'carry a number.</p>'
+    + '<div class="chips">' + someProf.map((p) => chip(p, '')).join('') + '</div>' },
+
+  { ms: 5000, html: '<p class="step">02 &mdash; AND WHERE YOU ARE APPLYING</p>'
+    + '<h2>' + nRegion + ' regional<br>conventions.</h2>'
+    + '<p class="note">Page count, whether a photo belongs, whether a date of birth does, how '
+    + 'dates are written. A German CV and an American r&eacute;sum&eacute; disagree on most of it.</p>'
+    + '<div class="chips">' + someRegion.map((p) => chip(p, '')).join('') + '</div>' },
+
+  { ms: 5300, html: '<p class="step">03 &mdash; OR BRING WHAT YOU HAVE</p>'
+    + '<h2>PDF, Word,<br>or a LinkedIn export.</h2>'
+    + '<p class="note">Read where it sits. The file is opened on your own device and put back '
+    + 'down there.</p>'
+    + '<div class="sheet">' + paper(weak) + '</div>' },
+
+  { ms: 5600, html: '<p class="step">04 &mdash; RATED, NOT JUST BUILT</p>'
+    + '<div class="card"><div class="score"><b id="n1">0</b><i>/ 100</i>'
+    + '<span class="g">' + rWeak.grade + ' &middot; ' + rWeak.letter + '</span></div>'
+    + '<div class="bands">' + rWeak.bands.map(band).join('') + '</div></div>'
+    + '<p class="note">Six grades, because a CV can be beautifully written and say nothing, or '
+    + 'full of evidence and unreadable by a parser. Those are different problems.</p>' },
+
+  { ms: 5500, html: '<p class="step">05 &mdash; IT QUOTES THE LINE</p>'
+    + '<h2>Not &ldquo;be more<br>specific&rdquo;.</h2>'
+    + '<div class="quote"><b>' + rWeak.findings[0].title + '</b>'
+    + '<q>' + rWeak.findings[0].detail + '</q></div>'
+    + '<p class="note">Every finding names the line it is about, so it is something you can go '
+    + 'and fix rather than something to feel bad about.</p>' },
+
+  { ms: 4700, html: '<p class="step">06 &mdash; THEN IT CLIMBS</p>'
+    + '<div class="card"><div class="score"><b id="n2">' + rWeak.score + '</b><i>/ 100</i>'
+    + '<span class="g">' + rGood.grade + ' &middot; ' + rGood.letter + '</span></div>'
+    + '<div class="bands">' + rGood.bands.map(band).join('') + '</div></div>'
+    + '<p class="note">Same job, same person. The numbers that were always true, put where a '
+    + 'reader can find them.</p>' },
+
+  { ms: 6100, html: '<p class="step">07 &mdash; AIM IT AT ONE ADVERT</p>'
+    + '<h2>' + jd.covered + ' of ' + jd.total + '<br>terms covered.</h2>'
+    + '<p class="note">Paste the advert in. Every term is listed rather than reduced to a '
+    + 'percentage, so you can see when it has misread one.</p>'
+    + '<div class="chips">'
+    + jd.terms.filter((t) => t.found).slice(0, 7).map((t) => chip(t.label, 'yes')).join('')
+    + jd.missing.slice(0, 4).map((t) => chip(t.label, 'no')).join('')
+    + '</div>' },
+
+  { ms: 5000, html: '<p class="step">08 &mdash; FIX YOUR LINKEDIN</p>'
+    + '<h2>Your words,<br>cut to their<br>field limits.</h2>'
+    + '<p class="note">Nothing can write to a LinkedIn profile through an API. What this does is '
+    + 'trim what you have already written to fit, ready to paste &mdash; and put what matters in '
+    + 'the first three lines, before &ldquo;see more&rdquo; hides the rest.</p>' },
+
+  { ms: 5300, html: '<p class="step">09 &mdash; ' + nTpl + ' FORMATS, ONE PRESS</p>'
+    + '<div class="rail">'
+    + '<div><div class="frame">' + fmt(good, 'classic', '#3465cc') + '</div><em>Classic</em></div>'
+    + '<div><div class="frame">' + fmt(good, 'ats', '#111827') + '</div><em>ATS Plain</em></div>'
+    + '<div><div class="frame">' + fmt(good, 'modern', '#057d74') + '</div><em>Modern</em></div>'
+    + '</div>'
+    + '<p class="note">The same facts, laid out ' + nTpl + ' ways. No wording is rewritten and '
+    + 'nothing is dropped to make a layout fit.</p>' },
+
+  { ms: 4900, html: '<p class="step">10 &mdash; TAKE IT AWAY</p>'
+    + '<ul class="list"><li>PDF<small>For applications and email.</small></li>'
+    + '<li>Word<small>For the agencies that still ask for it.</small></li>'
+    + '<li>Plain text<small>For portals that reject everything else.</small></li>'
+    + '<li>JSON backup<small>The only copy that exists outside your browser. Take it.</small></li>'
+    + '</ul>' },
+
+  { ms: 4700, html: '<p class="step">11 &mdash; AND WHEN THE SIGNAL GOES</p>'
+    + '<h2>It keeps<br><span class="q">working.</span></h2>'
+    + '<p class="note">Cached on the first visit and installable to your home screen. A lot of '
+    + 'people write a CV on a phone, on mobile data, in a queue somewhere.</p>' },
+
+  { ms: 5300, html: '<p class="step">12 &mdash; AND IT LISTENS</p>'
+    + '<ul class="list">'
+    + '<li>Journeys<small>What other people changed, and what happened. Read them, vote, reply.</small></li>'
+    + '<li>Reviews<small>Ten planets, Mercury to the Sun. Anonymous unless you type a name.</small></li>'
+    + '<li>Report a problem<small>A CV it could not read is the most useful thing you can send.</small></li>'
+    + '</ul>' },
+
+  { ms: 5300, html: '<p class="step">' + nProf + ' PROFESSIONS &middot; ' + nRegion + ' REGIONS &middot; ' + nTpl + ' FORMATS</p>'
+    + '<h2>It runs in<br>your browser.<br><span class="q">Nothing is<br>uploaded.</span></h2>'
+    + '<div class="mark"><b>ihatejob.app</b><span>Free. No account. No paid tier.</span></div>' },
+];
+
+/* ------------------------------------------------------------ playback */
+
+const stage = document.getElementById('stage');
+stage.innerHTML = SCENES.map((s, i) =>
+  '<section class="scene" data-i="' + i + '">' + s.html + '</section>').join('');
+
+function fit() {
+  const k = Math.min(innerWidth / 1080, innerHeight / 1920);
+  stage.style.transform = 'translate(-50%, -50%) scale(' + k + ')';
+}
+fit();
+addEventListener('resize', fit);
+
+function countTo(el, from, to, ms) {
+  if (!el) return;
+  const t0 = performance.now();
+  const step = (t) => {
+    const p = Math.min(1, (t - t0) / ms);
+    el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3)));
+    if (p < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+const scenes = [...stage.querySelectorAll('.scene')];
+const go = document.getElementById('go');
+
+async function play() {
+  for (let i = 0; i < scenes.length; i += 1) {
+    scenes.forEach((s) => s.classList.remove('on'));
+    scenes[i].classList.add('on');
+    if (i === 4) countTo(scenes[i].querySelector('#n1'), 0, rWeak.score, 1300);
+    if (i === 6) countTo(scenes[i].querySelector('#n2'), rWeak.score, rGood.score, 1600);
+    await new Promise((r) => setTimeout(r, SCENES[i].ms));
+  }
+  scenes.forEach((s) => s.classList.remove('on'));
+  go.hidden = false;
+}
+
+go.addEventListener('click', async () => {
+  try { await document.documentElement.requestFullscreen(); } catch { /* inline */ }
+  go.hidden = true;
+  play();
+});
+if (new URLSearchParams(location.search).get('auto')) { go.hidden = true; play(); }
+document.addEventListener('fullscreenchange', () => {
+  if (!document.fullscreenElement) go.hidden = false;
+});
+
+const total = SCENES.reduce((n, s) => n + s.ms, 0);
+console.info('[tour] ' + SCENES.length + ' scenes, ' + (total / 1000).toFixed(1) + 's |'
+  + ' weak ' + rWeak.score + ' -> good ' + rGood.score
+  + ' | advert ' + jd.covered + '/' + jd.total);
+</script>

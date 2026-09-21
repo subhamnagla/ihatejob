@@ -85,12 +85,23 @@ function candidates(text) {
     // verbatim, found nowhere, and reported missing from a CV that says React
     // on every other line - the worst kind of wrong, because it reads as
     // authoritative.
-    let words = norm(rawIn).split(' ').filter(Boolean);
-    while (words.length > 1 && STOP.has(words[0])) words = words.slice(1);
-    while (words.length > 1 && STOP.has(words[words.length - 1])) words = words.slice(0, -1);
+    const all = norm(rawIn).split(' ').filter(Boolean);
+    let from = 0;
+    let to = all.length;
+    while (to - from > 1 && STOP.has(all[from])) from += 1;
+    while (to - from > 1 && STOP.has(all[to - 1])) to -= 1;
+    const words = all.slice(from, to);
 
     const t = words.join(' ');
-    const raw = words.length === norm(rawIn).split(' ').filter(Boolean).length ? rawIn : t;
+    // Take the label out of the ORIGINAL string, at the same span, so the
+    // casing survives the trim. It used to fall back to the normalised term
+    // whenever a stop word was dropped, which is why an advert asking for
+    // "Strong React" reported a requirement for "react" - lowercase, beside a
+    // correctly cased "TypeScript", looking like a typo in our own output.
+    // Only when normalising changed the word count is there nothing to line
+    // the two up against, and then the lowercase term is all there is.
+    const rawWords = clean(rawIn).split(' ').filter(Boolean);
+    const raw = rawWords.length === all.length ? rawWords.slice(from, to).join(' ') : t;
     if (!t || t.length < 2 || t.length > 40) return;
     if (words.length > 4) return;
     if (words.every((w) => STOP.has(w))) return;

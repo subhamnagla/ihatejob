@@ -109,7 +109,11 @@ check('the verification file is still there', verify.length, 1);
 check('and is still only the token',
   verify[0].html.trim(), 'google-site-verification: ' + verify[0].name);
 
-const indexable = pages.filter((p) => p.name !== 'admin.html' && !VERIFY.test(p.name));
+// A page that tells crawlers to stay away has no result to appear in, so it
+// needs none of the metadata a result needs. That is the admin console and the
+// promo reel: both are tools, not pages, and naming them individually here
+// would mean remembering to do it again for the next one.
+const indexable = pages.filter((p) => !/noindex/.test(p.html) && !VERIFY.test(p.name));
 
 const missing = (re) => indexable.filter((p) => !re.test(p.html)).map((p) => p.name);
 check('every page has a title', missing(/<title>[^<]{10,}<\/title>/), []);
