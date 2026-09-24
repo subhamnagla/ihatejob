@@ -350,11 +350,18 @@ function finish() {
 // frame the moment the window goes behind something, and the voice carries on
 // without the picture. Nothing on screen moves faster than a scene change or
 // a caption swap, so 50ms is smoother than it needs to be.
+// A browser only lets audio start while the press that asked for it is still
+// "transiently active", and that activation is spent by the first await. The
+// reel used to await a fullscreen request and a fetch of the cue file before
+// ever calling play(), by which point the press was long gone and play() was
+// rejected - silently, because the rejection fell into a catch that quietly
+// started the silent timeline instead. Everything looked right except that
+// there was no voice. So: play first, synchronously, and arrange the rest
+// around it.
 function playWithVoice() {
   let iv;
   const stop = () => { clearInterval(iv); vo.pause(); finish(); };
-  vo.currentTime = 0;
-  vo.play().then(() => {
+  const drive = () => {
     iv = setInterval(() => {
       // Stop on the timeline's own length, not the audio's. A file served
       // without a Content-Length reports duration Infinity and never fires
@@ -362,7 +369,20 @@ function playWithVoice() {
       if (vo.currentTime >= TOTAL) stop();
       else frame(vo.currentTime);
     }, 50);
-  }).catch(() => { playSilently(); });
+  };
+
+  // Rewinding an element the browser has not finished opening can throw; it
+  // is already at zero in that case.
+  try { vo.currentTime = 0; } catch { /* not seekable yet */ }
+
+  const started = vo.play();
+  if (!started) { drive(); return; }          // pre-promise browsers
+  started.then(drive).catch((err) => {
+    // Said out loud rather than swallowed. A reel that silently loses its
+    // voice is the hardest kind of broken to notice.
+    console.warn('[promo] audio refused, playing silently:', err && err.name);
+    playSilently();
+  });
   vo.onended = stop;
 }
 
@@ -377,21 +397,27 @@ function playSilently() {
   }, 50);
 }
 
-async function play() {
-  if (!CUES.length) await loadCues();
+// Fetched at load. Waiting for it on the press would spend the activation the
+// audio needs, and the caption layer reads CUES every tick anyway, so a slow
+// answer fills itself in rather than being missed.
+loadCues();
+
+function play() {
   if (vo && vo.src && !new URLSearchParams(location.search).get('auto')) playWithVoice();
   else playSilently();
 }
 
 const go = document.getElementById('go');
-go.addEventListener('click', async () => {
-  // Fullscreen on the press, because the press is the user gesture the API
-  // needs. On a phone this is the difference between a recording of the reel
-  // and a recording of the reel with an address bar across the top of it.
-  // Refused on some browsers and on older iOS, where it simply plays inline.
-  try { await document.documentElement.requestFullscreen(); } catch { /* inline */ }
+go.addEventListener('click', () => {
   go.hidden = true;
+  // Audio first and synchronously, while the press is still active.
   play();
+  // Then fullscreen, which on a phone is the difference between a recording
+  // of the reel and a recording of the reel with an address bar across the
+  // top. iOS Safari refuses it on anything but a <video>, and the reel simply
+  // plays inline there.
+  const fs = document.documentElement.requestFullscreen;
+  if (fs) fs.call(document.documentElement).catch(() => { /* inline */ });
 });
 if (new URLSearchParams(location.search).get('auto')) { go.hidden = true; play(); }
 
