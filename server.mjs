@@ -42,6 +42,12 @@ const TYPES = {
   // server hands back octet-stream and robots.txt downloads instead of
   // displaying - which is not what is being tested.
   '.txt': 'text/plain; charset=utf-8',
+  // Without these the promo reel's voiceover arrives as octet-stream with no
+  // length, and a browser that cannot see a length reports the duration as
+  // Infinity - which is not what a visitor gets from Vercel, so it is not
+  // what should be tested against here either.
+  '.wav': 'audio/wav',
+  '.vtt': 'text/vtt; charset=utf-8',
   '.xml': 'application/xml; charset=utf-8',
   '.pdf': 'application/pdf',
 };
@@ -90,6 +96,8 @@ createServer(async (req, res) => {
     const body = await readFile(target);
     res.writeHead(found ? 200 : 404, {
       'Content-Type': TYPES[extname(target)] || 'application/octet-stream',
+      // Stated, so media has a duration rather than being chunked blind.
+      'Content-Length': body.length,
       'Cache-Control': 'no-store',
       // A stale service worker pins a stale app, so it must never be cached.
       ...(target.endsWith('sw.js') ? { 'Service-Worker-Allowed': '/' } : {}),

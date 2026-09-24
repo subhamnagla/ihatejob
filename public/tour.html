@@ -267,15 +267,16 @@ function fit() {
 fit();
 addEventListener('resize', fit);
 
+// setInterval, not requestAnimationFrame: rAF does not run at all while the
+// tab is hidden, which would leave the score frozen at its starting number.
 function countTo(el, from, to, ms) {
   if (!el) return;
   const t0 = performance.now();
-  const step = (t) => {
-    const p = Math.min(1, (t - t0) / ms);
+  const iv = setInterval(() => {
+    const p = Math.min(1, (performance.now() - t0) / ms);
     el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3)));
-    if (p < 1) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
+    if (p >= 1) clearInterval(iv);
+  }, 40);
 }
 
 const scenes = [...stage.querySelectorAll('.scene')];

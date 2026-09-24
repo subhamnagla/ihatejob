@@ -111,8 +111,20 @@
   .wordmark b { display: block; font-size: 88px; font-weight: 700; letter-spacing: -.02em; }
   .wordmark span { display: block; margin-top: 18px; font-size: 38px; color: #9fb0c4; }
 
-  .trust { position: absolute; left: 80px; right: 80px; bottom: 88px;
-           font-size: 34px; color: #7d8fa4; }
+  /* Burned into the frame on purpose: most of this will be watched with the
+     sound off, and a reel whose argument is only in the audio has no argument
+     for most of the people who see it. */
+  #cap {
+    position: absolute; left: 64px; right: 64px; bottom: 74px;
+    min-height: 132px;
+    display: flex; align-items: flex-end; justify-content: center;
+    text-align: center;
+    font-size: 40px; line-height: 1.32; font-weight: 600;
+    color: #f2f6fb;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, .85), 0 0 40px rgba(0, 0, 0, .6);
+    pointer-events: none;
+  }
+  #cap span { display: inline-block; max-width: 17em; }
 
   /* press to play, so the recorder can be started on a still frame */
   #go {
@@ -131,11 +143,17 @@
 
 <div id="fit"><div id="stage"></div></div>
 
+<!-- Not autoplay: a browser will not start audio without a gesture, which is
+     what the play button is for. preload so the first word is not late. -->
+<audio id="vo" src="/media/promo-vo.wav" preload="auto"></audio>
+
 <button id="go" type="button"><div>
   Press to play
-  <small>29 seconds, 9:16. Start your screen recorder first, then press this &mdash;
-  it goes fullscreen so the address bar stays out of the shot.
-  Add ?auto=1 to play inline without fullscreen.</small>
+  <small>33 seconds, 9:16, with voiceover and burned-in captions.
+  Start your screen recorder first, then press this &mdash; it goes fullscreen
+  so the address bar stays out of the shot.
+  Add ?auto=1 to play inline, silently: browsers will not start audio without
+  a press.</small>
 </div></button>
 
 <script type="module">
@@ -181,7 +199,6 @@ const fmt = (d, tpl, accent) => { const c = structuredClone(d);
 
 /* -------------------------------------------------------------- scenes */
 
-const TRUST = '<p class="trust">Free &middot; No account &middot; Nothing is uploaded.</p>';
 const band = (b) => '<div class="band ' + (b.letter[0] === 'E' || b.letter[0] === 'D' ? 'low'
   : b.letter[0] === 'A' ? 'good' : '') + '"><span>' + b.name + '</span><b>' + b.letter + '</b></div>';
 
@@ -202,8 +219,7 @@ const SCENES = [
 
   { ms: 3600, html: '<p class="kicker">Before a recruiter sees it</p>'
     + '<h1>Your CV,<br>read by a <span class="q">machine</span><br>that tells you why.</h1>'
-    + '<p class="sub">Not a template. A second reading of the document you already have.</p>'
-    + TRUST },
+    + '<p class="sub">Not a template. A second reading of the document you already have.</p>' },
 
   { ms: 4800, html: '<p class="kicker">Start with the one you have</p>'
     + '<h1 style="font-size:72px">Drop in a PDF,<br>Word file, or<br>LinkedIn export.</h1>'
@@ -241,7 +257,31 @@ const SCENES = [
 
 const stage = document.getElementById('stage');
 stage.innerHTML = SCENES.map((s, i) =>
-  '<section class="scene" data-i="' + i + '">' + s.html + '</section>').join('');
+  '<section class="scene" data-i="' + i + '">' + s.html + '</section>').join('')
+  + '<div id="cap"><span></span></div>';
+
+const vo = document.getElementById('vo');
+const capEl = document.querySelector('#cap span');
+
+// The cue list is read from the .vtt rather than copied into this file, so the
+// captions cannot disagree with the ones shipped alongside the audio.
+const t2s = (t) => t.split(':').reverse()
+  .reduce((n, part, i) => n + parseFloat(part.replace(',', '.')) * Math.pow(60, i), 0);
+let CUES = [];
+async function loadCues() {
+  try {
+    const text = await (await fetch('/media/promo-vo.vtt')).text();
+    CUES = text.split(/\r?\n\r?\n/).map((block) => {
+      const line = block.split(/\r?\n/).find((l) => l.includes('-->'));
+      if (!line) return null;
+      const [a, b] = line.split('-->').map((x) => x.trim());
+      const words = block.split(/\r?\n/).slice(block.split(/\r?\n/).indexOf(line) + 1)
+        .join(' ').trim();
+      return words ? { from: t2s(a), to: t2s(b), words } : null;
+    }).filter(Boolean);
+  } catch { CUES = []; }
+}
+const cueAt = (t) => (CUES.find((c) => t >= c.from && t < c.to) || {}).words || '';
 
 function fit() {
   const k = Math.min(innerWidth / 1080, innerHeight / 1920);
@@ -254,27 +294,93 @@ addEventListener('resize', fit);
 function countTo(el, from, to, ms) {
   if (!el) return;
   const t0 = performance.now();
-  const step = (t) => {
-    const p = Math.min(1, (t - t0) / ms);
-    const eased = 1 - Math.pow(1 - p, 3);
-    el.textContent = Math.round(from + (to - from) * eased);
-    if (p < 1) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
+  const iv = setInterval(() => {
+    const p = Math.min(1, (performance.now() - t0) / ms);
+    el.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3)));
+    if (p >= 1) clearInterval(iv);
+  }, 40);
 }
 
 const scenes = [...stage.querySelectorAll('.scene')];
 
-async function play() {
-  for (let i = 0; i < scenes.length; i += 1) {
+// Where each scene begins, in seconds. The voice was cut to these boundaries,
+// so they are the same numbers in both files.
+const STARTS = SCENES.reduce((acc, s) => {
+  acc.push((acc[acc.length - 1] || 0) + s.ms / 1000);
+  return acc;
+}, []);
+const TOTAL = STARTS[STARTS.length - 1];
+const sceneAt = (t) => { let i = 0; while (i < STARTS.length - 1 && t >= STARTS[i]) i += 1; return i; };
+
+let shown = -1;
+let counted = new Set();
+function frame(t) {
+  const i = sceneAt(t);
+  if (i !== shown) {
     scenes.forEach((s) => s.classList.remove('on'));
     scenes[i].classList.add('on');
-    if (i === 2) countTo(scenes[i].querySelector('#n'), 0, rBefore.score, 1400);
-    if (i === 3) countTo(scenes[i].querySelector('#n2'), rBefore.score, rAfter.score, 1800);
-    await new Promise((r) => setTimeout(r, SCENES[i].ms));
+    shown = i;
   }
+  // The score animations belong to their scene, and must not restart if the
+  // clock jitters back a frame.
+  if (i === 3 && !counted.has(3)) {
+    counted.add(3); countTo(scenes[3].querySelector('#n'), 0, rBefore.score, 1400);
+  }
+  if (i === 4 && !counted.has(4)) {
+    counted.add(4); countTo(scenes[4].querySelector('#n2'), rBefore.score, rAfter.score, 1800);
+  }
+  const words = cueAt(t);
+  if (capEl.textContent !== words) capEl.textContent = words;
+}
+
+function finish() {
   scenes.forEach((s) => s.classList.remove('on'));
+  capEl.textContent = '';
+  shown = -1;
+  counted = new Set();
   document.getElementById('go').hidden = false;
+}
+
+// The audio is the clock when there is audio. Reading the scene from
+// currentTime rather than counting timeouts means the picture cannot drift
+// away from the voice, however the browser schedules us.
+// setInterval rather than requestAnimationFrame. rAF is suspended entirely
+// while a tab is hidden - measured here at zero calls in two seconds against
+// twenty from a 100ms interval - so a reel driven by it freezes on the first
+// frame the moment the window goes behind something, and the voice carries on
+// without the picture. Nothing on screen moves faster than a scene change or
+// a caption swap, so 50ms is smoother than it needs to be.
+function playWithVoice() {
+  let iv;
+  const stop = () => { clearInterval(iv); vo.pause(); finish(); };
+  vo.currentTime = 0;
+  vo.play().then(() => {
+    iv = setInterval(() => {
+      // Stop on the timeline's own length, not the audio's. A file served
+      // without a Content-Length reports duration Infinity and never fires
+      // 'ended', which would leave the last scene up for good.
+      if (vo.currentTime >= TOTAL) stop();
+      else frame(vo.currentTime);
+    }, 50);
+  }).catch(() => { playSilently(); });
+  vo.onended = stop;
+}
+
+// No audio - blocked, missing, or offline. The reel still has to run, and the
+// captions still have to show, because they carry the argument.
+function playSilently() {
+  const t0 = performance.now();
+  const iv = setInterval(() => {
+    const t = (performance.now() - t0) / 1000;
+    if (t >= TOTAL) { clearInterval(iv); finish(); return; }
+    frame(t);
+  }, 50);
+}
+
+async function play() {
+  if (!CUES.length) await loadCues();
+  if (vo && vo.src && !new URLSearchParams(location.search).get('auto')) playWithVoice();
+  else playSilently();
 }
 
 const go = document.getElementById('go');
