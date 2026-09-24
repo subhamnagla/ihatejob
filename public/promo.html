@@ -89,6 +89,10 @@
   .finding q { display: block; font-size: 34px; line-height: 1.5; color: #ffd9d9;
                font-style: italic; quotes: '\201C' '\201D'; }
 
+  .chips { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 44px; }
+  .chip { font-size: 30px; padding: 13px 22px; border-radius: 999px;
+          background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.10); }
+
   .rail { display: flex; gap: 30px; margin-top: 70px; }
   /* 287px of column / 794px of A4 = 0.361, so the page fills the frame's width
      exactly; 1123 * 0.361 = 406 is therefore how tall the frame can be before
@@ -138,6 +142,7 @@
 import { buildSample } from '/js/samples.js';
 import { renderCV } from '/js/templates.js';
 import { reviewCV } from '/js/review.js';
+import { PROFESSIONS, REGIONS } from '/js/professions.js';
 
 /* ---------------------------------------------------------------- data */
 
@@ -165,6 +170,9 @@ before.experience[1].bullets = ['Assisted with the merchant dashboard.',
 const rBefore = reviewCV(before);
 const rAfter = reviewCV(after);
 
+const nProf = Object.keys(PROFESSIONS).length;
+const nRegion = Object.keys(REGIONS).length;
+
 const paper = (d) => { const { html, classes } = renderCV(d);
   return '<div class="' + classes + '" style="--accent:' + d.settings.accent + '">' + html + '</div>'; };
 
@@ -179,7 +187,19 @@ const band = (b) => '<div class="band ' + (b.letter[0] === 'E' || b.letter[0] ==
 
 const worst = rBefore.findings[0];
 
+const TRADES = ['Software engineering', 'Nursing', 'Teaching', 'Banking',
+  'Skilled trades', 'Law', 'Pharmacy'];
+
 const SCENES = [
+  // The promise first: most people arrive not knowing that a CV has a
+  // convention at all, let alone that it differs by field and by country.
+  { ms: 4400, html: '<p class="kicker">Built to the standard of your field</p>'
+    + '<h1>A CV written<br>the way your<br><span class="q">industry</span> writes one.</h1>'
+    + '<p class="sub">' + nProf + ' professions and ' + nRegion + ' regions decide the section '
+    + 'order, the page count, and what has to carry a number.</p>'
+    + '<div class="chips">' + TRADES.map((t) => '<span class="chip">' + t + '</span>').join('')
+    + '</div>' },
+
   { ms: 3600, html: '<p class="kicker">Before a recruiter sees it</p>'
     + '<h1>Your CV,<br>read by a <span class="q">machine</span><br>that tells you why.</h1>'
     + '<p class="sub">Not a template. A second reading of the document you already have.</p>'
@@ -189,7 +209,7 @@ const SCENES = [
     + '<h1 style="font-size:72px">Drop in a PDF,<br>Word file, or<br>LinkedIn export.</h1>'
     + '<div class="sheet">' + paper(before) + '</div>' },
 
-  { ms: 5600, html: '<p class="kicker">Rated in your browser</p>'
+  { ms: 5600, html: '<p class="kicker">Six grades, not one number</p>'
     + '<div class="verdict"><div class="score"><b id="n">0</b><i>/ 100</i>'
     + '<span class="grade">' + rBefore.grade + ' &middot; ' + rBefore.letter + '</span></div>'
     + '<div class="bands">' + rBefore.bands.map(band).join('') + '</div></div>'
@@ -211,7 +231,7 @@ const SCENES = [
     + '<ul class="feats"><li>Check it against a job advert</li>'
     + '<li>Fix your LinkedIn</li><li>Export PDF, Word or plain text</li></ul>' },
 
-  { ms: 4800, html: '<p class="kicker">41 professions. 20 regions.</p>'
+  { ms: 4800, html: '<p class="kicker">Open it and start</p>'
     + '<h1>It runs in<br>your browser.<br><span class="q">Nothing is<br>uploaded.</span></h1>'
     + '<div class="wordmark"><b>ihatejob.app</b>'
     + '<span>Free. No account. No paid tier.</span></div>' },
