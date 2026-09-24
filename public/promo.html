@@ -152,8 +152,8 @@
   <small>33 seconds, 9:16, with voiceover and burned-in captions.
   Start your screen recorder first, then press this &mdash; it goes fullscreen
   so the address bar stays out of the shot.
-  Add ?auto=1 to play inline, silently: browsers will not start audio without
-  a press.</small>
+  ?auto=1 starts without a press, for a capture tool; it plays silently if the
+  browser refuses to start audio on its own.</small>
 </div></button>
 
 <script type="module">
@@ -402,8 +402,13 @@ function playSilently() {
 // answer fills itself in rather than being missed.
 loadCues();
 
+// ?auto=1 used to mean "silent", which was the wrong shape. It exists so that
+// something other than a finger can start the reel - a capture tool pointed at
+// this URL, most obviously - and such a tool wants the voice. So it tries the
+// audio like any other start and falls back to silence only if the browser
+// actually refuses, which is what the fallback was for in the first place.
 function play() {
-  if (vo && vo.src && !new URLSearchParams(location.search).get('auto')) playWithVoice();
+  if (vo && vo.src) playWithVoice();
   else playSilently();
 }
 
